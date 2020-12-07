@@ -228,7 +228,23 @@ def get_identifier(meta, data_item_description, series_type, table):
     return id, units
 
 
-def finalise_plot(ax, title, ylabel, tag, chart_dir): ### <--
+def apply_kwargs(fig, ax, **kwargs):
+    if 'rfooter' in kwargs:
+        fig.text(0.99, 0.01, 
+            kwargs['rfooter'],
+            ha='right', va='bottom',
+            fontsize=9, fontstyle='italic',
+            color='#999999')
+        
+    if 'lfooter' in kwargs:
+        fig.text(0.01, 0.01, 
+            kwargs['lfooter'],
+            ha='left', va='bottom',
+            fontsize=9, fontstyle='italic',
+            color='#999999')
+
+
+def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs): 
     """Function to finalise plots
         Arguments:
         - ax - matplotlib axes object
@@ -253,27 +269,23 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir): ### <--
     fig = ax.figure
     fig.set_size_inches(8, 4)
     fig.tight_layout(pad=1.2)
-        
-    # acknowledge sourse
-    fig.text(0.99, 0.01, 
-            'Source: ABS 5206',  ### <-- 
-            ha='right', va='bottom',
-            fontsize=9, fontstyle='italic',
-            color='#999999')
-
+    
+    # apply keyword arguments
+    apply_kwargs(fig, ax, **kwargs)
+    
     # save and close
     title = title.replace(":", "-")
     fig.savefig(f'{chart_dir}/{title}-{tag}.png', dpi=125) ### <--
-    plt.show()
+    #plt.show()
     plt.close()
     
     return None
 
 
-def plot_Qgrowth(series, title, from_, tag, chart_dir):
+def plot_Qgrowth(series, title, from_, tag, chart_dir, **kwargs):
 
-    series = series.copy() # we destructively play with index
-    # note: date set to first day of last month in quarter
+    series = series.copy() # copy as we destructively play with index
+    # note: ABS date set to first day of last month in quarter
     series.index = series.index - pd.Timedelta(16, unit='d')
     
     annual = series.pct_change(periods=4) * 100.0
@@ -295,4 +307,4 @@ def plot_Qgrowth(series, title, from_, tag, chart_dir):
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
 
-    finalise_plot(ax, title, 'Per cent', f'growth-{tag}', chart_dir)
+    finalise_plot(ax, title, 'Per cent', f'growth-{tag}', chart_dir, **kwargs)
