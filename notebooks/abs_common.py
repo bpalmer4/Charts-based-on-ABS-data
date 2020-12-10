@@ -1,6 +1,8 @@
 # abs_common.py
 
+
 # --- initialisation
+
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -15,6 +17,7 @@ import io
 
 from pathlib import Path
 from datetime import date
+
 
 # --- data retrieval 
 
@@ -218,9 +221,12 @@ def get_identifier(meta, data_item_description, series_type, table):
         (meta['Table'] == table)
     ]
     
-    # check
+    # warn if something looks odd
     if len(selected) != 1:
-        print(f'Warning: {len(selected)} items selected in get_identifier()')
+        print(f'Warning: {len(selected)} items selected in \n' 
+              f'\tget_identifier(data_item_description="{data_item_description}", \n' 
+              f'\t\tseries_type="{series_type}", \n' 
+              f'\t\ttable="{table}")')
         
     # return results
     id = selected['Series ID'].iloc[0]
