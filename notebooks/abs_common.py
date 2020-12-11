@@ -294,18 +294,19 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     return None
 
 
-def plot_Qgrowth(series, title, from_, tag, chart_dir, **kwargs):
-
-    series = series.copy() # copy as we destructively play with index
-    # note: ABS date set to first day of last month in quarter
-    series.index = series.index - pd.Timedelta(16, unit='d')
-    
-    annual = series.pct_change(periods=4) * 100.0
-    quarter = series.pct_change(periods=1) * 100.0
+def plot_Qgrowth2(annual, quarter, title, from_, tag, chart_dir, **kwargs):
     if from_:
         annual = annual[annual.index >= from_]
         quarter = quarter[quarter.index >= from_]
 
+    # copy because we change the index
+    annual = annual.copy()
+    quarter = quarter.copy()
+    adjustment = pd.Timedelta(16, unit='d')
+    annual.index = annual.index - adjustment
+    quarter.index = quarter.index - adjustment
+    
+    # plot
     fig, ax = plt.subplots()
     ax.plot(annual.index, annual.values,
         lw=1, color='#0000dd',
@@ -320,3 +321,10 @@ def plot_Qgrowth(series, title, from_, tag, chart_dir, **kwargs):
     ax.xaxis.set_major_formatter(formatter)
 
     finalise_plot(ax, title, 'Per cent', f'growth-{tag}', chart_dir, **kwargs)
+    
+def plot_Qgrowth(series, title, from_, tag, chart_dir, **kwargs):
+
+    annual = series.pct_change(periods=4) * 100.0
+    quarter = series.pct_change(periods=1) * 100.0
+    
+    plot_Qgrowth2(annual, quarter, title, from_, tag, chart_dir, **kwargs)
