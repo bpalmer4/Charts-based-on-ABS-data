@@ -19,6 +19,12 @@ from pathlib import Path
 from datetime import date
 
 
+# useful constants
+DATA_DIR = '../Data'
+Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+NOMINAL_GDP_CSV = f'{DATA_DIR}/nominal_gdp.csv'
+
+
 # --- data retrieval 
 
 def previous_month(month, year):
