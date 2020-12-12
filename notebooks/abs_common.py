@@ -31,7 +31,9 @@ NOMINAL_GDP_CSV = f'{DATA_DIR}/nominal_gdp.csv'
 
 # --- utility functions
 
-def get_constants(cat_num):
+def get_fs_constants(cat_num):
+    """Get file system constants"""
+    
     cache_dir = f'../cache/{cat_num}'
     chart_dir = f'../charts/{cat_num}'
     directories = [cache_dir, chart_dir]
@@ -39,7 +41,18 @@ def get_constants(cat_num):
         Path(d).mkdir(parents=True, exist_ok=True)
     directories.append(f'Source: ABS {cat_num} table')
     return(directories)
-        
+
+
+def get_plot_constants(data):
+    """Get plotting constants"""
+    
+    RECENCY_PERIOD = 3 # years
+    RECENT = data.index.max() - pd.DateOffset(years=RECENCY_PERIOD)
+    plot_times = [None, RECENT]
+    plot_frames = (data.copy(), data[data.index >= RECENT].copy())
+    plot_tags = ('full', 'recent')
+    return RECENT, plot_times, plot_frames, plot_tags
+
 
 # --- data retrieval 
 
