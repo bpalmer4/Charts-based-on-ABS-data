@@ -1,6 +1,5 @@
 # abs_common.py
 
-
 # --- initialisation
 
 import numpy as np
@@ -18,12 +17,29 @@ import io
 from pathlib import Path
 from datetime import date
 
+# local imports
+from finalise_plot import finalise_plot
 
-# useful constants
+
+# --- useful constants
+
+# nominal GDP can be a useful denominator
 DATA_DIR = '../Data'
 Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 NOMINAL_GDP_CSV = f'{DATA_DIR}/nominal_gdp.csv'
 
+
+# --- utility functions
+
+def get_constants(cat_num):
+    cache_dir = f'../cache/{cat_num}'
+    chart_dir = f'../charts/{cat_num}'
+    directories = [cache_dir, chart_dir]
+    for d in directories:
+        Path(d).mkdir(parents=True, exist_ok=True)
+    directories.append(f'Source: ABS {cat_num} table')
+    return(directories)
+        
 
 # --- data retrieval 
 
@@ -240,80 +256,44 @@ def get_identifier(meta, data_item_description, series_type, table):
     return id, units
 
 
-def apply_kwargs(fig, ax, **kwargs):
-    if 'rfooter' in kwargs:
-        fig.text(0.99, 0.01, 
-            kwargs['rfooter'],
-            ha='right', va='bottom',
-            fontsize=9, fontstyle='italic',
-            color='#999999')
+def plot_growth2(annual, periodic, title, from_, tag, chart_dir, **kwargs):
+
+    # put our two series into a datadrame
+    frame = pd.DataFrame([annual.copy(), periodic.copy()], 
+                         index=['Annual', 'Periodic']).T
+    
+    # get period description
+    if kwargs['ppy'] == 4: # ppy = periods_per_year
+        period = 'Quarterly'
+        freq = "Q"
+        adjustment = 46 # days from start to centre
+    elif kwargs['ppy'] == 12:
+        period = 'Monthly'
+        freq="M"
+        adjustment = 15 
+    else:
+        period = 'Unknown'
+        freq="D"
         
-    if 'lfooter' in kwargs:
-        fig.text(0.01, 0.01, 
-            kwargs['lfooter'],
-            ha='left', va='bottom',
-            fontsize=9, fontstyle='italic',
-            color='#999999')
-
-
-def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs): 
-    """Function to finalise plots
-        Arguments:
-        - ax - matplotlib axes object
-        - title - string - plot title, also used to save the file
-        - ylabel - string - ylabel
-        Returns: 
-        - None
-    """
-    
-    # annotate plot
-    ax.set_title(title)
-    ax.set_xlabel(None)
-    ax.set_ylabel(ylabel)
-    
-    # fix margins - I should not need to do this!
-    FACTOR = 0.015
-    xlim = ax.get_xlim()
-    adjustment = (xlim[1] - xlim[0]) * FACTOR
-    ax.set_xlim([xlim[0] - adjustment, xlim[1] + adjustment])
-    
-    # finalise
-    fig = ax.figure
-    fig.set_size_inches(8, 4)
-    fig.tight_layout(pad=1.2)
-    
-    # apply keyword arguments
-    apply_kwargs(fig, ax, **kwargs)
-    
-    # save and close
-    title = title.replace(":", "-")
-    fig.savefig(f'{chart_dir}/{title}-{tag}.png', dpi=125) ### <--
-    #plt.show()
-    plt.close()
-    
-    return None
-
-
-def plot_Qgrowth2(annual, quarter, title, from_, tag, chart_dir, **kwargs):
+    # set index to the middle of the period for selection
     if from_:
-        annual = annual[annual.index >= from_]
-        quarter = quarter[quarter.index >= from_]
-
-    # copy because we change the index
-    annual = annual.copy()
-    quarter = quarter.copy()
-    adjustment = pd.Timedelta(16, unit='d')
-    annual.index = annual.index - adjustment
-    quarter.index = quarter.index - adjustment
+        frame = frame[frame.index >= from_]
+    frame.index = pd.PeriodIndex(frame.index, freq=freq)
+    frame = frame.to_timestamp(how='start')
+    frame.index = frame.index + pd.Timedelta(days=adjustment)
     
     # plot
     fig, ax = plt.subplots()
-    ax.plot(annual.index, annual.values,
-        lw=1, color='#0000dd',
-        label='Annual growth')
-    ax.bar(quarter.index, quarter.values, width=80)
+    ax.plot(frame[frame.columns[0]].index, 
+            frame[frame.columns[0]].values,
+            lw=1, color='#0000dd',)
+    ax.bar(frame[frame.columns[1]].index, 
+           frame[frame.columns[1]].values, 
+           color="#dd0000",
+           width=(0.8 * adjustment * 2))
     ax.margins(x=0, y=0.025) # further adjusted in finalise_plot()
-    ax.legend(['Annual growth', 'Quarterly growth'], loc='best')
+
+    ax.legend(['Annual growth', f'{period} growth'], loc='best')
 
     locator = mdates.AutoDateLocator(minticks=4, maxticks=13)
     formatter = mdates.ConciseDateFormatter(locator)
@@ -321,10 +301,20 @@ def plot_Qgrowth2(annual, quarter, title, from_, tag, chart_dir, **kwargs):
     ax.xaxis.set_major_formatter(formatter)
 
     finalise_plot(ax, title, 'Per cent', f'growth-{tag}', chart_dir, **kwargs)
+
+    
+def plot_growth(series, title, from_, tag, chart_dir, **kwargs):
+    assert('ppy' in kwargs) # ppy = periods_per_year
+    annual = series.pct_change(periods=kwargs['ppy']) * 100.0
+    periodic = series.pct_change(periods=1) * 100.0
+    plot_growth2(annual, periodic, title, from_, tag, chart_dir, **kwargs)
+
     
 def plot_Qgrowth(series, title, from_, tag, chart_dir, **kwargs):
-
-    annual = series.pct_change(periods=4) * 100.0
-    quarter = series.pct_change(periods=1) * 100.0
+    kwargs['ppy'] = 4
+    plot_growth(series, title, from_, tag, chart_dir, **kwargs)
     
-    plot_Qgrowth2(annual, quarter, title, from_, tag, chart_dir, **kwargs)
+    
+def plot_Mgrowth(series, title, from_, tag, chart_dir, **kwargs):
+    kwargs['ppy'] = 12
+    plot_growth(series, title, from_, tag, chart_dir, **kwargs)
