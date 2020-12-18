@@ -11,5 +11,5 @@ To run a notebook,
 * fire-up Jupyter Notebook or Jupyter Lab
 * navigate to the notebooks directory
 * select the notebook you wish to run
-* run with the double arro (restart kernel and re-run the whole notebook)
+* run with the double arrow (restart kernel and re-run the whole notebook)
 
