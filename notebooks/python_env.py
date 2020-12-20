@@ -32,7 +32,7 @@ def python_system():
 
 
 def python_modules():
-    """Print to standard output the headline imported modules with versions 
+    """Print to standard output the headline imported modules with version 
        numbers. Note, modules without version numbers are excluded. 
        Sub-modules are excluded. Internal modules (beginning with an
        underscore) are excluded.
@@ -55,8 +55,7 @@ def python_modules():
 
 
 def python_env():
-    """Print to standard output the key features of the python environment
-       in which the caller is currently operating.
+    """Print to standard output the key features of the python environment.
        There are no arguments for this function.
        The function returns None."""
     
