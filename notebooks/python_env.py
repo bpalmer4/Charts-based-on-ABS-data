@@ -6,19 +6,21 @@ import sys
 import platform
 import psutil
 
-## --- utility functions
 
-def python_env():
-    """This function prints the key system architecture and lists
-       the headline imported modules with version numnbers.
+# -- constants
+
+line_size = 50
+
+
+# --- functions
+
+def python_system():
+    """Print to standard output the key features of the system architecture.
        There are no arguments for this function.
        The function returns None."""
     
-    N = 50
-    
-    # system architecture
     print('System:')
-    print('='*N)
+    print('=' * line_size)
     print(f"System:     {platform.system()}")
     print(f"Release:    {platform.release()}")
     print(f"Machine:    {platform.machine()}")
@@ -26,17 +28,39 @@ def python_env():
     print(f"RAM:        {round(psutil.virtual_memory().total / 1024**3)}GB")
     print(f"Python:     {platform.python_version()}")
 
-    # headline modules with version numbers
-    print('\nModules:')
-    print('-'*N)
+    return None
+
+
+def python_modules():
+    """Print to standard output the headline imported modules with versions 
+       numbers. Note, modules without version numbers are excluded. 
+       Sub-modules are excluded. Internal modules (beginning with an
+       underscore) are excluded.
+       There are no arguments for this function. 
+       The function returns None."""
+
+    print('Modules:')
+    print('-' * line_size)
     modules = {}
     for m in sys.modules.keys():
         if m.startswith('_') or '.' in m:
             continue
         if hasattr(sys.modules[m], '__version__'):
             modules[m] = sys.modules[m] 
-
+            
     for m in sorted(modules.keys(), key=str.casefold):
         print(f"{m}: {modules[m].__version__}")
 
-    return(None)
+    return None
+
+
+def python_env():
+    """Print to standard output the key features of the python environment
+       in which the caller is currently operating.
+       There are no arguments for this function.
+       The function returns None."""
+    
+    python_system()
+    print('')
+    python_modules()
+    return None
