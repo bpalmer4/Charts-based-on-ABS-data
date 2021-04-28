@@ -16,6 +16,7 @@ import io
 
 
 # --- utility functions
+META_DATA = 'META_DATA'
 
 def get_plot_constants(meta):
     """Get plotting constants"""
@@ -29,6 +30,12 @@ def get_plot_constants(meta):
     plot_tags = ('full', 'recent')
     return RECENT, plot_times, plot_tags
 
+
+def get_fs_constants(catalogue_id):
+    source = f'ABS {catalogue_id}'
+    CHART_DIR = f"./charts/{catalogue_id}/"
+    pathlib.Path(CHART_DIR).mkdir(parents=True, exist_ok=True)
+    return source, CHART_DIR, META_DATA
 
 # --- Data fetch from ABS
 
@@ -285,7 +292,7 @@ def get_dataframes(zip_file, warning=False):
         meta['Series Start'],
         format='%Y-%m-%d'
     )
-    returnable['META'] = meta
+    returnable[META_DATA] = meta
     return returnable
 
 

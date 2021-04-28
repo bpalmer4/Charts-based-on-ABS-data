@@ -12,6 +12,6 @@ __pycache__/
 .DS_Store
 
 # unnecessary detail to be ignored
-charts/**
-data/**
 notebooks/ABS_CACHE/**
+notebooks/CHARTS/**
+notebooks/DATA/**
