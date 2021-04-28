@@ -1,7 +1,5 @@
 # abs_common.py
 
-# --- initialisation
-
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -10,159 +8,226 @@ import matplotlib.dates as mdates
 import matplotlib.units as munits
 
 import requests
-import hashlib
+from bs4 import BeautifulSoup
+import re
+import pathlib
 import zipfile
 import io
-
-from pathlib import Path
-from datetime import date
-
-# local imports
-from finalise_plot import finalise_plot
-
-
-# --- useful constants
-
-# nominal GDP can be a useful denominator
-DATA_DIR = '../Data'
-Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-NOMINAL_GDP_CSV = f'{DATA_DIR}/nominal_gdp.csv'
 
 
 # --- utility functions
 
-def get_fs_constants(cat_num):
-    """Get file system constants"""
-    
-    cache_dir = f'../cache/{cat_num}'
-    chart_dir = f'../charts/{cat_num}'
-    directories = [cache_dir, chart_dir]
-    for d in directories:
-        Path(d).mkdir(parents=True, exist_ok=True)
-    directories.append(f'Source: ABS {cat_num} table')
-    return(directories)
-
-
-def get_plot_constants(data):
+def get_plot_constants(meta):
     """Get plotting constants"""
     
     RECENCY_PERIOD = 3 # years
-    RECENT = data.index.max() - pd.DateOffset(years=RECENCY_PERIOD)
+    RECENT = (
+        meta['Series End'].max() 
+        - pd.DateOffset(years=RECENCY_PERIOD)
+    )
     plot_times = [None, RECENT]
-    plot_frames = (data.copy(), data[data.index >= RECENT].copy())
     plot_tags = ('full', 'recent')
-    return RECENT, plot_times, plot_frames, plot_tags
+    return RECENT, plot_times, plot_tags
 
 
-# --- data retrieval 
+# --- Data fetch from ABS
 
-def previous_month(month, year):
-    """Find the previous (month, year) combination 
-        for a given (month, year) combination
+"""
+Our general approach here is to:
+
+1. Download the "latest-release" webpage from the ABS
+   for known ABS catalogue nuymbers. 
+
+2. Parse that webpage to find the link to the download 
+   all-tables zip-file. We do this because the name of
+   the file location on the ABS server changes from 
+   month to month. 
+   
+3. Check to see whether I have cached that file previously,
+   if not, download and save the zip-file to the cache.
+   
+4. Open the zip-file, and save each table to a pandas 
+   DataFrame. And save the metadata to a pandas DataFrame.
+   Return all of the DataFrames in a dictionary.
+"""
+
+# -- Establish an ABS cache directory
+CACHE_DIR = "./ABS_CACHE/"
+pathlib.Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
+
+# -- URLs for getting key data sets from the ABS
+locations = {
+
+    "5206": {
+        "Name": "Australian National Accounts: "
+                "National Income Expenditure and Product",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "economy/national-accounts/australian-national-accounts-"
+               "national-income-expenditure-and-product/latest-release",
+    },
+    
+    "5232": {
+        "Name": "Australian National Accounts: "
+                "Finance and Wealth",
+        "URL": "https://www.abs.gov.au/statistics/economy/"
+               "national-accounts/australian-national-accounts"
+               "-finance-and-wealth/latest-release",
+    },
+    
+    "6202": {
+        "Name": "Labour Force Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "labour/employment-and-unemployment/"
+               "labour-force-australia/latest-release",
+    },
+
+    "6291": {
+        "Name" : "Labour Force, Australia, Detailed",
+        "URL":   "https://www.abs.gov.au/statistics/"
+                 "labour/employment-and-unemployment/"
+                 "labour-force-australia-detailed/latest-release",
+    },
+    
+    "6354": {
+        "Name": "Job Vacancies, Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "labour/employment-and-unemployment/"
+               "job-vacancies-australia/latest-release",
+    },
+    
+    "6401": {
+        "Name": "Consumer Price Index, Australia",
+        "URL": "https://www.abs.gov.au/statistics/economy/"
+               "price-indexes-and-inflation/"
+               "consumer-price-index-australia/latest-release",
+    },
+    
+    "8501": {
+        "Name": "Retail Trade, Australia",
+        "URL": "https://www.abs.gov.au/statistics/industry/"
+               "retail-and-wholesale-trade/retail-trade-australia/"
+               "latest-release",
+    },
+
+    "LAA": {
+        "Name": "Labour Account Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "labour/employment-and-unemployment/"
+               "labour-account-australia/latest-release",
+    },
+
+}
+
+
+def get_ABS_catalogue_IDs():
+    """Return a dictionary of known ABS catalogue identifiers"""
+    
+    response = {}
+    for location, data in locations.items():
+        response[location] = data["Name"]
+    return response
+
+
+def get_ABS_webpage(catalogue_id):
+    """Get the ABS web page for latest data for a
+       specified ABS catalogue identifier.
+
        Arguments:
-       - month - integer between 1 and 12
-       - year - integer
-       Returns:
-       - Tuple (month, year) - same form as arguments
-    """
-    
-    month = month - 1
-    if month == 0:
-        month = 12
-        year -= 1
-    return month, year
-
-
-def download_and_cache(URL, CACHE_DIR):
-    """If the URL has not been cached, download it and cache it:
-       Arguments:
-       - URL - string - url for file
-       - CACHE - string - directory name where cached file is placed
-       Returns:
-       - None - if URL does not exist
-       - a bytes array of the cached zip file of excel spreadsheets
+       catalogue_id - string - catalogue identifier 
+       (eg. 6202 for Labour Force Australia)
     """
 
-    code = requests.head(URL).status_code
-    if code == 200:
-        # if the URL exists, see if we have previously downloaded and cached.
-        # if not previously downloaded, we will doenload now and cache.
-        cache = (f'{CACHE_DIR}/{hashlib.sha384(URL.encode()).hexdigest()}.cache')
-        if (file := Path(cache)).is_file():
-            print('File has been cached already')
-            zip_file = file.read_bytes()
-        else:
-            print('We need to cache this file')
-            zip_file = requests.get(URL, allow_redirects=True).content # bytes
-            file.open(mode='w', buffering=-1, encoding=None, errors=None, newline=None)
-            file.write_bytes(zip_file)
-
-        # return success
-        return zip_file # as a bytes buffer
+    # get URL
+    if catalogue_id not in locations:
+        print(f"Catalogue identifier not recognised: {catalogue_id}")
+        return None
     
-    # return failure
-    return None
+    url = locations[catalogue_id]["URL"]
+    requested = requests.get(url, allow_redirects=True)
+    code = requested.status_code
+    if code != 200:
+        print(f'Could not get web page ({url}), error code: {code}')
+        return None
+    
+    # capture and return the ABS webpage
+    page = requested.content
+    return page
 
 
-def get_ABS_zip_file(url_template, CACHE_DIR):
-    """Using an url_template, get the ABS zipped file as a bytes array
-       if not cached from the ABS, otherwise from the cache file.
-       Arguments:
-       - url_template - string - with MONTH-YEAR as a token that will be 
-                                 substituted with a series of months/years
-                                 walking backwards from the current to get 
-                                 the most recent data.
-       - CACHE_DIR - string - directory name for the cache directory
-       Returns:
-       - a bytes array of the cached zip file of excel spreadsheets
-    """
+def get_ABS_zipfile(catalogue_id):
+    """Get the latest zip_file of all tables for
+       a specified ABS catalogue identifier"""
+    
+    # get latest from ABS website
+    page = get_ABS_webpage(catalogue_id)
+    if page is None or len(page) == 0:
+        print(f'Failed to retrieve ABS web page for {catalogue_id}')
+        return None
+    
+    # remove those pesky span tags
+    page = re.sub(b'<span[^>]*>', b' ', page)
+    page = re.sub(b'</span>', b' ', page)
+    page = re.sub(b'\s+', b' ', page) # tidy up white space
+    
+    # extract web address
+    soup = BeautifulSoup(page, features="lxml")
+    found = soup.findAll('a', text=re.compile(r'Download all', re.IGNORECASE))
+    if len(found) == 0:
+        found = soup.findAll('a', text=re.compile(r'Download zip', re.IGNORECASE))
+        if len(found) == 0:
+            return None
+    found = found[0]
+    url = re.search(r'href="([^ ]+)"', str(found.prettify)).group(1)
+    
+    # note: ABS uses full URL addresses sometimes, and sometimes not
+    PREFIX = "https://www.abs.gov.au"
+    if PREFIX in url:
+        url = url.replace(PREFIX, '')
+    cache_name = CACHE_DIR + url.replace('/', '-')
+    
+    # check local cache for web address
+    if (file := pathlib.Path(cache_name)).is_file():
+        print(f'Retrieving zip-file from cache {cache_name}')
+        zip_file = file.read_bytes()
+        return zip_file
 
-    # function constants
-    MAX_TRIES = 15 # maximum number of previous months to try
-    MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
-              'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
-    
-    # we will start with the previous month and work backwards
-    # assume ABS data is at least one month old. 
-    month, year = previous_month(date.today().month, date.today().year)
-    for count in range(MAX_TRIES+1):
-    
-        # exit with error if the counter has gone too far backwards
-        if count >= MAX_TRIES:
-            sys.exit('Could not find and download the URL')
-        
-        # let's see if the URL exists
-        month_year = MONTHS[month - 1] + '-' + str(year)
-        URL = url_template.replace('MONTH-YEAR', month_year)
-        if (zip_file := download_and_cache(URL, CACHE_DIR)) is not None:
-            print(f'File for {month_year} of ' +
-                  f'size {np.round((len(zip_file) / 1024**2), 1)} MB')
-            break
-        
-        # let's try a month earlier
-        month, year = previous_month(month, year)
-    
-    # if we are here, then we have a cached file we can unzip
+    # get zip-file from ABS website
+    url = PREFIX + url
+    print('We need to download this file')
+    gotten = requests.get(url, allow_redirects=True)
+    if gotten.status_code != 200:
+        print(f'Could not get web page ({url}), error code: {code}')
+        return None    
+    zip_file = gotten.content # bytes
+
+    # cache for next time
+    print(f'Saving to cache: {cache_name}')
+    file.open(mode='w', buffering=-1, encoding=None, errors=None, newline=None)
+    file.write_bytes(zip_file)
     return zip_file
 
 
-# let's build a single dataframe for all the data we have collected
 def get_dataframes(zip_file, warning=False):
-    """Get the dataframe for zipfile of excel spreadsheets
-        Arguments:
+    """Get a DataFrame for each table in the zip-file, 
+       plus an overall DataFrame for the metadata. 
+       Return these in a dictionary
+       Arguments:
         - zip_file - bytes array of ABS zip file of excel spreadsheets
-        Returns:
-        - tuple (meta, data), where
-            - meta - is a pandas DataFrame of metadata
-            - data - is a pandas DataFrame of the actual data
+        - warning - warn when dataframes are empty. 
+       Returns:
+        - either None (failure) or a dictionary containing a 
+          separate DataFrame for each table in the zip-file,
+          plus a DataFrame called 'META' for the metadata. 
     """
     
+    returnable = {}
     zipped = zipfile.ZipFile(io.BytesIO(zip_file))
     zipped_elements = zipped.infolist()
 
     meta = pd.DataFrame()
-    data = pd.DataFrame()
     for ze in zipped_elements:
+        # a new DataFrame for each table
+        data = pd.DataFrame()
     
         # get the zipfile into pandas
         zfile = zipped.read(ze.filename)
@@ -174,7 +239,6 @@ def get_dataframes(zip_file, warning=False):
         splat = table.split('.')
         tab_num = splat[0].split(' ')[-1].strip()
         tab_desc = '.'.join(splat[1:]).strip()
-        #print(tab_num, tab_desc) 
         
         # get the metadata
         sheet_meta = xl.parse('Index', header=9, parse_dates=True, 
@@ -206,33 +270,45 @@ def get_dataframes(zip_file, warning=False):
             if len(data) == 0:
                 data = sheet_data
             else:
-                data = pd.merge(left=data, right=sheet_data, how='outer',
-                                left_index=True, right_index=True, suffixes=('', ''))
+                data = pd.merge(left=data, right=sheet_data, 
+                                how='outer', left_index=True, 
+                                right_index=True, suffixes=('', ''))
+                
+        returnable[tab_num] = data
     
-    return meta, data
+    # some data-type clean-ups 
+    meta['Series End'] = pd.to_datetime(
+        meta['Series End'],
+        format='%Y-%m-%d'
+    )
+    meta['Series Start'] = pd.to_datetime(
+        meta['Series Start'],
+        format='%Y-%m-%d'
+    )
+    returnable['META'] = meta
+    return returnable
 
 
-def get_ABS_meta_and_data(url_template, cache_dir):
+def get_ABS_meta_and_data(catalogue_id):
     """Get two pandas DataFrames, the first containing the ABS metadata,
        the second contraining the complete set of actual data from the ABS
        Arguments:
-        - url_template - string - with MONTH-YEAR as a token that will be 
-                                  substituted with a series of months/years
-                                  walking backwards from the current to get 
-                                  the most recent data.
-        - cache_dir - string - directory name for the cache directory
-        Returns:
-        - tuple (meta, data), where
-            - meta - is a pandas DataFrame of metadata
-            - data - is a pandas DataFrame of the actual data
-    """
+        - catalogue_id - string - ABS catalogue number for the desired dataset.
+       Returns:
+        - either None (failure) or a dictionary containing a 
+          separate DataFrame for each table in the zip-file,
+          plus a DataFrame called 'META' for the metadata."""
 
-    zip_file = get_ABS_zip_file(url_template, cache_dir)
-    meta, data = get_dataframes(zip_file)
-    return meta, data
+    zip_file = get_ABS_zipfile(catalogue_id)
+    if zip_file is None:
+        return None
+    return get_dataframes(zip_file)
 
 
 # --- plotting
+
+# local imports
+from finalise_plot import finalise_plot
 
 def get_identifier(meta, data_item_description, series_type, table):
     """Get the ABS series identifier that matches the given 
@@ -259,7 +335,8 @@ def get_identifier(meta, data_item_description, series_type, table):
     # warn if something looks odd
     if len(selected) != 1:
         print(f'Warning: {len(selected)} items selected in \n' 
-              f'\tget_identifier(data_item_description="{data_item_description}", \n' 
+              '\tget_identifier(data_item_description='
+              f'"{data_item_description}", \n' 
               f'\t\tseries_type="{series_type}", \n' 
               f'\t\ttable="{table}")')
         
@@ -269,7 +346,8 @@ def get_identifier(meta, data_item_description, series_type, table):
     return id, units
 
 
-def plot_growth2(annual, periodic, title, from_, tag, chart_dir, **kwargs):
+def plot_growth2(annual, periodic, title, from_, tag, 
+                 chart_dir, **kwargs):
 
     # put our two series into a datadrame
     frame = pd.DataFrame([annual.copy(), periodic.copy()], 

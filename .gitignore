@@ -13,5 +13,5 @@ __pycache__/
 
 # unnecessary detail to be ignored
 charts/**
-cache/**
 data/**
+notebooks/ABS_CACHE/**
