@@ -18,6 +18,13 @@ import io
 # --- utility functions
 META_DATA = 'META_DATA'
 
+def get_fs_constants(catalogue_id):
+    source = f'ABS {catalogue_id}'
+    CHART_DIR = f"./CHARTS/{catalogue_id}/"
+    pathlib.Path(CHART_DIR).mkdir(parents=True, exist_ok=True)
+    return source, CHART_DIR, META_DATA
+
+
 def get_plot_constants(meta):
     """Get plotting constants"""
     
@@ -30,12 +37,6 @@ def get_plot_constants(meta):
     plot_tags = ('full', 'recent')
     return RECENT, plot_times, plot_tags
 
-
-def get_fs_constants(catalogue_id):
-    source = f'ABS {catalogue_id}'
-    CHART_DIR = f"./charts/{catalogue_id}/"
-    pathlib.Path(CHART_DIR).mkdir(parents=True, exist_ok=True)
-    return source, CHART_DIR, META_DATA
 
 # --- Data fetch from ABS
 
@@ -115,6 +116,20 @@ locations = {
                "retail-and-wholesale-trade/retail-trade-australia/"
                "latest-release",
     },
+    
+    "8731": {
+        "Name": "Building Approvals, Australia",
+        "URL": "https://www.abs.gov.au/statistics/industry/"
+               "building-and-construction/"
+               "building-approvals-australia/latest-release",
+    },
+
+    "8752": {
+        "Name": "Building Activity, Australia",
+        "URL": "https://www.abs.gov.au/statistics/industry/"
+               "building-and-construction/"
+               "building-activity-australia/latest-release",
+    },
 
     "LAA": {
         "Name": "Labour Account Australia",
@@ -161,7 +176,7 @@ def get_ABS_webpage(catalogue_id):
     return page
 
 
-def get_ABS_zipfile(catalogue_id):
+def get_ABS_zipfile(catalogue_id, table):
     """Get the latest zip_file of all tables for
        a specified ABS catalogue identifier"""
     
@@ -181,9 +196,11 @@ def get_ABS_zipfile(catalogue_id):
     found = soup.findAll('a', text=re.compile(r'Download all', re.IGNORECASE))
     if len(found) == 0:
         found = soup.findAll('a', text=re.compile(r'Download zip', re.IGNORECASE))
-        if len(found) == 0:
+        if len(found) < (table + 1):
             return None
-    found = found[0]
+        if len(found) > 0:
+            print(f'Warning: getting match {table} only')
+    found = found[table]
     url = re.search(r'href="([^ ]+)"', str(found.prettify)).group(1)
     
     # note: ABS uses full URL addresses sometimes, and sometimes not
@@ -296,17 +313,20 @@ def get_dataframes(zip_file, warning=False):
     return returnable
 
 
-def get_ABS_meta_and_data(catalogue_id):
+def get_ABS_meta_and_data(catalogue_id, table=0):
     """Get two pandas DataFrames, the first containing the ABS metadata,
        the second contraining the complete set of actual data from the ABS
        Arguments:
         - catalogue_id - string - ABS catalogue number for the desired dataset.
+        - table - the matching table to extract - default=0
+                  (e.g. 6291 has four possible tables,
+                   but most ABS pages only have one)
        Returns:
         - either None (failure) or a dictionary containing a 
           separate DataFrame for each table in the zip-file,
           plus a DataFrame called 'META' for the metadata."""
 
-    zip_file = get_ABS_zipfile(catalogue_id)
+    zip_file = get_ABS_zipfile(catalogue_id, table)
     if zip_file is None:
         return None
     return get_dataframes(zip_file)
