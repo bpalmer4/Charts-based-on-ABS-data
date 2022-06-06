@@ -271,7 +271,11 @@ def get_dataframes(zip_file, warning=False):
         sheet_meta = sheet_meta.dropna(axis='columns', how='all')
         sheet_meta['Table'] = tab_num.strip()
         sheet_meta['Table Description'] = tab_desc
-        meta = meta.append(sheet_meta, ignore_index=True)
+        if meta is None:
+            meta = sheet_meta
+        else:
+            meta = pd.concat([meta, sheet_meta])
+            #meta = meta.append(sheet_meta, ignore_index=True)
     
         # get the actual data
         data_sheets = [x for x in xl.sheet_names if x.startswith('Data')]

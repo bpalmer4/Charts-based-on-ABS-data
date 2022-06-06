@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # --- constants
 DEFAULT_FILE_TYPE = 'png'
-DEFAULT_FIG_SIZE = (8, 4)
+DEFAULT_FIG_SIZE = (9, 4.5)
 
 
 # --- utility functions
@@ -72,7 +72,7 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     
     # finalise
     fig = ax.figure
-    fig.set_size_inches(8, 4)
+    fig.set_size_inches(9, 4.5)
     fig.tight_layout(pad=1.2)
     
     # save and close
