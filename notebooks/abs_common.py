@@ -14,6 +14,8 @@ import pathlib
 import zipfile
 import io
 
+from typing import Tuple, Optional
+from operator import mul, truediv
 
 # --- utility functions
 META_DATA = 'META_DATA'
@@ -28,7 +30,7 @@ def get_fs_constants(catalogue_id):
 def get_plot_constants(meta):
     """Get plotting constants"""
     
-    RECENCY_PERIOD = 3 # years
+    RECENCY_PERIOD = 5 # years
     RECENT = (
         meta['Series End'].max() 
         - pd.DateOffset(years=RECENCY_PERIOD)
@@ -44,7 +46,7 @@ def get_plot_constants(meta):
 Our general approach here is to:
 
 1. Download the "latest-release" webpage from the ABS
-   for known ABS catalogue nuymbers. 
+   for known ABS catalogue numbers. 
 
 2. Parse that webpage to find the link to the download 
    all-tables zip-file. We do this because the name of
@@ -266,9 +268,15 @@ def get_dataframes(zip_file, warning=False):
         
         # get the metadata
         sheet_meta = xl.parse('Index', header=9, parse_dates=True, 
-                              infer_datetime_format=True,)
+                              infer_datetime_format=True, converters={'Unit':str})
         sheet_meta = sheet_meta.iloc[1:-2] # drop first and last 2
         sheet_meta = sheet_meta.dropna(axis='columns', how='all')
+        sheet_meta['Unit'] = (
+            sheet_meta['Unit'].str
+            .replace('000 Hours', 'Thousand Hours')
+            .replace('000,000', 'Millions')
+            .replace('000', 'Thousands')
+        )
         sheet_meta['Table'] = tab_num.strip()
         sheet_meta['Table Description'] = tab_desc
         if meta is None:
@@ -335,6 +343,71 @@ def get_ABS_meta_and_data(catalogue_id, table=0):
         return None
     return get_dataframes(zip_file)
 
+
+# --- data recalibration
+
+keywords = {'Unit':0, 'Thousand':3, 'Million':6, 'Billion':9, 'Trillion':12, 'Quadrillion':15}
+r_keywords = {v: k for k, v in keywords.items()}
+
+def find_calibration(series: pd.Series, units:str) -> Optional[str]:
+    contains = []
+    found = None
+    for keyword in keywords:
+        if keyword in units: 
+            found = keyword
+            break
+    return found
+
+
+def dont_recalibrate(series: pd.Series, units:str, verbose:bool=False) -> bool:
+    if (series.max() < 0).any():
+        if verbose: 
+            print('Negative max numbers will not be adjusted')
+        return True
+    if not pd.api.types.is_numeric_dtype(series):
+        if verbose: 
+            print(f'Series not numeric {series.dtype}')
+        return True
+    if find_calibration(series, units) is None:
+        if verbose: 
+            print(f'Units not calibrated {units}')
+        return True
+    if series.max() <= 1000 and series.max() >= 1:
+        if verbose: 
+            print('No adjustments needed')
+        return True
+    return False
+
+
+def recalibrate_series(series: pd.Series, units:str) -> Tuple[pd.Series, str]:
+    if dont_recalibrate(series, units):
+        return series, units
+    
+    def do_it(factor, step, operator):
+        if factor + step in r_keywords:
+            replacement = r_keywords[factor + 3]
+            nonlocal units, series # bit ugly
+            units = units.replace(text, replacement)
+            series = operator(series, 1000)
+            return True
+        return False
+
+    again = True
+    while again:
+        text = find_calibration(series, units)
+        factor = keywords[text]
+        
+        if series.max() > 1000:
+            if do_it(factor, 3, truediv):
+                continue
+                
+        if series.max() < 1:
+            if do_it(factor, -3, mul):
+                continue
+          
+        again = False
+    return series, units
+    
 
 # --- plotting
 
