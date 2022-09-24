@@ -346,7 +346,7 @@ def get_ABS_meta_and_data(catalogue_id, table=0):
 
 # --- data recalibration
 
-keywords = {'Unit':0, 'Thousand':3, 'Million':6, 'Billion':9, 'Trillion':12, 'Quadrillion':15}
+keywords = {'Number':0, 'Thousand':3, 'Million':6, 'Billion':9, 'Trillion':12, 'Quadrillion':15}
 r_keywords = {v: k for k, v in keywords.items()}
 
 def find_calibration(series: pd.Series, units:str) -> Optional[str]:
