@@ -16,24 +16,32 @@ def _apply_kwargs(ax, **kwargs):
     
     fig = ax.figure
     
-    if 'rfooter' in kwargs:
+    rfooter = 'rfooter'
+    if rfooter in kwargs:
         fig.text(0.99, 0.001, 
-            kwargs['rfooter'],
+            kwargs[rfooter],
             ha='right', va='bottom',
             fontsize=9, fontstyle='italic',
             color='#999999')
-        
-    if 'lfooter' in kwargs:
+    
+    lfooter = 'lfooter'
+    if lfooter in kwargs:
         fig.text(0.01, 0.001, 
-            kwargs['lfooter'],
+            kwargs[lfooter],
             ha='left', va='bottom',
             fontsize=9, fontstyle='italic',
             color='#999999')
-        
-    if 'figsize' in kwargs:
-        fig.set_size_inches(*kwargs['figsize'])
+
+    figsize = 'figsize'  
+    if figsize in kwargs:
+        print(kwargs['figsize'])
+        fig.set_size_inches(*kwargs[figsize])
     else:
         fig.set_size_inches(*DEFAULT_FIG_SIZE) 
+        
+    xlabel = 'xlabel'
+    if xlabel in kwargs:
+        ax.set_xlabel(kwargs[xlabel])
 
 
 ### --- main function
@@ -43,7 +51,7 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
         Arguments:
         - ax - matplotlib axes object
         - title - string - plot title, also used to save the file
-        - ylabel - string - ylabel
+        - ylabel - string - 
         - tag - string - used in file name to make similar plots have unique file names
         - chart_dir - string - location of the chartr directory 
         kwargs
@@ -72,7 +80,6 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     
     # finalise
     fig = ax.figure
-    fig.set_size_inches(9, 4.5)
     fig.tight_layout(pad=1.2)
     
     # save and close
