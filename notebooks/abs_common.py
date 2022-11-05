@@ -30,7 +30,7 @@ def get_fs_constants(catalogue_id):
 def get_plot_constants(meta):
     """Get plotting constants"""
     
-    RECENCY_PERIOD = 5 # years
+    RECENCY_PERIOD = 6 # years
     RECENT = (
         meta['Series End'].max() 
         - pd.DateOffset(years=RECENCY_PERIOD)
@@ -209,17 +209,17 @@ def get_ABS_zipfile(catalogue_id, table):
     PREFIX = "https://www.abs.gov.au"
     if PREFIX in url:
         url = url.replace(PREFIX, '')
-    cache_name = CACHE_DIR + url.replace('/', '-')
+    cache_name = CACHE_DIR + url.replace('/', '_')
     
     # check local cache for web address
     if (file := pathlib.Path(cache_name)).is_file():
-        print(f'Retrieving zip-file from cache {cache_name}')
+        print(f'Retrieving zip-file from cache {cache_name} ...')
         zip_file = file.read_bytes()
         return zip_file
 
     # get zip-file from ABS website
     url = PREFIX + url
-    print('We need to download this file')
+    print('We need to download this file from the ABS ...')
     gotten = requests.get(url, allow_redirects=True)
     if gotten.status_code != 200:
         print(f'Could not get web page ({url}), error code: {code}')
