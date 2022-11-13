@@ -13,5 +13,6 @@ __pycache__/
 
 # unnecessary detail to be ignored
 notebooks/ABS_CACHE/**
+notebooks/RBA_CACHE/**
 notebooks/CHARTS/**
 notebooks/DATA/**

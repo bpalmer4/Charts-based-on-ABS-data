@@ -1,8 +1,8 @@
 # finalise_plot.py
 
 # --- imports
-
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 
 # --- constants
@@ -42,7 +42,16 @@ def _apply_kwargs(ax, **kwargs):
     xlabel = 'xlabel'
     if xlabel in kwargs:
         ax.set_xlabel(kwargs[xlabel])
-
+        
+    concise_dates = 'concise_dates'
+    if concise_dates in kwargs:
+        locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
+        formatter = mdates.ConciseDateFormatter(locator)
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(formatter)
+        for label in ax.get_xticklabels(which='major'):
+            label.set(rotation=0, horizontalalignment='center')
+            
 
 ### --- main function
         
@@ -60,6 +69,7 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
         - rfooter - string - text to display of bottom right of plot
         - figsize - tuple - figure size in inches - eg. (8, 4)
         - show - Booolean - whether to show the plot or not
+        - concise_dates - use the matplotlib concise dates formatter
         Returns: 
         - None
     """
@@ -70,17 +80,17 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     ax.set_ylabel(ylabel)
     
     # fix margins - I should not need to do this!
-    FACTOR = 0.015
-    xlim = ax.get_xlim()
-    adjustment = (xlim[1] - xlim[0]) * FACTOR
-    ax.set_xlim([xlim[0] - adjustment, xlim[1] + adjustment])
+    #FACTOR = 0.015
+    #xlim = ax.get_xlim()
+    #adjustment = (xlim[1] - xlim[0]) * FACTOR
+    #ax.set_xlim([xlim[0] - adjustment, xlim[1] + adjustment])
     
     # apply keyword arguments
     _apply_kwargs(ax, **kwargs)
     
     # finalise
     fig = ax.figure
-    fig.tight_layout(pad=1.2)
+    fig.tight_layout(pad=1.1)
     
     # save and close
     title = title.replace(":", "-")
