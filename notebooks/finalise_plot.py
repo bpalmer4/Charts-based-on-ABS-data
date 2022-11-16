@@ -38,11 +38,7 @@ def _apply_kwargs(ax, **kwargs):
         fig.set_size_inches(*kwargs[figsize])
     else:
         fig.set_size_inches(*DEFAULT_FIG_SIZE) 
-        
-    xlabel = 'xlabel'
-    if xlabel in kwargs:
-        ax.set_xlabel(kwargs[xlabel])
-        
+    
     concise_dates = 'concise_dates'
     if concise_dates in kwargs:
         locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
@@ -68,22 +64,23 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
         - lfooter - string - text to display on bottom left of plot
         - rfooter - string - text to display of bottom right of plot
         - figsize - tuple - figure size in inches - eg. (8, 4)
-        - show - Booolean - whether to show the plot or not
+        - show - Boolean - whether to show the plot or not
+        - xlabel - string - label for x-axis
         - concise_dates - use the matplotlib concise dates formatter
         Returns: 
         - None
     """
     
+    # margins
+    ax.use_sticky_margins = False
+    ax.margins(0.02)
+    ax.autoscale(tight=False)
+    
     # annotate plot
     ax.set_title(title)
-    ax.set_xlabel(None)
+    xlabel = 'xlabel'
+    ax.set_xlabel(None) if xlabel not in kwargs else ax.set_xlabel(kwargs[xlabel])
     ax.set_ylabel(ylabel)
-    
-    # fix margins - I should not need to do this!
-    #FACTOR = 0.015
-    #xlim = ax.get_xlim()
-    #adjustment = (xlim[1] - xlim[0]) * FACTOR
-    #ax.set_xlim([xlim[0] - adjustment, xlim[1] + adjustment])
     
     # apply keyword arguments
     _apply_kwargs(ax, **kwargs)
