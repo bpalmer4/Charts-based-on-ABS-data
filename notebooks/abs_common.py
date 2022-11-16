@@ -105,6 +105,14 @@ locations = {
                "job-vacancies-australia/latest-release",
     },
     
+    "6345": {
+        "Name": "Wage Price Index, Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "economy/price-indexes-and-inflation/"
+               "wage-price-index-australia/latest-release",
+        
+    },
+    
     "6401": {
         "Name": "Consumer Price Index, Australia",
         "URL": "https://www.abs.gov.au/statistics/economy/"
