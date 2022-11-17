@@ -67,6 +67,7 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
         - show - Boolean - whether to show the plot or not
         - xlabel - string - label for x-axis
         - concise_dates - use the matplotlib concise dates formatter
+        - dont_close - dont close the plot
         Returns: 
         - None
     """
@@ -85,11 +86,11 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     # apply keyword arguments
     _apply_kwargs(ax, **kwargs)
     
-    # finalise
+    # tight layout
     fig = ax.figure
     fig.tight_layout(pad=1.1)
     
-    # save and close
+    # save 
     title = title.replace(":", "-")
     file_type = DEFAULT_FILE_TYPE
     if 'file_type' in kwargs:
@@ -97,6 +98,11 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     fig.savefig(f'{chart_dir}/{title}-{tag}.{file_type}', dpi=125)
     if 'show' in kwargs and kwargs['show']:
         plt.show()
-    plt.close()
+       
+    # And close
+    dont_close = 'dont_close'
+    close = True if dont_close not in kwargs else not kwargs[dont_close]
+    if close:
+        plt.close()
     
     return None
