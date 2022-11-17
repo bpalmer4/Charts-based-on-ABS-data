@@ -21,6 +21,9 @@ import common
 CACHE_DIR = "./RBA_CACHE/"
 Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
+def clear_cache():
+    p = Path(CACHE_DIR)
+    [f.unlink() for f in p.iterdir() if f.is_file()]
 
 # -- get webpage addresses for the RBA links
 #    but ignore the CSV data links (ie collect XLS links)
