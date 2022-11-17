@@ -361,14 +361,14 @@ def find_calibration(series: pd.Series, units:str) -> Optional[str]:
     contains = []
     found = None
     for keyword in keywords:
-        if keyword in units: 
+        if keyword in units or keyword.lower() in units: 
             found = keyword
             break
     return found
 
 
 def dont_recalibrate(series: pd.Series, units:str, verbose:bool=False) -> bool:
-    if (series.max() < 0).any():
+    if series.max() < 0:
         if verbose: 
             print('Negative max numbers will not be adjusted')
         return True
@@ -389,6 +389,7 @@ def dont_recalibrate(series: pd.Series, units:str, verbose:bool=False) -> bool:
 
 def recalibrate_series(series: pd.Series, units:str) -> Tuple[pd.Series, str]:
     if dont_recalibrate(series, units):
+        #print('Not recallibrated')
         return series, units
     
     def do_it(factor, step, operator):
@@ -396,6 +397,7 @@ def recalibrate_series(series: pd.Series, units:str) -> Tuple[pd.Series, str]:
             replacement = r_keywords[factor + 3]
             nonlocal units, series # bit ugly
             units = units.replace(text, replacement)
+            units = units.replace(text.lower(), replacement)
             series = operator(series, 1000)
             return True
         return False
