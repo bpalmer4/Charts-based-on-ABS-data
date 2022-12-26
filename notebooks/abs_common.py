@@ -190,6 +190,8 @@ def get_ABS_zipfile(catalogue_id, table):
     """Get the latest zip_file of all tables for
        a specified ABS catalogue identifier"""
     
+    DEBUG = False # for additional information on caching
+    
     # get latest from ABS website
     page = get_ABS_webpage(catalogue_id)
     if page is None or len(page) == 0:
@@ -212,16 +214,18 @@ def get_ABS_zipfile(catalogue_id, table):
             print(f'Warning: getting match {table} only')
     found = found[table]
     url = re.search(r'href="([^ ]+)"', str(found.prettify)).group(1)
+    if DEBUG: print(f'URL: {url}')
     
     # note: ABS uses full URL addresses sometimes, and sometimes not
     PREFIX = "https://www.abs.gov.au"
     if PREFIX in url:
         url = url.replace(PREFIX, '')
     cache_name = CACHE_DIR + url.replace('/', '_')
+    if DEBUG: print(f'Cache file name: {cache_name}')
     
     # check local cache for web address
     if (file := pathlib.Path(cache_name)).is_file():
-        print(f'Retrieving zip-file from cache {cache_name} ...')
+        print(f'Retrieving zip-file from cache ...')
         zip_file = file.read_bytes()
         return zip_file
 
@@ -235,7 +239,8 @@ def get_ABS_zipfile(catalogue_id, table):
     zip_file = gotten.content # bytes
 
     # cache for next time
-    print(f'Saving to cache: {cache_name}')
+    print(f'Saving ABS download to cache.')
+    if DEBUG: print(f'Cache file name: {cache_name}')
     file.open(mode='w', buffering=-1, encoding=None, errors=None, newline=None)
     file.write_bytes(zip_file)
     return zip_file
