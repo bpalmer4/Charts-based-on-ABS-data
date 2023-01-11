@@ -40,13 +40,22 @@ def _apply_kwargs(ax, **kwargs):
         fig.set_size_inches(*DEFAULT_FIG_SIZE) 
     
     concise_dates = 'concise_dates'
-    if concise_dates in kwargs:
+    if concise_dates in kwargs and kwargs[concise_dates]:
         locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
         formatter = mdates.ConciseDateFormatter(locator)
         ax.xaxis.set_major_locator(locator)
         ax.xaxis.set_major_formatter(formatter)
         for label in ax.get_xticklabels(which='major'):
             label.set(rotation=0, horizontalalignment='center')
+            
+    zero_y = 'zero_y'
+    if zero_y in kwargs and kwargs[zero_y]:
+        bottom, top = ax.get_ylim()
+        adj = (top-bottom) * 0.02
+        if bottom > -adj: 
+            ax.set_ylim(bottom= -adj)
+        if top < adj:
+            ax.set_ylim(top=adj)
             
 
 ### --- main function
