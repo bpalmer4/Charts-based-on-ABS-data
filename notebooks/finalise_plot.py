@@ -76,6 +76,7 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
         - show - Boolean - whether to show the plot or not
         - xlabel - string - label for x-axis
         - concise_dates - use the matplotlib concise dates formatter
+        - zero_y - ensure y=0 is included in the plot. 
         - dont_close - dont close the plot
         Returns: 
         - None
