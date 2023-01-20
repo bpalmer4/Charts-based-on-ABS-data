@@ -10,9 +10,10 @@ import matplotlib.units as munits
 import requests
 from bs4 import BeautifulSoup
 import re
-import pathlib
+from pathlib import Path
 import zipfile
 import io
+import arrow
 
 from typing import Tuple, Optional
 from operator import mul, truediv
@@ -23,7 +24,7 @@ META_DATA = 'META_DATA'
 def get_fs_constants(catalogue_id):
     source = f'ABS {catalogue_id}'
     CHART_DIR = f"./CHARTS/{catalogue_id}/"
-    pathlib.Path(CHART_DIR).mkdir(parents=True, exist_ok=True)
+    Path(CHART_DIR).mkdir(parents=True, exist_ok=True)
     return source, CHART_DIR, META_DATA
 
 
@@ -63,7 +64,7 @@ Our general approach here is to:
 
 # -- Establish an ABS cache directory
 CACHE_DIR = "./ABS_CACHE/"
-pathlib.Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
+Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
 # -- URLs for getting key data sets from the ABS
 locations = {
@@ -148,6 +149,13 @@ locations = {
                "labour-account-australia/latest-release",
     },
 
+    "mCPI": {
+        "Name": "Monthly CPI Indicator",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "economy/price-indexes-and-inflation/"
+               "monthly-consumer-price-index-indicator/latest-release",
+    },
+
 }
 
 
@@ -160,6 +168,20 @@ def get_ABS_catalogue_IDs():
     return response
 
 
+def get_url_contents(url):
+    """Get a URL, return None if it is not gettable
+       
+       Arguments:
+       url - string
+    """
+    
+    gotten = requests.get(url, allow_redirects=True)
+    if gotten.status_code != 200:
+        print(f'Could not get ({url}), error code: {code}')
+        return None    
+    return gotten.content # bytes
+
+
 def get_ABS_webpage(catalogue_id):
     """Get the ABS web page for latest data for a
        specified ABS catalogue identifier.
@@ -169,22 +191,33 @@ def get_ABS_webpage(catalogue_id):
        (eg. 6202 for Labour Force Australia)
     """
 
-    # get URL
     if catalogue_id not in locations:
         print(f"Catalogue identifier not recognised: {catalogue_id}")
         return None
-    
     url = locations[catalogue_id]["URL"]
-    requested = requests.get(url, allow_redirects=True)
-    code = requested.status_code
-    if code != 200:
-        print(f'Could not get web page ({url}), error code: {code}')
-        return None
-    
-    # capture and return the ABS webpage
-    page = requested.content
-    return page
+    return get_url_contents(url)
 
+
+def get_cache_contents(file:Path, DEBUG:bool):
+    """Get cache_contents for a particular file.
+       Erase the cache file if it is stale.
+       Return None if cache file not found or is stale."""
+    
+    if not file.is_file():
+        return None # no such zip-file
+    
+    STALE = 1 # only use cache files less than STALE days old
+    fresh_time = arrow.now().shift(days=-STALE)
+    file_time = arrow.get(file.stat().st_mtime)
+    if file_time > fresh_time:
+        print('Retrieving zip-file from cache ...')
+        zip_file = file.read_bytes()
+        return zip_file # zip-file acquired
+
+    print('Cache looks stale: Removing old cache version')
+    file.unlink()
+    return None # zip-file is old and stale
+    
 
 def get_ABS_zipfile(catalogue_id, table):
     """Get the latest zip_file of all tables for
@@ -209,6 +242,8 @@ def get_ABS_zipfile(catalogue_id, table):
     if len(found) == 0:
         found = soup.findAll('a', text=re.compile(r'Download zip', re.IGNORECASE))
         if len(found) < (table + 1):
+            print('No Download ZIP file found on ABS page: '
+                  f'{locations[catalogue_id]["URL"]}')
             return None
         if len(found) > 0:
             print(f'Warning: getting match {table} only')
@@ -223,22 +258,20 @@ def get_ABS_zipfile(catalogue_id, table):
     cache_name = CACHE_DIR + url.replace('/', '_')
     if DEBUG: print(f'Cache file name: {cache_name}')
     
-    # check local cache for web address
-    if (file := pathlib.Path(cache_name)).is_file():
-        print(f'Retrieving zip-file from cache ...')
-        zip_file = file.read_bytes()
+    # check cache and get zip-file if it is there
+    zip_file = get_cache_contents(file := Path(cache_name), DEBUG)
+    if zip_file is not None:
         return zip_file
 
     # get zip-file from ABS website
     url = PREFIX + url
     print('We need to download this file from the ABS ...')
-    gotten = requests.get(url, allow_redirects=True)
-    if gotten.status_code != 200:
-        print(f'Could not get web page ({url}), error code: {code}')
-        return None    
-    zip_file = gotten.content # bytes
+    if DEBUG: print(url)
+    zip_file = get_url_contents(url)
+    if zip_file is None: 
+        return None
 
-    # cache for next time
+    # cache for next time and return
     print(f'Saving ABS download to cache.')
     if DEBUG: print(f'Cache file name: {cache_name}')
     file.open(mode='w', buffering=-1, encoding=None, errors=None, newline=None)
@@ -273,6 +306,9 @@ def get_dataframes(zip_file, warning=False):
         xl = pd.ExcelFile(zfile)
 
         # get table information
+        if 'Index' not in xl.sheet_names:
+            print(f'Caution: Could not find the "Index" sheet in {ze.filename}')
+            continue
         sheet_meta = xl.parse('Index', nrows=8)
         table = sheet_meta.iat[4,1]
         splat = table.split('.')
