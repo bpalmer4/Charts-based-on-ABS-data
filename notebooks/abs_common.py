@@ -151,12 +151,18 @@ ABS_data_map = {
     },
 
     "6484": {
-        "Name": "Monthly CPI Indicator",
+        "Name": "Monthly CPI Indicator, Australia",
         "URL": "https://www.abs.gov.au/statistics/"
                "economy/price-indexes-and-inflation/"
                "monthly-consumer-price-index-indicator/latest-release",
     },
-
+    
+    "6427": {
+        "Name": "Producer Price Indexes, Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "economy/price-indexes-and-inflation/"
+               "producer-price-indexes-australia/latest-release",
+    },
 }
 
 # Quick sanity check on the above data map
@@ -496,13 +502,16 @@ def _get_dataframes(zip_file:bytes, verbose:bool
 # public
 def get_ABS_meta_and_data(catalogue_id:str, table:int=0, verbose=False
                          ) -> Optional[Dict[str, pd.DataFrame]]:
-    """Get two pandas DataFrames, the first containing the ABS metadata,
-       the second contraining the complete set of actual data from the ABS
+    """For the relevant catalogue-ID return a dictionary containing
+       a meta-data Data-Frame and one or more DataFrames of actual 
+       data from the ABS.
        Arguments:
-        - catalogue_id - string - ABS catalogue number for the desired dataset.
-        - table - the matching table to extract - default=0
+        - catalogue_id - string - ABS catalogue number for the 
+                         desired dataset.
+        - table - select the zipfile to return in order as it  
+                  appears on the ABS webpage - default=0
                   (e.g. 6291 has four possible tables,
-                   but most ABS pages only have one
+                  but most ABS pages only have one).
         - verbose - display detailed web-scraping and caching information"""
 
     zip_file = _get_ABS_zip_file(catalogue_id, table, verbose)
