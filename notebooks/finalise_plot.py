@@ -34,7 +34,7 @@ def _apply_kwargs(ax, **kwargs):
 
     figsize = 'figsize'  
     if figsize in kwargs:
-        print(kwargs['figsize'])
+        #print(kwargs['figsize'])
         fig.set_size_inches(*kwargs[figsize])
     else:
         fig.set_size_inches(*DEFAULT_FIG_SIZE) 
@@ -101,7 +101,7 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     fig.tight_layout(pad=1.1)
     
     # save 
-    title = title.replace(":", "-")
+    title = title.replace(":", "-").replace("\n", "-")
     file_type = DEFAULT_FILE_TYPE
     if 'file_type' in kwargs:
         file_type = kwargs['file_type']
