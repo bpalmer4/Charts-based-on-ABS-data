@@ -520,6 +520,77 @@ def get_ABS_meta_and_data(catalogue_id:str, table:int=0, verbose=False
     return _get_dataframes(zip_file, verbose)
 
 
+# --- identify the data series from the meta data DataFrame
+
+def find_id(meta:pd.DataFrame, search_terms: Dict[str, str], 
+            verbose:bool=False, validate_unique:bool=True) -> Tuple[str]:
+    """Get the ABS series identifier that matches the given 
+       search-terms. This is a more generalised search function than 
+       get_identifier() below.
+       Arguments:
+        - meta - pandas DataFrame of metadata from the ABS
+        - search_terms - dictionary - {containing_phrase: meta_column_name}
+        - verbose - bool - print additional information when searching.
+        - validate_unique - bool - apply assertion test to ensure only one match
+       Returns a Tuple:
+        - the ABS Series Identifier - str - which ws found using the search terms
+        - units - str - unit of measurement."""
+    
+    m = meta.copy()
+    for phrase, column in search_terms.items():
+        if verbose: 
+            print(f'Searching {len(m)}: term: {phrase} in-column: {column}')
+        m = m[m[column].str.contains(phrase, regex=False)]
+    if verbose: print(len(m))
+    if validate_unique: 
+        assert len(m) == 1
+    return m['Series ID'].values[0], m['Unit'].values[0]
+
+
+def get_identifier(meta, data_item_description, series_type, table):
+    """Get the ABS series identifier that matches the given 
+       data_item_description, series_type, table
+       Arguments:
+        - meta - pandas DataFrame of metadata from the ABS
+        - data_item_description - string
+        - series_type - string - typically one of "Original"
+                                 "Seasonally Adjusted" or "Trend"
+        - table - string - ABS Table number - eg. '1' or '19a'
+       Returns:
+        - Tuple (id, units), where:
+            - id - string - identifier for an ABS data series (column name)
+            - units - string - unit of measurement."""
+    
+    search = {
+        table: 'Table',
+        series_type: 'Series Type',
+        data_item_description: 'Data Item Description'
+    }
+    
+    return find_id(meta, search)
+    
+# ---  original code - to be deleted.
+#    # make selection
+#    selected = meta[
+#        (meta['Data Item Description'] == data_item_description) &
+#        (meta['Series Type'] == series_type) &
+#        (meta['Table'] == table)
+#    ]
+#    
+#    # warn if something looks odd
+#    if len(selected) != 1:
+#        print(f'Warning: {len(selected)} items selected in \n' 
+#              '\tget_identifier(data_item_description='
+#              f'"{data_item_description}", \n' 
+#              f'\t\tseries_type="{series_type}", \n' 
+#              f'\t\ttable="{table}")')
+#        
+#    # return results
+#    id = selected['Series ID'].iloc[0]
+#    units = selected['Unit'].iloc[0]
+#    return id, units
+
+
 # --- data recalibration
 
 keywords = {'Number':0, 'Thousand':3, 'Million':6, 'Billion':9, 'Trillion':12, 'Quadrillion':15}
@@ -599,42 +670,6 @@ def clear_chart_dir(chart_dir):
 
 # local imports
 from finalise_plot import finalise_plot
-
-def get_identifier(meta, data_item_description, series_type, table):
-    """Get the ABS series identifier that matches the given 
-       data_item_description, series_type, table
-       Arguments:
-        - meta - pandas DataFrame of metadata from the ABS
-        - data_item_description - string
-        - series_type - string - typically one of "Original"
-                                 "Seasonally Adjusted" or "Trend"
-        - table - string - ABS Table number - eg. '1' or '19a'
-       Returns:
-        - Tuple (id, units), where:
-            - id - string - identifier for an ABS data series (column name)
-            - units - string - unit of measurement
-    """
-    
-    # make selection
-    selected = meta[
-        (meta['Data Item Description'] == data_item_description) &
-        (meta['Series Type'] == series_type) &
-        (meta['Table'] == table)
-    ]
-    
-    # warn if something looks odd
-    if len(selected) != 1:
-        print(f'Warning: {len(selected)} items selected in \n' 
-              '\tget_identifier(data_item_description='
-              f'"{data_item_description}", \n' 
-              f'\t\tseries_type="{series_type}", \n' 
-              f'\t\ttable="{table}")')
-        
-    # return results
-    id = selected['Series ID'].iloc[0]
-    units = selected['Unit'].iloc[0]
-    return id, units
-
 
 def plot_growth2(annual, periodic, title, from_, tag, 
                  chart_dir, **kwargs):
