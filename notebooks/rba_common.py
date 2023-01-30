@@ -3,6 +3,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
+
 from datetime import datetime
 
 from pathlib import Path
@@ -149,6 +152,59 @@ def get_data(label: str) -> Optional[Tuple[pd.DataFrame, pd.DataFrame]]:
         data.index = pd.to_datetime(data.index)
 
     return meta.T.dropna(how='all', axis=1), data
+
+
+# -- Plotting
+
+def plot_series_highlighted(series:pd.Series, **kwargs) -> plt.Axes:
+    """Plot a series of percentages, highlighting the increasing runs.
+       Arguments
+        - series - ordered pandas Series of percentages, with PeriodIndex
+        - threshold - float - used to ignore micro noise near zero 
+          (for example, threshhold=0.001)
+        - round - int - 
+       Return 
+        - matplotlib Axes object"""
+    
+    # default arguments - in **kwargs
+    arg = 'threshhold' # used to manage micro-noise in data
+    threshold = 0.0 if arg not in kwargs else kwargs[arg] # float
+    arg = 'round' # decimal points printed for increase in tightening cycle
+    round = 2 if arg not in kwargs else kwargs[arg] # int
+
+    # identify the runs
+    diffed = series.diff()
+    up = diffed[diffed.gt(threshold)]
+    down = diffed[diffed.lt(-threshold)]
+    change_points = pd.concat([up, down]).sort_index()
+    if series.index[0] not in change_points.index:
+        starting_point = pd.Series([0], index=[series.index[0] ])
+        change_points = pd.concat([change_points, starting_point]).sort_index()
+    rising = (change_points > 0)
+    cycles = (rising & ~rising.shift().astype(bool)).cumsum()
+    rising_stretches = cycles[rising]
+
+    # chart the series 
+    ax = series.plot(drawstyle='steps-post', lw=2, c='#dd0000')
+
+    # highlight the runs
+    mid_range = (series.max() + series.min()) / 2
+    for k in range(1, rising_stretches.max() + 1):
+        stretch = rising_stretches[rising_stretches == k]
+        increase = change_points[stretch.index].sum().round(round).astype(str) + ' pp'
+
+        start = stretch.index.min()
+        stop = stretch.index.max()
+        ax.axvspan(start, stop, color='gold', zorder=-1)
+        increase = change_points[stretch.index].sum().round(2).astype(str) + ' pp'
+        if series[stretch.index].min() < mid_range:
+            y, va = series.max(), 'top'
+        else:
+            y, va = series.min(), 'bottom'
+        text = ax.text(x=start, y=y, s=increase, rotation=90, va=va, ha='left')
+        text.set_path_effects([pe.withStroke(linewidth=5, foreground='w')])
+
+    return ax
 
 
 ###### quick testing
