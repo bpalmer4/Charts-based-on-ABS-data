@@ -541,8 +541,11 @@ def find_id(meta:pd.DataFrame, search_terms: Dict[str, str],
         if verbose: 
             print(f'Searching {len(m)}: term: {phrase} in-column: {column}')
         m = m[m[column].str.contains(phrase, regex=False)]
-    if verbose: print(len(m))
-    if validate_unique: 
+    if verbose: 
+        print(len(m))
+    if verbose and len(m) != 1:
+        display(m)
+    if validate_unique:
         assert len(m) == 1
     return m['Series ID'].values[0], m['Unit'].values[0]
 
