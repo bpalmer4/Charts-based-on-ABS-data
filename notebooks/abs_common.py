@@ -6,6 +6,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.units as munits
+import statsmodels.formula.api as smf
 
 import requests
 from bs4 import BeautifulSoup
@@ -69,6 +70,14 @@ Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 # -- URLs for getting key data sets from the ABS
 ABS_data_map = {
     # map of catalogue identifiers to names and URLs
+
+    "3101": {
+        "Name": "National, State and Territory "
+                "Estimated Resident Population",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "people/population/national-state-"
+               "and-territory-population/latest-release",
+    },
 
     "5206": {
         "Name": "Australian National Accounts: "
@@ -594,6 +603,32 @@ def get_identifier(meta, data_item_description, series_type, table):
 #    return id, units
 
 
+# --- project a short-run counter-factual series
+
+def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
+    """Projection based on data from the start of a series 
+       to the to_period (inclusive). Returns projection over the whole
+       period of the original series."""
+    
+    y = original[original.index <= to_period]
+    x = np.arange(len(y))
+    regress_data = pd.DataFrame({
+        'y': y.values,
+        'x': x,
+    })
+    model = smf.ols(formula='y ~ x', data=regress_data).fit()
+    #print(model.summary())
+    #print(model.params)
+
+    xx = np.arange(len(original))
+    projection = (
+        pd.Series(xx * model.params['x'] + model.params['Intercept'],
+                  index = original.index)
+    )
+    
+    return projection
+
+
 # --- data recalibration
 
 keywords = {'Number':0, 'Thousand':3, 'Million':6, 'Billion':9, 'Trillion':12, 'Quadrillion':15}
@@ -634,9 +669,9 @@ def recalibrate_series(series: pd.Series, units:str) -> Tuple[pd.Series, str]:
         #print('Not recallibrated')
         return series, units
     
-    def do_it(factor, step, operator):
+    def _recalibrate(factor, step, operator):
         if factor + step in r_keywords:
-            replacement = r_keywords[factor + 3]
+            replacement = r_keywords[factor + step]
             nonlocal units, series # bit ugly
             units = units.replace(text, replacement)
             units = units.replace(text.lower(), replacement)
@@ -650,15 +685,21 @@ def recalibrate_series(series: pd.Series, units:str) -> Tuple[pd.Series, str]:
         factor = keywords[text]
         
         if series.max() > 1000:
-            if do_it(factor, 3, truediv):
+            if _recalibrate(factor, 3, truediv):
                 continue
                 
         if series.max() < 1:
-            if do_it(factor, -3, mul):
+            if _recalibrate(factor, -3, mul):
                 continue
           
         again = False
     return series, units
+    
+
+def recalibrate_value(value: float, units: str):
+    input = pd.Series([value])
+    output, units = recalibrate_series(input, units)
+    return output[0], units
     
 
 # --- plotting
