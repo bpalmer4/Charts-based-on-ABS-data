@@ -532,6 +532,7 @@ def get_ABS_meta_and_data(catalogue_id:str, table:int=0, verbose=False
 # --- identify the data series from the meta data DataFrame
 
 def find_id(meta:pd.DataFrame, search_terms: Dict[str, str], 
+            exact=False,
             verbose:bool=False, validate_unique:bool=True) -> Tuple[str]:
     """Get the ABS series identifier that matches the given 
        search-terms. This is a more generalised search function than 
@@ -549,7 +550,10 @@ def find_id(meta:pd.DataFrame, search_terms: Dict[str, str],
     for phrase, column in search_terms.items():
         if verbose: 
             print(f'Searching {len(m)}: term: {phrase} in-column: {column}')
-        m = m[m[column].str.contains(phrase, regex=False)]
+        if exact:
+            m = m[m[column] == phrase]
+        else:
+            m = m[m[column].str.contains(phrase, regex=False)]
     if verbose: 
         print(len(m))
     if verbose and len(m) != 1:
@@ -579,7 +583,7 @@ def get_identifier(meta, data_item_description, series_type, table):
         data_item_description: 'Data Item Description'
     }
     
-    return find_id(meta, search)
+    return find_id(meta, search, exact=True)
     
 # ---  original code - to be deleted.
 #    # make selection

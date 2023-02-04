@@ -6,9 +6,9 @@ from typing import Optional
 from pathlib import Path
 
 
-_bad_cache_oattern = re.compile('[~"#%&*:<>?/\\{|}\.]+')
+_bad_cache_pattern = re.compile('[~"#%&*:<>?/\\{|}\.]+')
 def cachefy_name(name: str) -> str:
-    new_name = re.sub(_bad_cache_oattern, '_', name)
+    new_name = re.sub(_bad_cache_pattern, '_', name)
     return new_name
 
 
