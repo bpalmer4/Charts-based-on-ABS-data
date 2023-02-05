@@ -551,7 +551,7 @@ def find_id(meta:pd.DataFrame, search_terms: Dict[str, str],
     for phrase, column in search_terms.items():
         if verbose: 
             print(f'Searching {len(m)}: term: {phrase} in-column: {column}')
-        if exact:
+        if exact or column == 'Table': # always match table exactly
             m = m[m[column] == phrase]
         else:
             m = m[m[column].str.contains(phrase, regex=False)]
@@ -586,27 +586,6 @@ def get_identifier(meta, data_item_description, series_type, table):
     
     return find_id(meta, search, exact=True)
     
-# ---  original code - to be deleted.
-#    # make selection
-#    selected = meta[
-#        (meta['Data Item Description'] == data_item_description) &
-#        (meta['Series Type'] == series_type) &
-#        (meta['Table'] == table)
-#    ]
-#    
-#    # warn if something looks odd
-#    if len(selected) != 1:
-#        print(f'Warning: {len(selected)} items selected in \n' 
-#              '\tget_identifier(data_item_description='
-#              f'"{data_item_description}", \n' 
-#              f'\t\tseries_type="{series_type}", \n' 
-#              f'\t\ttable="{table}")')
-#        
-#    # return results
-#    id = selected['Series ID'].iloc[0]
-#    units = selected['Unit'].iloc[0]
-#    return id, units
-
 
 # --- project a short-run counter-factual series
 
@@ -632,6 +611,38 @@ def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
     )
     
     return projection
+
+
+def plot_covid_recovery(series:pd.Series, *args, **kwargs) -> None:
+    """Plots a series with a PeriodIndex. 
+       Arguments
+        - series to be plotted
+        - ^args and ^^kwargs - same as for finalise_plot()."""
+    
+    # sanity checks
+    if not isinstance(series, pd.Series):
+        raise TypeError('The series argument must be a pandas Series')
+    if not isinstance(series.index, pd.PeriodIndex):
+        raise TypeError('The series must have a pandas PeriodIndex')
+    
+    # plot COVID counterfactural   
+    freq = series.index.freq
+    #print(f'--- {freq} ---')
+    PRE_COVID = pd.Period('2017-01-01', freq=freq)
+    recent = series[series.index >= PRE_COVID]
+    LIN_REGRESS = pd.Period('2020-01-01', freq=freq)
+    projection = get_projection(recent, LIN_REGRESS)
+
+    ax = recent.plot(lw=2, c="dodgerblue", label=series.name)
+    ax = projection.plot(lw=2, c="darkorange", ls='--', label='Pre-COVID projection')
+    ax.legend(loc='best')
+    
+    # augment left-footer
+    lfooter = '' if 'lfooter' not in kwargs else kwargs['lfooter']
+    lfooter += f'Projection on data from {PRE_COVID} to {LIN_REGRESS}. '
+    kwargs['lfooter'] = lfooter
+    
+    finalise_plot(ax, *args, **kwargs)
 
 
 # --- data recalibration
