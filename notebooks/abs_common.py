@@ -540,6 +540,7 @@ def find_id(meta:pd.DataFrame, search_terms: Dict[str, str],
        Arguments:
         - meta - pandas DataFrame of metadata from the ABS
         - search_terms - dictionary - {containing_phrase: meta_column_name}
+        - exact - bool - whether to match with == or .str.contains()
         - verbose - bool - print additional information when searching.
         - validate_unique - bool - apply assertion test to ensure only one match
        Returns a Tuple:
