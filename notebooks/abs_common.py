@@ -12,7 +12,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from pathlib import Path
-import zipfile
+import zipfile as zip
 import io
 import arrow
 
@@ -53,14 +53,15 @@ Our general approach here is to:
 2. Parse that webpage to find the link to the download 
    all-tables zip-file. We do this because the name of
    the file location on the ABS server changes from 
-   month to month. 
+   month to month.
    
 3. Check to see whether I have cached that file previously,
    if not, download and save the zip-file to the cache.
    
 4. Open the zip-file, and save each table to a pandas 
-   DataFrame. And save the metadata to a pandas DataFrame.
-   Return all of the DataFrames in a dictionary.
+   DataFrame with a PeriodIndex. And save the metadata 
+   to a pandas DataFrame. Return all of the DataFrames 
+   in a dictionary.
 """
 
 # -- Establish an ABS cache directory
@@ -101,7 +102,7 @@ ABS_data_map = {
                "labour/employment-and-unemployment/"
                "labour-force-australia/latest-release",
     },
-
+    
     "6291": {
         "Name" : "Labour Force, Australia, Detailed",
         "URL":   "https://www.abs.gov.au/statistics/"
@@ -131,6 +132,20 @@ ABS_data_map = {
                "consumer-price-index-australia/latest-release",
     },
     
+    "6427": {
+        "Name": "Producer Price Indexes, Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "economy/price-indexes-and-inflation/"
+               "producer-price-indexes-australia/latest-release",
+    },
+
+    "6484": {
+        "Name": "Monthly CPI Indicator, Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+               "economy/price-indexes-and-inflation/"
+               "monthly-consumer-price-index-indicator/latest-release",
+    },
+
     "8501": {
         "Name": "Retail Trade, Australia",
         "URL": "https://www.abs.gov.au/statistics/industry/"
@@ -158,24 +173,10 @@ ABS_data_map = {
                "labour/employment-and-unemployment/"
                "labour-account-australia/latest-release",
     },
-
-    "6484": {
-        "Name": "Monthly CPI Indicator, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-               "economy/price-indexes-and-inflation/"
-               "monthly-consumer-price-index-indicator/latest-release",
-    },
-    
-    "6427": {
-        "Name": "Producer Price Indexes, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-               "economy/price-indexes-and-inflation/"
-               "producer-price-indexes-australia/latest-release",
-    },
 }
 
 # Quick sanity check on the above data map
-for _, data in ABS_data_map.items():
+for data in ABS_data_map.values():
     assert "Name" in data
     assert "URL" in data
 
@@ -338,14 +339,14 @@ def _get_xlsx_from_ABS(url_list:List, PREFIX:str,
     if verbose: print(f'Captured: {xl_dict.keys()}')
 
     # build a cache file ...
-    with zipfile.ZipFile(cache_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+    with zip.ZipFile(cache_path, 'w', zip.ZIP_DEFLATED) as zf:
         for name, contents in xl_dict.items():
             if not contents:
                 print(f'Something odd happened when zipping {name}')
                 continue
             zf.writestr(f'/{name}', contents, )
     
-    # return tbe zip-file
+    # return the zip-file
     zipfile = _get_cache_contents(cache_path)
     if zipfile is None:
         print('Unexpected error: the written zip-file is not there?')
@@ -418,16 +419,20 @@ def _get_dataframes(zip_file:bytes, verbose:bool
        Return these in a dictionary
        Arguments:
         - zip_file - bytes array of ABS zip file of excel spreadsheets
-        - warning - warn when dataframes are empty. 
+        - verbose - provide additional feedback on this step. 
        Returns:
         - either None (failure) or a dictionary containing a 
           separate DataFrame for each table in the zip-file,
           plus a DataFrame called 'META' for the metadata. 
     """
     
+    freq_dict = {'annual':'Y', 'quarter':'Q', 'month':'M'}
+    months = {1: 'JAN', 2: 'FEB', 3: 'MAR', 4: 'APR', 5: 'MAY', 6: 'JUN',
+              7: 'JUL', 8: 'AUG', 9: 'SEP', 10: 'OCT', 11: 'NOV', 12: 'DEC'}
+    
     print('Extracting DataFrames from the zip-file ...')
     returnable = {}
-    zipped = zipfile.ZipFile(io.BytesIO(zip_file))
+    zipped = zip.ZipFile(io.BytesIO(zip_file))
     zipped_elements = zipped.infolist()
 
     meta = pd.DataFrame()
@@ -436,8 +441,8 @@ def _get_dataframes(zip_file:bytes, verbose:bool
         data = pd.DataFrame()
     
         # get the zipfile into pandas
-        zfile = zipped.read(ze.filename)
-        xl = pd.ExcelFile(zfile)
+        xl_file = zipped.read(ze.filename)
+        xl = pd.ExcelFile(xl_file)
 
         # get table information
         if 'Index' not in xl.sheet_names:
@@ -466,7 +471,11 @@ def _get_dataframes(zip_file:bytes, verbose:bool
             meta = sheet_meta
         else:
             meta = pd.concat([meta, sheet_meta])
-            #meta = meta.append(sheet_meta, ignore_index=True)
+        # establish freq - used for making the index a PeriodIndex
+        freq = sheet_meta['Freq.'].str.lower().unique()
+        freq = freq_dict[freq[0]] if len(freq) == 1 and freq[0] in freq_dict else None
+        if freq is None:
+            print(f'Unrecognised data frequency for {table}')
     
         # get the actual data
         data_sheets = [x for x in xl.sheet_names if x.startswith('Data')]
@@ -492,7 +501,11 @@ def _get_dataframes(zip_file:bytes, verbose:bool
                 data = pd.merge(left=data, right=sheet_data, 
                                 how='outer', left_index=True, 
                                 right_index=True, suffixes=('', ''))
-                
+        if freq:
+            if freq == 'Q' or freq == 'A':
+                month = months[data.index.month.max()]
+                freq = f'{freq}-{month}'
+            data = data.to_period(freq=freq)
         returnable[tab_num] = data
     
     # some data-type clean-ups 
@@ -539,7 +552,7 @@ def find_id(meta:pd.DataFrame, search_terms: Dict[str, str],
        get_identifier() below.
        Arguments:
         - meta - pandas DataFrame of metadata from the ABS
-        - search_terms - dictionary - {containing_phrase: meta_column_name}
+        - search_terms - dictionary - {search_phrase: meta_column_name}
         - exact - bool - whether to match with == or .str.contains()
         - verbose - bool - print additional information when searching.
         - validate_unique - bool - apply assertion test to ensure only one match
