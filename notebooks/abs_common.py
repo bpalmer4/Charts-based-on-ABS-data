@@ -33,9 +33,11 @@ def get_plot_constants(meta):
     """Get plotting constants"""
     
     RECENCY_PERIOD = 6 # years
+    RECENCY_EXTRA = 3 # months
     RECENT = (
         meta['Series End'].max() 
-        - pd.DateOffset(years=RECENCY_PERIOD)
+        - pd.DateOffset(years=RECENCY_PERIOD, 
+                        months=RECENCY_EXTRA)
     )
     plot_times = [None, RECENT]
     plot_tags = ('full', 'recent')
@@ -508,15 +510,6 @@ def _get_dataframes(zip_file:bytes, verbose:bool
             data = data.to_period(freq=freq)
         returnable[tab_num] = data
     
-    # some data-type clean-ups 
-    meta['Series End'] = pd.to_datetime(
-        meta['Series End'],
-        format='%Y-%m-%d'
-    )
-    meta['Series Start'] = pd.to_datetime(
-        meta['Series Start'],
-        format='%Y-%m-%d'
-    )
     returnable[META_DATA] = meta
     return returnable
 
@@ -599,64 +592,6 @@ def get_identifier(meta, data_item_description, series_type, table):
     
     return find_id(meta, search, exact=True)
     
-
-# --- project a short-run counter-factual series
-
-def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
-    """Projection based on data from the start of a series 
-       to the to_period (inclusive). Returns projection over the whole
-       period of the original series."""
-    
-    y = original[original.index <= to_period]
-    x = np.arange(len(y))
-    regress_data = pd.DataFrame({
-        'y': y.values,
-        'x': x,
-    })
-    model = smf.ols(formula='y ~ x', data=regress_data).fit()
-    #print(model.summary())
-    #print(model.params)
-
-    xx = np.arange(len(original))
-    projection = (
-        pd.Series(xx * model.params['x'] + model.params['Intercept'],
-                  index = original.index)
-    )
-    
-    return projection
-
-
-def plot_covid_recovery(series:pd.Series, *args, **kwargs) -> None:
-    """Plots a series with a PeriodIndex. 
-       Arguments
-        - series to be plotted
-        - ^args and ^^kwargs - same as for finalise_plot()."""
-    
-    # sanity checks
-    if not isinstance(series, pd.Series):
-        raise TypeError('The series argument must be a pandas Series')
-    if not isinstance(series.index, pd.PeriodIndex):
-        raise TypeError('The series must have a pandas PeriodIndex')
-    
-    # plot COVID counterfactural   
-    freq = series.index.freq
-    #print(f'--- {freq} ---')
-    PRE_COVID = pd.Period('2017-01-01', freq=freq)
-    recent = series[series.index >= PRE_COVID]
-    LIN_REGRESS = pd.Period('2020-01-01', freq=freq)
-    projection = get_projection(recent, LIN_REGRESS)
-
-    ax = recent.plot(lw=2, c="dodgerblue", label=series.name)
-    ax = projection.plot(lw=2, c="darkorange", ls='--', label='Pre-COVID projection')
-    ax.legend(loc='best')
-    
-    # augment left-footer
-    lfooter = '' if 'lfooter' not in kwargs else kwargs['lfooter']
-    lfooter += f'Projection on data from {PRE_COVID} to {LIN_REGRESS}. '
-    kwargs['lfooter'] = lfooter
-    
-    finalise_plot(ax, *args, **kwargs)
-
 
 # --- data recalibration
 
@@ -807,3 +742,67 @@ def plot_Qgrowth(series, title, from_, tag, chart_dir, **kwargs):
 def plot_Mgrowth(series, title, from_, tag, chart_dir, **kwargs):
     kwargs['ppy'] = 12
     plot_growth(series, title, from_, tag, chart_dir, **kwargs)
+
+
+# --- project and plot a short-run counter-factual series
+
+def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
+    """Projection based on data from the start of a series 
+       to the to_period (inclusive). Returns projection over the whole
+       period of the original series."""
+    
+    y = original[original.index <= to_period]
+    x = np.arange(len(y))
+    regress_data = pd.DataFrame({
+        'y': y.values,
+        'x': x,
+    })
+    model = smf.ols(formula='y ~ x', data=regress_data).fit()
+    #print(model.summary())
+    #print(model.params)
+
+    xx = np.arange(len(original))
+    projection = (
+        pd.Series(xx * model.params['x'] + model.params['Intercept'],
+                  index = original.index)
+    )
+    
+    return projection
+
+
+def plot_covid_recovery(series:pd.Series, *args, **kwargs) -> None:
+    """Plots a series with a PeriodIndex. 
+       Arguments
+        - series to be plotted
+        - ^args and ^^kwargs - same as for finalise_plot()."""
+    
+    # sanity checks
+    if not isinstance(series, pd.Series):
+        raise TypeError('The series argument must be a pandas Series')
+    if not isinstance(series.index, pd.PeriodIndex):
+        raise TypeError('The series must have a pandas PeriodIndex')
+    
+    # plot COVID counterfactural   
+    freq = series.index.freq
+    #print(f'--- {freq} ---')
+    if freq == 'M':
+        # assume last unaffected month is January 2020
+        LIN_REGRESS = pd.Period('2020-01-01', freq=freq)
+        PRE_COVID = pd.Period('2017-01-01', freq=freq)
+    else:
+        # assume last unaffected quarter ends in December 2019
+        LIN_REGRESS = pd.Period('2019-12-31', freq=freq)    
+        PRE_COVID = pd.Period('2016-12-31', freq=freq)
+    recent = series[series.index >= PRE_COVID]
+    projection = get_projection(recent, LIN_REGRESS)
+
+    ax = recent.plot(lw=2, c="dodgerblue", label=series.name)
+    ax = projection.plot(lw=2, c="darkorange", ls='--', label='Pre-COVID projection')
+    ax.legend(loc='best')
+    
+    # augment left-footer
+    lfooter = '' if 'lfooter' not in kwargs else kwargs['lfooter']
+    lfooter += f'Projection on data from {PRE_COVID} to {LIN_REGRESS}. '
+    kwargs['lfooter'] = lfooter
+    
+    finalise_plot(ax, *args, **kwargs)
