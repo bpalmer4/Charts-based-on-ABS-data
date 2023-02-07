@@ -4,12 +4,18 @@
 
 import pandas as pd
 import numpy as np
+from typing import Dict, Union, Tuple
+
+_cache:Dict[Union[int, Tuple[int, int]], np.ndarray] = {}
 
 def hmaSymmetricWeights(n:int) -> np.ndarray:
     """ derive an n-term array of symmetric 'Henderson Moving Average' weights
         formula from ABS (2003), 'A Guide to Interpreting Time Series', page 41.
         returns a numpy array of symmetric Henderson weights indexed from 0 to n-1"""
 
+    if n in _cache:
+        return _cache[n]
+    
     # calculate the constant denominator and terms
     m = int((n - 1) // 2) # the mid point - n must be odd
     m1 = (m + 1) * (m + 1)
@@ -27,6 +33,7 @@ def hmaSymmetricWeights(n:int) -> np.ndarray:
             weights[(m - j)] = v
 
     weights.flags.writeable = False # make quasi-immutable
+    _cache[n] = weights
     return weights
 
 
@@ -43,6 +50,9 @@ def hmaAsymmetricWeights(m:int, w: np.ndarray) -> np.ndarray:
 
     # - get n from the weights array
     n = len(w) # the number of symmetric weights
+    cache_key = (n, m)
+    if cache_key in _cache:
+        return _cache[cache_key]
     
     # --- let's build up Doherty's formula (1) from the top of page 903
     # - the second chunk of the formula
@@ -70,6 +80,7 @@ def hmaAsymmetricWeights(m:int, w: np.ndarray) -> np.ndarray:
         u[r] = w[r] + sumResidual + (numerator / denominator) * sumEnd
 
     u.flags.writeable = False # make quasi-immutable
+    _cache[cache_key] = u
     return (u)
 
 
@@ -124,11 +135,28 @@ def HMA(s: pd.Series, n: int) -> pd.Series:
 # Proceedings of the Annual Meeting of the American Statistical Association,
 # August 5-9, 2001.
 #--------------
-#w = hmaSymmetricWeights(9)
-#print(w)
-#print(w.sum()) # should be one
-#u = hmaAsymmetricWeights(7, w)
-#print(u)
-#print(u.sum()) # should be one
-#--------------
-#print (Henderson(pd.Series(range(30))+pd.Series(np.random.randn(30)), 13))
+                      
+if __name__ == "__main__":
+    print('Testing ...\n')
+    
+    # --- check symmetric weights
+    N = 9
+    w = hmaSymmetricWeights(N)
+    print(f'{N} symmetric weights: ', w)
+    print(w.sum(), ' <-- Sum of weights should be one\n')
+                      
+    # --- check asymmetric weights
+    M = 7
+    u = hmaAsymmetricWeights(M, w)
+    print(f'{M} asymmetric weights: ', u)
+    print(u.sum(), ' <-- Sum of weights should be one\n')
+                      
+    # --- check cache
+    x = hmaSymmetricWeights(N)
+    print(x, ' <-- Should be the same as symmetric weights above\n')
+    print(_cache.keys(), f' <-- should contain two keys: {N} and ({N}, {M})\n')
+                      
+    # --- check it altogether
+    LENGTH = 30
+    print(HMA(pd.Series(range(LENGTH))
+              + pd.Series(np.random.randn(LENGTH)), N))
