@@ -1,6 +1,6 @@
 ## henderson.py 
-## Use: from henderson import HMA
 ## calculate a Henderson moving average
+## Use: from henderson import HMA
 
 import pandas as pd
 import numpy as np
@@ -53,7 +53,7 @@ def hmaAsymmetricWeights(m:int, w: np.ndarray) -> np.ndarray:
     cache_key = (n, m)
     if cache_key in _cache:
         return _cache[cache_key]
-    
+        
     # --- let's build up Doherty's formula (1) from the top of page 903
     # - the second chunk of the formula
     sumResidual = w[range(m, n)].sum() / float(m)
@@ -103,29 +103,32 @@ def HMA(s: pd.Series, n: int) -> pd.Series:
     if len(s) < n:
         raise ValueError('The s argument should be a Series longer than n')
 
-    # preliminaries
+    # - Build the Henderson moving average.
+    #   We start with the middle section, using a 
+    #   .rolling.apply(), which is vectorised and 
+    #   has the side effect of creating the return
+    #   vehicle (r). We then move to the tails. 
+    
+    # 0, preliminaries
     w = hmaSymmetricWeights(n)
     m = int((n - 1) // 2)
-    l = len(s)
-
-    # - and now move over the length of the series ...
+    
+    # 1, the middle:
     r = (
-        # apply symmetric weights to the middle of the series
-        s
-        .rolling(n, min_periods=n, center=True)
+        s.rolling(n, min_periods=n, center=True)
         .apply( lambda x: x.mul(w).sum() )
     )
-    for i in range(m): # at the beginning
-        u = hmaAsymmetricWeights(m + i + 1, w)[::-1] # reverse asymmetric to the left
-        r.iloc[i] = (s.iloc[0:( i + m + 1)] * u).sum()
-    for i in range(l-m, l): # at the end
-        u = hmaAsymmetricWeights(m + l - i, w)
-        r.iloc[i] = (s.iloc[(i - m):l] * u).sum()
+    
+    # 2, the tails:
+    for i in range(1, m + 1): 
+        u = hmaAsymmetricWeights(m + i, w)
+        r.iloc[i - 1] = (s.iloc[:(i + m)] * u[::-1]).sum()
+        r.iloc[-i] = (s.iloc[(-m - i):] * u).sum()
     
     return r
 
 
-### - test code
+### --- test code
 #--------------
 # Check against Table 1 in B Quenneville and B Lefrancois (2001),
 # "Implicit Forecasts in Musgrave Asymmetric Averages",
