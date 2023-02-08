@@ -103,29 +103,26 @@ def HMA(s: pd.Series, n: int) -> pd.Series:
     if len(s) < n:
         raise ValueError('The s argument should be a Series longer than n')
 
-    # - calculate the symmetric weights
-    w = hmaSymmetricWeights(n)
-
     # preliminaries
-    r = pd.Series(np.repeat(np.nan, len(s)), index=s.index) # the empty return vehicle
+    w = hmaSymmetricWeights(n)
     m = int((n - 1) // 2)
     l = len(s)
 
     # - and now move over the length of the series ...
-    for i in range(len(s)) :
-        if i < m:
-            # --- head section of series
-            u = hmaAsymmetricWeights(m + i + 1, w)[::-1] # reverse asymmetric to the left
-            r.iloc[i] = (s.iloc[0:( i + m + 1)] * u).sum()
-        elif i + m >= l:
-            # --- tail section of series
-            u = hmaAsymmetricWeights(m + l - i, w)
-            r.iloc[i] = (s.iloc[(i - m):l] * u).sum()
-        else:
-            # --- middle section of series
-            r.iloc[i] = (s.iloc[(i - m):(i + m + 1)] * w).sum()
-
-    return (r)
+    r = (
+        # apply symmetric weights to the middle of the series
+        s
+        .rolling(n, min_periods=n, center=True)
+        .apply( lambda x: x.mul(w).sum() )
+    )
+    for i in range(m): # at the beginning
+        u = hmaAsymmetricWeights(m + i + 1, w)[::-1] # reverse asymmetric to the left
+        r.iloc[i] = (s.iloc[0:( i + m + 1)] * u).sum()
+    for i in range(l-m, l): # at the end
+        u = hmaAsymmetricWeights(m + l - i, w)
+        r.iloc[i] = (s.iloc[(i - m):l] * u).sum()
+    
+    return r
 
 
 ### - test code
@@ -158,5 +155,15 @@ if __name__ == "__main__":
                       
     # --- check it altogether
     LENGTH = 30
+    print('\nSimple case: all ones; should return all ones')
+    print(HMA(pd.Series(np.repeat(1, LENGTH)), N))
+
+    print('\nSimple case: arithmetic increasing; '
+          '\n Should be the same as the series index in the centre. '
+          '\n But a little tapered at each end.')
+    print(HMA(pd.Series(range(LENGTH)), N))
+    
+    print('\nComplex case: stochastic increasing; '
+          '\n Series should be numbers broadly around the series index')
     print(HMA(pd.Series(range(LENGTH))
               + pd.Series(np.random.randn(LENGTH)), N))
