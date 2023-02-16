@@ -1,4 +1,3 @@
-
 mamba install pandas matplotlib numpy
 mamba install matplotlib seaborn 
 mamba install statsmodels scipy
@@ -9,4 +8,4 @@ mamba install lxml bs4
 mamba install openpyxl xlrd
 mamba install pandasdmix requests_cache
 mamba install arrow
-
+mamba install pylint pyflakes mypy
