@@ -19,6 +19,9 @@ import arrow
 from typing import Tuple, Optional, Dict, List, Union
 from operator import mul, truediv
 
+# local imports
+from finalise_plot import finalise_plot
+
 # --- utility functions
 META_DATA = 'META_DATA'
 
@@ -676,9 +679,6 @@ def clear_chart_dir(chart_dir):
             fs_object.unlink()
 
 
-# local imports
-from finalise_plot import finalise_plot
-
 def plot_growth2(annual, periodic, title, from_, tag, 
                  chart_dir, **kwargs):
 
@@ -715,7 +715,7 @@ def plot_growth2(annual, periodic, title, from_, tag,
            frame[frame.columns[1]].values, 
            color="#dd0000",
            width=(0.8 * adjustment * 2))
-    ax.margins(x=0, y=0.025) # further adjusted in finalise_plot()
+    #ax.margins(x=0, y=0.025) # further adjusted in finalise_plot()
 
     ax.legend(['Annual growth', f'{period} growth'], loc='best')
 
@@ -723,8 +723,18 @@ def plot_growth2(annual, periodic, title, from_, tag,
     formatter = mdates.ConciseDateFormatter(locator)
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
-
-    finalise_plot(ax, title, 'Per cent', f'growth-{tag}', chart_dir, **kwargs)
+    
+    if 'ppy' in kwargs:
+        del kwargs['ppy']
+    
+    finalise_plot(
+        ax, 
+        title=title, 
+        ylabel='Per cent', 
+        tag=f'growth-{tag}', 
+        chart_dir=chart_dir, 
+        **kwargs
+    )
 
     
 def plot_growth(series, title, from_, tag, chart_dir, **kwargs):
@@ -770,7 +780,7 @@ def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
     return projection
 
 
-def plot_covid_recovery(series:pd.Series, *args, **kwargs) -> None:
+def plot_covid_recovery(series:pd.Series, **kwargs) -> None:
     """Plots a series with a PeriodIndex. 
        Arguments
         - series to be plotted
@@ -805,4 +815,4 @@ def plot_covid_recovery(series:pd.Series, *args, **kwargs) -> None:
     lfooter += f'Projection on data from {PRE_COVID} to {LIN_REGRESS}. '
     kwargs['lfooter'] = lfooter
     
-    finalise_plot(ax, *args, **kwargs)
+    finalise_plot(ax, **kwargs)

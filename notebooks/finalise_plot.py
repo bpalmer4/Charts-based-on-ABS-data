@@ -1,4 +1,5 @@
-"""Finalise matplotlib plots."""
+"""Finalise matplotlib plots.
+   Usage: from finalise_plot import finalise_plot, set_chart_dir"""
 
 # --- imports
 import matplotlib.pyplot as plt
@@ -6,16 +7,24 @@ import matplotlib.dates as mdates
 import re
 
 
-# --- constants
+# --- constants - default settings
 DEFAULT_FILE_TYPE = 'png'
 DEFAULT_FIG_SIZE = (9, 4.5)
 DEFAULT_DPI = 125
+DEFAULT_CHART_DIR = '.'
+
 
 # --- utility functions
 
 def _apply_kwargs(ax, **kwargs):
 
     fig = ax.figure
+    
+    # annotate plot
+    settings = ('title', 'xlabel', 'ylabel')
+    for setting in settings:
+        value = kwargs.get(setting, None) 
+        ax.set(**{setting: value})
 
     rfooter = 'rfooter'
     if rfooter in kwargs:
@@ -35,7 +44,6 @@ def _apply_kwargs(ax, **kwargs):
 
     figsize = 'figsize'
     if figsize in kwargs:
-        #print(kwargs['figsize'])
         fig.set_size_inches(*kwargs[figsize])
     else:
         fig.set_size_inches(*DEFAULT_FIG_SIZE)
@@ -58,44 +66,66 @@ def _apply_kwargs(ax, **kwargs):
         if top < adj:
             ax.set_ylim(top=adj)
 
+            
+def _check_kwargs(**kwargs):
+    """Report unrecognised keyword arguments."""
+    
+    acceptable = {'title', 'xlabel', 'ylabel', 'tag', 'chart_dir',
+                  'file_type', 'lfooter', 'rfooter', 'figsize',
+                  'show', 'concise_dates', 'zero_y', 'dont_save',
+                  'dont_close', 'dpi'}
+    for k in kwargs.keys():
+        if k not in acceptable:
+            print(f'Warning: {k} was an unrecognised keyword argument') 
+            
+            
+### --- main functions
 
-### --- main function
+_chart_dir: str | None = DEFAULT_CHART_DIR 
+def set_chart_dir(chart_dir: str | None) -> None:
+    """A function to set a global chart directory for finalise_plot(),
+       so that it does not need to be included as an argument in each 
+       call to finalise_plot()."""
+       
+    global _chart_dir 
+    _chart_dir = chart_dir
+    
 
-_remove = re.compile('[^0-9A-Za-z]')
-_reduce = re.compile('[-]+')
-def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
-    """Function to finalise plots
+_remove = re.compile('[^0-9A-Za-z]') # sensible file names
+_reduce = re.compile('[-]+')         # eliminate multiple hyphens
+def finalise_plot(ax, **kwargs):
+    """A function to finalise and save plots to the file system. The filename 
+       for the saved plot is constructed from the chart_dir, the plot's title,
+       any specified tag text, and the file_type for the plot.
         Arguments:
-        - ax - matplotlib axes object
-        - title - string - plot title, also used to save the file
-        - ylabel - string - 
-        - tag - string - used in file name to make similar plots have unique file names
-        - chart_dir - string - location of the chartr directory 
-        kwargs
-        - file_type - string - specify a file type - eg. 'png' or 'svg'
-        - lfooter - string - text to display on bottom left of plot
-        - rfooter - string - text to display of bottom right of plot
-        - figsize - tuple - figure size in inches - eg. (8, 4)
-        - show - Boolean - whether to show the plot or not
-        - xlabel - string - label for x-axis
-        - concise_dates - use the matplotlib concise dates formatter
-        - zero_y - ensure y=0 is included in the plot. 
-        - dont_close - dont close the plot
-        - dpi - int - dots per inch for the saved chart
+          - ax - matplotlib axes object - required
+         kwargs
+          - title - string - plot title, also used to save the file
+          - xlabel - string - label for the x-axis
+          - ylabel - string - label for the y-axis
+          - tag - string - used in file name to make similar plots have unique file names
+          - chart_dir - string - location of the chartr directory 
+          - file_type - string - specify a file type - eg. 'png' or 'svg'
+          - lfooter - string - text to display on bottom left of plot
+          - rfooter - string - text to display of bottom right of plot
+          - figsize - tuple - figure size in inches - eg. (8, 4)
+          - show - Boolean - whether to show the plot or not
+          - concise_dates - bool - use the matplotlib concise dates formatter
+          - zero_y - bool - ensure y=0 is included in the plot. 
+          - dont_save - bool - dont save the plot to the file system
+          - dont_close - bool - dont close the plot
+          - dpi - int - dots per inch for the saved chart
         Returns: 
-        - None
+          - None
     """
+    
+    # Sanity checks
+    _check_kwargs(**kwargs)
 
     # margins
     ax.use_sticky_margins = False
     ax.margins(0.02)
     ax.autoscale(tight=False)
-
-    # annotate plot
-    ax.set_title(title)
-    xlabel = 'xlabel'
-    ax.set_xlabel(None) if xlabel not in kwargs else ax.set_xlabel(kwargs[xlabel])
-    ax.set_ylabel(ylabel)
 
     # apply keyword arguments
     _apply_kwargs(ax, **kwargs)
@@ -104,17 +134,27 @@ def finalise_plot(ax, title, ylabel, tag, chart_dir, **kwargs):
     fig = ax.figure
     fig.tight_layout(pad=1.1)
 
-    # save
-    file_title = re.sub(_remove, '-', title).lower()
-    file_title = re.sub(_reduce, '-', file_title)
-    file_type = DEFAULT_FILE_TYPE if 'file_type' not in kwargs else kwargs['file_type']
-    dpi = DEFAULT_DPI if 'dpi' not in kwargs else kwargs['dpi']
-    fig.savefig(f'{chart_dir}/{file_title}-{tag}.{file_type}', dpi=dpi)
-    if 'show' in kwargs and kwargs['show']:
-        plt.show()
+    # save to file
+    saving = True if 'dont_save' not in kwargs else not kwargs['dont_save']
+    if saving:
+        chart_dir = None if 'chart_dir' not in kwargs else kwargs['chart_dir']
+        if chart_dir is None:
+            chart_dir = _chart_dir
+            if chart_dir is None:
+                chart_dir = ''
+
+        title = '' if 'title' not in kwargs else kwargs['title']
+        tag = '' if 'tag' not in kwargs else kwargs['tag']
+        file_title = re.sub(_remove, '-', title).lower()
+        file_title = re.sub(_reduce, '-', file_title)
+        file_type = DEFAULT_FILE_TYPE if 'file_type' not in kwargs else kwargs['file_type']
+        dpi = DEFAULT_DPI if 'dpi' not in kwargs else kwargs['dpi']
+        fig.savefig(f'{chart_dir}/{file_title}-{tag}.{file_type}', dpi=dpi)
+    
+    # show the plot in Jupyter Lab
+    plt.show() if 'show' in kwargs and kwargs['show'] else None
 
     # And close
-    dont_close = 'dont_close'
-    close = True if dont_close not in kwargs else not kwargs[dont_close]
-    if close:
+    closing = True if 'dont_close' not in kwargs else not kwargs['dont_close']
+    if closing:
         plt.close()
