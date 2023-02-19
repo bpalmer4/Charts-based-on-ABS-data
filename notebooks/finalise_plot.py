@@ -19,7 +19,7 @@ DEFAULT_CHART_DIR = '.'
 def _apply_kwargs(ax, **kwargs):
 
     fig = ax.figure
-    
+
     # annotate plot
     settings = ('title', 'xlabel', 'ylabel')
     for setting in settings:
@@ -50,7 +50,7 @@ def _apply_kwargs(ax, **kwargs):
 
     concise_dates = 'concise_dates'
     if concise_dates in kwargs and kwargs[concise_dates]:
-        locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
+        locator = mdates.AutoDateLocator(minticks=4, maxticks=10)
         formatter = mdates.ConciseDateFormatter(locator)
         ax.xaxis.set_major_locator(locator)
         ax.xaxis.set_major_formatter(formatter)
@@ -66,10 +66,10 @@ def _apply_kwargs(ax, **kwargs):
         if top < adj:
             ax.set_ylim(top=adj)
 
-            
+
 def _check_kwargs(**kwargs):
     """Report unrecognised keyword arguments."""
-    
+
     acceptable = {'title', 'xlabel', 'ylabel', 'tag', 'chart_dir',
                   'file_type', 'lfooter', 'rfooter', 'figsize',
                   'show', 'concise_dates', 'zero_y', 'dont_save',
@@ -77,8 +77,8 @@ def _check_kwargs(**kwargs):
     for k in kwargs.keys():
         if k not in acceptable:
             print(f'Warning: {k} was an unrecognised keyword argument') 
-            
-            
+
+
 ### --- main functions
 
 _chart_dir: str | None = DEFAULT_CHART_DIR 
@@ -89,7 +89,7 @@ def set_chart_dir(chart_dir: str | None) -> None:
        
     global _chart_dir 
     _chart_dir = chart_dir
-    
+
 
 _remove = re.compile('[^0-9A-Za-z]') # sensible file names
 _reduce = re.compile('[-]+')         # eliminate multiple hyphens
@@ -118,7 +118,7 @@ def finalise_plot(ax, **kwargs):
         Returns: 
           - None
     """
-    
+
     # Sanity checks
     _check_kwargs(**kwargs)
 
@@ -150,7 +150,7 @@ def finalise_plot(ax, **kwargs):
         file_type = DEFAULT_FILE_TYPE if 'file_type' not in kwargs else kwargs['file_type']
         dpi = DEFAULT_DPI if 'dpi' not in kwargs else kwargs['dpi']
         fig.savefig(f'{chart_dir}/{file_title}-{tag}.{file_type}', dpi=dpi)
-    
+
     # show the plot in Jupyter Lab
     plt.show() if 'show' in kwargs and kwargs['show'] else None
 
