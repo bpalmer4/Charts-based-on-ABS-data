@@ -32,8 +32,11 @@ def get_bis_cbpr() -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Get the Central Bank Policy Rate data from the Bank
        of International Settlements (BIS).
        Returns a Tuple of two pandas Dataframes. The first 
-       DataFrame contains meta-data. The scond contains the 
-       actual data."""
+       DataFrame contains meta-data. The second Dataframe  
+       contains the actual data.
+       NOTE: the BIS data is not always up-to-date. It may 
+             contain a number of NA values in the last
+             few rows for some nations."""
 
     url = "https://www.bis.org/statistics/full_cbpol_d_csv_row.zip"
     bis = pd.read_csv(url, low_memory=False, header=None)
@@ -48,8 +51,7 @@ def get_bis_cbpr() -> Tuple[pd.DataFrame, pd.DataFrame]:
     bis_data.index = pd.PeriodIndex(bis_data.index, freq='D')
     names = bis_meta['Reference area'].str[3:]
     bis_data.columns = names
-    bis_data = bis_data.astype(float).ffill()
-    #display(bis_data.tail())
+    bis_data = bis_data.astype(float)
     
     return (bis_meta, bis_data)
 
