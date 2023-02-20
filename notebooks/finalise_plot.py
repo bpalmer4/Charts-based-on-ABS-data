@@ -67,15 +67,15 @@ def _apply_kwargs(ax, **kwargs):
             ax.set_ylim(top=adj)
 
 
+_acceptable = {'title', 'xlabel', 'ylabel', 'tag', 'chart_dir',
+              'file_type', 'lfooter', 'rfooter', 'figsize',
+              'show', 'concise_dates', 'zero_y', 'dont_save',
+              'dont_close', 'dpi'}
 def _check_kwargs(**kwargs):
     """Report unrecognised keyword arguments."""
 
-    acceptable = {'title', 'xlabel', 'ylabel', 'tag', 'chart_dir',
-                  'file_type', 'lfooter', 'rfooter', 'figsize',
-                  'show', 'concise_dates', 'zero_y', 'dont_save',
-                  'dont_close', 'dpi'}
     for k in kwargs.keys():
-        if k not in acceptable:
+        if k not in _acceptable:
             print(f'Warning: {k} was an unrecognised keyword argument') 
 
 
