@@ -8,4 +8,4 @@ mamba install lxml bs4
 mamba install openpyxl xlrd
 mamba install pandasdmix requests_cache
 mamba install arrow
-mamba install pylint nbqa flake8 black
+mamba install pylint flake8 black
