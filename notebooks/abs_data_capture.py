@@ -56,6 +56,12 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "national-accounts/australian-national-accounts"
         "-finance-and-wealth/latest-release",
     },
+    "6150": {
+        "Name": "Labour Account Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+        "labour/labour-accounts/"
+        "labour-account-australia/latest-release",
+    },
     "6202": {
         "Name": "Labour Force Australia",
         "URL": "https://www.abs.gov.au/statistics/"
@@ -115,12 +121,6 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "URL": "https://www.abs.gov.au/statistics/industry/"
         "building-and-construction/"
         "building-activity-australia/latest-release",
-    },
-    "LAA": {
-        "Name": "Labour Account Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "labour/employment-and-unemployment/"
-        "labour-account-australia/latest-release",
     },
 }
 
