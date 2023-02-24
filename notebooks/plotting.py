@@ -45,7 +45,7 @@ _ACCEPTABLE_KWARGS = frozenset(
     ('title', 'xlabel', 'ylabel', 'tag', 'chart_dir',
      'file_type', 'lfooter', 'rfooter', 'figsize',
      'show', 'concise_dates', 'zero_y', 'dont_save',
-     'dont_close', 'dpi')
+     'dont_close', 'dpi', 'legend')
 )
 
 
@@ -69,6 +69,9 @@ def _apply_kwargs(axes, **kwargs):
     for setting in settings:
         value = kwargs.get(setting, None)
         axes.set(**{setting: value})
+        
+    if 'legend' in kwargs:
+        axes.legend(**kwargs['legend'])
 
     if 'rfooter' in kwargs:
         fig.text(
@@ -167,6 +170,7 @@ def finalise_plot(axes, **kwargs):
           - dont_save - bool - dont save the plot to the file system
           - dont_close - bool - dont close the plot
           - dpi - int - dots per inch for the saved chart
+          - legend - dict - arguments to pass to axes.legend()
         Returns:
           - None
     """
@@ -176,7 +180,7 @@ def finalise_plot(axes, **kwargs):
     # margins
     axes.use_sticky_margins = False
     axes.margins(0.02)
-    axes.autoscale(tight=False)
+    # axes.autoscale(tight=False)  # This is problematic ...
 
     _apply_kwargs(axes, **kwargs)
 
