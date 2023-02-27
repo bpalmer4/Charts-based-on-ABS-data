@@ -37,8 +37,7 @@ import common
 # --- ABS catalgue map - these are the possible downloads we know about
 ABS_data_map: dict[str, dict[str, str]] = {
     "3101": {
-        "Name": "National, State and Territory "
-        "Estimated Resident Population",
+        "Name": "National, State and Territory " "Estimated Resident Population",
         "URL": "https://www.abs.gov.au/statistics/"
         "people/population/national-state-"
         "and-territory-population/latest-release",
@@ -203,15 +202,8 @@ def get_plot_constants(meta: pd.DataFrame) -> tuple[pd.Timestamp, list, list]:
     recency_extra = 3  # months
     today = pd.Timestamp("today")
     reasonable_end = meta["Series End"][meta["Series End"] <= today]
-    reasonable_end = (
-        reasonable_end.max() if len(reasonable_end) > 0 else today
-    )
-    recent = (
-        reasonable_end - pd.DateOffset(
-            years=recency_period,
-            months=recency_extra
-        )
-    )
+    reasonable_end = reasonable_end.max() if len(reasonable_end) > 0 else today
+    recent = reasonable_end - pd.DateOffset(years=recency_period, months=recency_extra)
     plot_times = [None, recent]
     plot_tags = ("full", "recent")
     return recent, plot_times, plot_tags
@@ -271,9 +263,7 @@ def _get_url_iteration(soup, search_terms):
 
 
 # private
-def _get_urls(
-    page: bytes, table: int, verbose: bool
-) -> None | str | list[str]:
+def _get_urls(page: bytes, table: int, verbose: bool) -> None | str | list[str]:
     """Scrape a URL for the ZIP file from the ABS page.
     If the ZIP file cannot be located, scrape a list of
     URLs for the individual excel files."""
@@ -385,17 +375,13 @@ def _get_zip_from_abs(
 
     # cache for next time and return
     print("Saving ABS download to cache.")
-    cache_path.open(
-        mode="w", buffering=-1, encoding=None, errors=None, newline=None
-    )
+    cache_path.open(mode="w", buffering=-1, encoding=None, errors=None, newline=None)
     cache_path.write_bytes(zip_file)
     return zip_file
 
 
 # private
-def _get_abs_zip_file(
-    catalogue_id: str, table: int, verbose: bool
-) -> bytes | None:
+def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes | None:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
@@ -525,9 +511,7 @@ def _get_data(
 
 
 # private
-def _get_dataframes(
-    zip_file: bytes, verbose: bool
-) -> None | dict[str, pd.DataFrame]:
+def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataFrame]:
     """Get a DataFrame for each table in the zip-file,
     plus an overall DataFrame for the metadata.
     Return these in a dictionary
@@ -556,7 +540,7 @@ def _get_dataframes(
             if "Index" not in excel.sheet_names:
                 print(
                     'Caution: Could not find the "Index" '
-                    f'sheet in {element.filename}'
+                    f"sheet in {element.filename}"
                 )
                 continue
             file_meta = excel.parse("Index", nrows=8)
@@ -571,8 +555,7 @@ def _get_dataframes(
             # establish freq - used for making the index a PeriodIndex
             freq = file_meta["Freq."].str.lower().unique()
             freq = (
-                freq_dict[freq[0]]
-                if len(freq) == 1 and freq[0] in freq_dict else None
+                freq_dict[freq[0]] if len(freq) == 1 and freq[0] in freq_dict else None
             )
             if freq is None:
                 print(f"Unrecognised data frequency for {table}")
@@ -608,6 +591,7 @@ def get_ABS_meta_and_data(
 
 # --- identify the specific data series from the meta data DataFrame
 
+
 # public
 def find_id(
     meta: pd.DataFrame,
@@ -633,8 +617,7 @@ def find_id(
     for phrase, column in search_terms.items():
         if verbose:
             print(
-                f"Searching {len(meta_select)}: "
-                f"term: {phrase} in-column: {column}"
+                f"Searching {len(meta_select)}: " f"term: {phrase} in-column: {column}"
             )
         if exact or column == "Table":  # always match the table column exactly
             meta_select = meta_select[meta_select[column] == phrase]

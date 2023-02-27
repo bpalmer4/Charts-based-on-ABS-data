@@ -82,8 +82,7 @@ def _truely_unique(iterable_):
 
 _truely_unique = _truely_unique(_extracted_links.values())
 _unique_links = {
-    value: key for key, value in _extracted_links.items()
-    if value in _truely_unique
+    value: key for key, value in _extracted_links.items() if value in _truely_unique
 }
 
 
@@ -126,9 +125,7 @@ def get_data_file(label: str) -> str | None:
         print(f'Cache data not stored in cache for "{label}"')
     if use_cache:
         stat = path.stat()
-        cache_mtime = pd.Timestamp(
-            datetime.fromtimestamp(stat.st_mtime, tz=pytz.utc)
-        )
+        cache_mtime = pd.Timestamp(datetime.fromtimestamp(stat.st_mtime, tz=pytz.utc))
         if cache_mtime < source_mtime:
             use_cache = False
             print(f'Cache data for "{label}" looks too old')
