@@ -19,11 +19,11 @@ Our general approach here is to:
    in a dictionary."""
 
 
-# system imports
+# standard library imports
+import io
 import re
 from pathlib import Path
 import zipfile
-import io
 
 # analytical imports
 import pandas as pd
@@ -51,19 +51,25 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "national-income-expenditure-and-product/latest-release",
     },
     "5232": {
-        "Name": "Australian National Accounts: " "Finance and Wealth",
+        "Name": "Australian National Accounts: Finance and Wealth",
         "URL": "https://www.abs.gov.au/statistics/economy/"
         "national-accounts/australian-national-accounts"
         "-finance-and-wealth/latest-release",
     },
+    "5676": {
+        "Name": "Business Indicators, Australia",
+        "URL": "https://www.abs.gov.au/statistics/economy/"
+        "business-indicators/business-indicators-australia/"
+        "latest-release",
+    },
     "6150": {
-        "Name": "Labour Account Australia",
+        "Name": "Labour Account, Australia",
         "URL": "https://www.abs.gov.au/statistics/"
         "labour/labour-accounts/"
         "labour-account-australia/latest-release",
     },
     "6202": {
-        "Name": "Labour Force Australia",
+        "Name": "Labour Force, Australia",
         "URL": "https://www.abs.gov.au/statistics/"
         "labour/employment-and-unemployment/"
         "labour-force-australia/latest-release",
@@ -601,7 +607,6 @@ def get_ABS_meta_and_data(
 
 
 # --- identify the specific data series from the meta data DataFrame
-
 
 # public
 def find_id(

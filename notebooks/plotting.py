@@ -42,7 +42,7 @@ _reduce = re.compile(r'[-]+')          # eliminate multiple hyphens
 
 # map of the acceptable kwargs for finalise_plot()
 _ACCEPTABLE_KWARGS = frozenset(
-    ('title', 'xlabel', 'ylabel', 'tag', 'chart_dir',
+    ('title', 'xlabel', 'ylabel', 'pre_tag', 'tag', 'chart_dir',
      'file_type', 'lfooter', 'rfooter', 'figsize',
      'show', 'concise_dates', 'zero_y', 'dont_save',
      'dont_close', 'dpi', 'legend')
@@ -125,6 +125,7 @@ def _save_to_file(fig, **kwargs) -> None:
                 chart_dir = ''
 
         title = '' if 'title' not in kwargs else kwargs['title']
+        pre_tag = '' if 'pre_tag' not in kwargs else kwargs['pre_tag']
         tag = '' if 'tag' not in kwargs else kwargs['tag']
         file_title = re.sub(_remove, '-', title).lower()
         file_title = re.sub(_reduce, '-', file_title)
@@ -133,7 +134,7 @@ def _save_to_file(fig, **kwargs) -> None:
             else kwargs['file_type']
         )
         dpi = DEFAULT_DPI if 'dpi' not in kwargs else kwargs['dpi']
-        fig.savefig(f'{chart_dir}/{file_title}-{tag}.{file_type}', dpi=dpi)
+        fig.savefig(f'{chart_dir}/{pre_tag}{file_title}-{tag}.{file_type}', dpi=dpi)
 
 
 # - public functions for finalise_plot()
@@ -157,8 +158,9 @@ def finalise_plot(axes, **kwargs):
           - title - string - plot title, also used to save the file
           - xlabel - string - label for the x-axis
           - ylabel - string - label for the y-axis
-          - tag - string - used in file name to make similar plots have unique
-            file names
+          - pre_tag - string - text before the title in file name
+          - tag - string - text after the title - used in file name 
+            to make similar plots have unique file names
           - chart_dir - string - location of the chartr directory
           - file_type - string - specify a file type - eg. 'png' or 'svg'
           - lfooter - string - text to display on bottom left of plot
