@@ -279,7 +279,7 @@ def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
     return projection
 
 
-def plot_covid_recovery(series: pd.Series, **kwargs) -> None:
+def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
     """Plots a series with a PeriodIndex.
        Arguments
         - series to be plotted
@@ -290,19 +290,29 @@ def plot_covid_recovery(series: pd.Series, **kwargs) -> None:
         raise TypeError('The series argument must be a pandas Series')
     if not isinstance(series.index, pd.PeriodIndex):
         raise TypeError('The series must have a pandas PeriodIndex')
-    if not series.index.freqstr[:1] in ('Q', 'M'):
-        raise ValueError('The series index must have an M or Q freq')
+    if not series.index.freqstr[:1] in ('Q', 'M', 'D'):
+        raise ValueError('The series index must have a D, M or Q freq')
 
     # plot COVID counterfactural
-    freq = series.index.freq
-    if freq == 'M':
-        # assume last unaffected month is January 2020
-        end_regression = pd.Period('2020-01-01', freq=freq)
-        start_regression = pd.Period('2017-01-01', freq=freq)
+    freq = series.index.freqstr[0]
+    if 'from' in kwargs and 'to' in kwargs:
+        # set by argument - note must set both from and to 
+        if verbose:
+            print(f'Using special start/end dates: {kwargs["from"]} - {kwargs["to"]}')
+        start_regression = pd.Period(kwargs['from'], freq=freq)
+        end_regression = pd.Period(kwargs['to'], freq=freq)
+        del kwargs['from']
+        del kwargs['to']
     else:
-        # assume last unaffected quarter ends in December 2019
-        end_regression = pd.Period('2019-12-31', freq=freq)
-        start_regression = pd.Period('2016-12-31', freq=freq)
+        # set programatically
+        if freq in ['M', 'D']:
+            # assume last unaffected month is January 2020
+            start_regression = pd.Period('2017-01-31', freq=freq)
+            end_regression = pd.Period('2020-01-31', freq=freq)
+        else:
+            # assume last unaffected quarter ends in December 2019
+            start_regression = pd.Period('2016-12-31', freq=freq)
+            end_regression = pd.Period('2019-12-31', freq=freq)
     recent = series[series.index >= start_regression]
     projection = get_projection(recent, end_regression)
 
