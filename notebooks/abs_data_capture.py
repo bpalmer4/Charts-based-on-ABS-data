@@ -20,19 +20,19 @@ Our general approach here is to:
 
 
 # standard library imports
+import calendar
 import io
 import re
-from pathlib import Path
 import zipfile
+from pathlib import Path
 
 # analytical imports
+import arrow
 import pandas as pd
 from bs4 import BeautifulSoup
-import arrow
 
 # local imports
 import common
-
 
 # --- ABS catalgue map - these are the possible downloads we know about
 ABS_data_map: dict[str, dict[str, str]] = {
@@ -129,9 +129,8 @@ ABS_data_map: dict[str, dict[str, str]] = {
     },
 }
 
+
 # --- initialisation
-
-
 # private
 def _check_abs_data_map(data_map: dict[str, dict[str, str]]) -> None:
     """Check the integrity of the ABS_data_map."""
@@ -453,20 +452,6 @@ def _get_data(
     """Take an ABS excel file and put all the Data sheets into a single
     pandas DataFrame and return that DataFrame."""
 
-    months = {
-        1: "JAN",
-        2: "FEB",
-        3: "MAR",
-        4: "APR",
-        5: "MAY",
-        6: "JUN",
-        7: "JUL",
-        8: "AUG",
-        9: "SEP",
-        10: "OCT",
-        11: "NOV",
-        12: "DEC",
-    }
     data = pd.DataFrame()
     data_sheets = [x for x in excel.sheet_names if x.startswith("Data")]
     for sheet_name in data_sheets:
@@ -504,7 +489,7 @@ def _get_data(
             )
     if freq:
         if freq in ("Q", "A"):
-            month = months[data.index.month.max()]
+            month = calendar.month_abbr[data.index.month.max()].upper()
             freq = f"{freq}-{month}"
         data = data.to_period(freq=freq)
     return data
@@ -590,8 +575,6 @@ def get_ABS_meta_and_data(
 
 
 # --- identify the specific data series from the meta data DataFrame
-
-
 # public
 def find_id(
     meta: pd.DataFrame,
