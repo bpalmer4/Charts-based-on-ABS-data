@@ -208,6 +208,60 @@ def get_plot_constants(meta: pd.DataFrame) -> tuple[pd.Timestamp, list, list]:
     return recent, plot_times, plot_tags
 
 
+# public
+def get_meta_constants() -> tuple[str, str, str, str, str]:
+    """Key column names in the meta data."""
+
+    did_col = "Data Item Description"
+    id_col = "Series ID"
+    table_col = "Table"
+    type_col = "Series Type"
+    unit_col = "Unit"
+    return did_col, id_col, table_col, type_col, unit_col
+
+
+# public
+def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
+    check = [
+        "Chain volume measures",  # National Accounts
+        "Chain Volume Measure",  # Business indicators, Retail Trade
+        "Current Prices",
+        "Current Price",
+        "Total (State)",
+        "Total (Industry)",
+        # Business Indicators
+        "CORP",
+        "TOTAL (SCP_SCOPE)",
+    ]
+    for c in check:
+        if c in title:
+            title = title.replace(f"{c} ;", "")
+            lfooter += f"{c}. "
+
+    states = {
+        "New South Wales": "NSW",
+        "Victoria": "Vic.",
+        "Queensland": "Qld.",
+        "South Australia": "SA",
+        "Western Australia": "WA",
+        "Tasmania": "Tas.",
+        "Northern Territory": "NT",
+        "Australian Capital Territory": "ACT",
+    }
+    for s, abbr in states.items():
+        title = title.replace(s, abbr)
+
+    title = (
+        title.replace(";", "")
+        .replace(" - ", " ")
+        .replace("    ", " ")
+        .replace("   ", " ")
+        .replace("  ", " ")
+        .strip()
+    )
+    return title, lfooter
+
+
 # --- Data fetch from the ABS
 # private
 def _get_abs_webpage(catalogue_id: str) -> bytes | None:

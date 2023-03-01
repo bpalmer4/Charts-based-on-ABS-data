@@ -205,7 +205,7 @@ def finalise_plot(axes, **kwargs):
     # margins
     axes.use_sticky_margins = False
     axes.margins(0.02)
-    # axes.autoscale(tight=False)  # This is problematic ...
+    axes.autoscale(tight=False)  # This is problematic ...
 
     _apply_kwargs(axes, **kwargs)
 
