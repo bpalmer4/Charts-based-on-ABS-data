@@ -498,10 +498,10 @@ def _dont_recalibrate(series: pd.Series, units: str, verbose: bool = False) -> b
     return False
 
 
-def recalibrate_series(series: pd.Series, units: str) -> tuple[pd.Series, str]:
+def recalibrate_series(series: pd.Series, units: str, verbose: bool = False) -> tuple[pd.Series, str]:
     """Recalibrate a series of floating point numbers."""
 
-    if _dont_recalibrate(series, units):
+    if _dont_recalibrate(series, units, verbose):
         return series, units
 
     def _recalibrate(factor, step, operator):
