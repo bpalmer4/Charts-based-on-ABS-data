@@ -55,6 +55,11 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "national-accounts/australian-national-accounts"
         "-finance-and-wealth/latest-release",
     },
+    "5601": {
+        "Name": "Lending indicators, Australia",
+        "URL": "https://www.abs.gov.au/statistics/economy/"
+        "finance/lending-indicators/latest-release",
+    },
     "5676": {
         "Name": "Business Indicators, Australia",
         "URL": "https://www.abs.gov.au/statistics/economy/"
@@ -223,8 +228,8 @@ def get_meta_constants() -> tuple[str, str, str, str, str]:
 # public
 def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
     check = [
-        "Chain volume measures",  # National Accounts, 
-        "Chain Volume Measures",  # Business indicators, 
+        "Chain volume measures",  # National Accounts,
+        "Chain Volume Measures",  # Business indicators,
         "Chain Volume Measure",  # Retail Trade
         "Current Prices",
         "Current Price",
@@ -331,6 +336,7 @@ def _get_urls(page: bytes, table: int, verbose: bool) -> None | str | list[str]:
     soup = BeautifulSoup(page, features="lxml")
     search_terms = ["Download All", "Download ZIP"]
     url_list = _get_url_iteration(soup, search_terms)
+    print("Length of URL list: ", len(url_list))
     if verbose:
         print(f"Selecting {table} from list: {url_list}")
     if isinstance(url_list, list) and len(url_list) > table:
