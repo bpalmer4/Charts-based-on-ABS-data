@@ -223,8 +223,9 @@ def get_meta_constants() -> tuple[str, str, str, str, str]:
 # public
 def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
     check = [
-        "Chain volume measures",  # National Accounts
-        "Chain Volume Measure",  # Business indicators, Retail Trade
+        "Chain volume measures",  # National Accounts, 
+        "Chain Volume Measures",  # Business indicators, 
+        "Chain Volume Measure",  # Retail Trade
         "Current Prices",
         "Current Price",
         "Total (State)",
