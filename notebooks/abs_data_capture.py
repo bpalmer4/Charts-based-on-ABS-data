@@ -170,7 +170,7 @@ def get_fs_constants(catalogue_id: str) -> tuple[str, str, str]:
 
     assert catalogue_id in ABS_data_map  # sanity check
     source = f"ABS {catalogue_id}"
-    chart_dir = f"./CHARTS/{catalogue_id}/"
+    chart_dir = f"./CHARTS/{catalogue_id} - {ABS_data_map[catalogue_id]['Name']}/"
     Path(chart_dir).mkdir(parents=True, exist_ok=True)
     return source, chart_dir, _META_DATA
 
@@ -336,8 +336,8 @@ def _get_urls(page: bytes, table: int, verbose: bool) -> None | str | list[str]:
     soup = BeautifulSoup(page, features="lxml")
     search_terms = ["Download All", "Download ZIP"]
     url_list = _get_url_iteration(soup, search_terms)
-    print("Length of URL list: ", len(url_list))
     if verbose:
+        print("Length of URL list: ", len(url_list))
         print(f"Selecting {table} from list: {url_list}")
     if isinstance(url_list, list) and len(url_list) > table:
         print("Found URL for a ZIP file on ABS web page")

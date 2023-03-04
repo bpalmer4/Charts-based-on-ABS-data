@@ -2,6 +2,7 @@
 
 # --- imports
 # system imports
+import sys
 import re
 from pathlib import Path
 from operator import mul, truediv
@@ -458,17 +459,27 @@ def calc_growth(
 
 # --- data recalibration
 
+# private
+_min_recalibrate = "number"  # all lower case
+_max_recalibrate = "decillion"  # all lower case
 _keywords = {
-    "Number": 0,
+    _min_recalibrate.title(): 0,
     "Thousand": 3,
     "Million": 6,
     "Billion": 9,
     "Trillion": 12,
     "Quadrillion": 15,
+    "Quintillion": 18,
+    "Sextillion": 21,
+    "Septillion": 24,
+    "Octillion": 27,
+    "Nonillion": 30,
+    _max_recalibrate.title(): 33,
 }
 _r_keywords = {v: k for k, v in _keywords.items()}
 
 
+# private
 def _find_calibration(units: str) -> str | None:
     found = None
     for keyword in _keywords:
@@ -478,62 +489,88 @@ def _find_calibration(units: str) -> str | None:
     return found
 
 
-def _dont_recalibrate(series: pd.Series, units: str, verbose: bool = False) -> bool:
-    if series.max() < 0:
-        if verbose:
-            print("Negative max numbers will not be adjusted")
-        return True
-    if not pd.api.types.is_numeric_dtype(series):
-        if verbose:
-            print(f"Series not numeric {series.dtype}")
-        return True
+# private
+def _can_recalibrate(n: np.ndarray, units: str, verbose: bool = False) -> bool:
+    if not np.issubdtype(n.dtype, np.number):
+        print("recalibrate(): Non numeric input data")
+        return False
     if _find_calibration(units) is None:
         if verbose:
-            print(f"Units not calibrated {units}")
-        return True
-    if series.max() <= 1000 and series.max() >= 1:
-        if verbose:
-            print("No adjustments needed")
-        return True
-    return False
-
-
-def recalibrate_series(series: pd.Series, units: str, verbose: bool = False) -> tuple[pd.Series, str]:
-    """Recalibrate a series of floating point numbers."""
-
-    if _dont_recalibrate(series, units, verbose):
-        return series, units
-
-    def _recalibrate(factor, step, operator):
-        if factor + step in _r_keywords:
-            replacement = _r_keywords[factor + step]
-            nonlocal units, series  # a bit ugly
-            units = units.replace(text, replacement)
-            units = units.replace(text.lower(), replacement)
-            series = operator(series, 1000)
-            return True
+            print(f"recalibrate(): Units not appropriately calibrated: {units}")
         return False
-
-    again = True
-    while again:
-        text = _find_calibration(units)
-        factor = _keywords[text]
-
-        if series.max() > 1000:
-            if _recalibrate(factor, 3, truediv):
-                continue
-
-        if series.max() < 1:
-            if _recalibrate(factor, -3, mul):
-                continue
-
-        again = False
-    return series, units
+    if n.max() <= 1000 and n.max() >= 1:
+        if verbose:
+            print("recalibrate(): No adjustments needed")
+        return False
+    return True
 
 
+# private
+def _do_recal(n, units, step, operator):
+    calibration = _find_calibration(units)
+    factor = _keywords[calibration]
+    if factor + step not in _r_keywords:
+        print(f"Unexpected factor: {factor + step}")
+        sys.exit(-1)
+    replacement = _r_keywords[factor + step]
+    units = units.replace(calibration, replacement)
+    units = units.replace(calibration.lower(), replacement)
+    n = operator(n, 1000)
+    return n, units
+
+
+# public
+def recalibrate(
+    data: pd.Series | pd.DataFrame,
+    units: str,
+    verbose: bool = False,
+) -> tuple[pd.Series | pd.DataFrame, str]:
+    """Recalibrate a pandas Series or DataFrame."""
+
+    n = data.to_numpy().flatten()  #
+    if not _can_recalibrate(n, units, verbose):
+        return data, units
+
+    while True:
+        maximum = np.abs(n).max()
+        if maximum > 1000:
+            if _max_recalibrate in units.lower():
+                print("recalibrate() is not designed for very big units")
+                break
+            n, units = _do_recal(n, units, 3, truediv)
+            continue
+        if maximum < 1:
+            if _min_recalibrate in units.lower():
+                print("recalibrate() is not designed for very small units")
+                break
+            n, units = _do_recal(n, units, -3, mul)
+            continue
+        break
+
+    restore_pandas = pd.DataFrame if len(data.shape) == 2 else pd.Series
+    result = restore_pandas(n.reshape(data.shape))
+    result.index = data.index
+    if len(data.shape) == 2:
+        result.columns = data.columns
+    return result, units
+
+
+# public
+def recalibrate_series(
+    data: pd.Series,
+    units: str,
+    verbose: bool = False,
+) -> tuple[pd.Series, str]:
+    """Retained for compatibility with earlier code.
+    It calls recalibrate()."""
+
+    return recalibrate(data, units, verbose)
+
+
+# public
 def recalibrate_value(value: float, units: str) -> tuple[float, str]:
     """Recalibrate a floating point value."""
 
     input_ = pd.Series([value])
-    output, units = recalibrate_series(input_, units)
+    output, units = recalibrate(input_, units)
     return output[0], units
