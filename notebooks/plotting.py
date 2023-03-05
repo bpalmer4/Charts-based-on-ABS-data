@@ -44,7 +44,7 @@ _reduce = re.compile(r"[-]+")  # eliminate multiple hyphens
 
 # map of the acceptable kwargs for finalise_plot()
 _ACCEPTABLE_KWARGS = frozenset(
-    (
+    {
         "title",
         "xlabel",
         "ylabel",
@@ -62,7 +62,7 @@ _ACCEPTABLE_KWARGS = frozenset(
         "dont_close",
         "dpi",
         "legend",
-    )
+    }
 )
 
 
