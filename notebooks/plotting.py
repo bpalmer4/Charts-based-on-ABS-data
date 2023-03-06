@@ -62,7 +62,7 @@ _ACCEPTABLE_KWARGS = frozenset(
         "dont_close",
         "dpi",
         "legend",
-        "ylim", 
+        "ylim",
         "xlim",
     }
 )
@@ -211,10 +211,10 @@ def finalise_plot(axes, **kwargs):
     axes.use_sticky_margins = False
     axes.margins(0.02)
     axes.autoscale(tight=False)  # This is problematic ...
-    if 'ylim' in kwargs:
-        axes.set_ylim(*(kwargs['ylim']))
-    if 'xlim' in kwargs:
-        axes.set_xlim(*(kwargs['xlim']))
+    if "ylim" in kwargs:
+        axes.set_ylim(*(kwargs["ylim"]))
+    if "xlim" in kwargs:
+        axes.set_xlim(*(kwargs["xlim"]))
 
     _apply_kwargs(axes, **kwargs)
 
@@ -540,7 +540,7 @@ def recalibrate(
         return data, units
 
     while True:
-        maximum = np.abs(n).max()
+        maximum = np.nanmax(np.abs(n))
         if maximum > 1000:
             if _max_recalibrate in units.lower():
                 print("recalibrate() is not designed for very big units")

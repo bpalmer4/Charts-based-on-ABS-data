@@ -55,6 +55,12 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "national-accounts/australian-national-accounts"
         "-finance-and-wealth/latest-release",
     },
+    "5368": {
+        "Name": "International Trade in Goods and Services, Australia",
+        "URL": "https://www.abs.gov.au/statistics/economy/"
+        "international-trade/international-trade-goods-and-services-australia"
+        "/latest-release",
+    },
     "5601": {
         "Name": "Lending indicators, Australia",
         "URL": "https://www.abs.gov.au/statistics/economy/"
