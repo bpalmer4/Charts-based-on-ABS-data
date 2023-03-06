@@ -62,6 +62,8 @@ _ACCEPTABLE_KWARGS = frozenset(
         "dont_close",
         "dpi",
         "legend",
+        "ylim", 
+        "xlim",
     }
 )
 
@@ -197,6 +199,8 @@ def finalise_plot(axes, **kwargs):
        - dont_close - bool - dont close the plot
        - dpi - int - dots per inch for the saved chart
        - legend - dict - arguments to pass to axes.legend()
+       - ylim - tuple[float, float] - set lower and upper limits
+       - xlim - tuple[float, float] - set lower and upper limits
      Returns:
        - None
     """
@@ -207,6 +211,10 @@ def finalise_plot(axes, **kwargs):
     axes.use_sticky_margins = False
     axes.margins(0.02)
     axes.autoscale(tight=False)  # This is problematic ...
+    if 'ylim' in kwargs:
+        axes.set_ylim(*(kwargs['ylim']))
+    if 'xlim' in kwargs:
+        axes.set_xlim(*(kwargs['xlim']))
 
     _apply_kwargs(axes, **kwargs)
 
