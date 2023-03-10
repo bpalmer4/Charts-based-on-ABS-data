@@ -16,6 +16,25 @@ import matplotlib.patheffects as pe
 import statsmodels.formula.api as smf
 
 
+# --- constants - default settings
+
+
+DEFAULT_FILE_TYPE = "png"
+DEFAULT_FIG_SIZE = (9, 4.5)
+DEFAULT_DPI = 125
+DEFAULT_CHART_DIR = "."
+
+COLOR_AMBER = "orange"
+COLOR_BLUE = "mediumblue"
+COLOR_RED = "#dd0000"
+COLOR_GREEN = "mediumseagreen"
+
+NARROW_WIDTH = 1.0
+WIDE_WIDTH = 2.0
+LEGEND_FONTSIZE = "x-small"
+LEGEND_SET = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
+
+
 # --- clear_chart_dir()
 
 
@@ -28,12 +47,6 @@ def clear_chart_dir(chart_dir):
 
 
 # --- finalise_plot()
-
-# - constants - default settings for finalise_plot()
-DEFAULT_FILE_TYPE = "png"
-DEFAULT_FIG_SIZE = (9, 4.5)
-DEFAULT_DPI = 125
-DEFAULT_CHART_DIR = "."
 
 # global chart_dir - modified by set_chart_dir() below
 _chart_dir: str | None = DEFAULT_CHART_DIR
@@ -48,6 +61,8 @@ _ACCEPTABLE_KWARGS = frozenset(
         "title",
         "xlabel",
         "ylabel",
+        "yscale",
+        "xscale",
         "pre_tag",
         "tag",
         "chart_dir",
@@ -61,9 +76,13 @@ _ACCEPTABLE_KWARGS = frozenset(
         "dont_save",
         "dont_close",
         "dpi",
-        "legend",
         "ylim",
         "xlim",
+        "legend",
+        "axhspan",
+        "axvspan",
+        "axhline",
+        "axvline",
     }
 )
 
@@ -71,6 +90,7 @@ _ACCEPTABLE_KWARGS = frozenset(
 # - private utility functions for finalise_plot()
 
 
+# private
 def _check_kwargs(**kwargs):
     """Report unrecognised keyword arguments."""
 
@@ -79,19 +99,26 @@ def _check_kwargs(**kwargs):
             print(f"Warning: {k} was an unrecognised keyword argument")
 
 
+# private
 def _apply_kwargs(axes, **kwargs):
     """Apply settings found in kwargs."""
 
     fig = axes.figure
 
-    # annotate plot
-    settings = ("title", "xlabel", "ylabel")
+    # simple settings
+    settings = ("title", "xlabel", "ylabel", "yscale", "xscale")
     for setting in settings:
         value = kwargs.get(setting, None)
+        if value is None and setting in ("yscale", "xscale"):
+            continue
         axes.set(**{setting: value})
 
-    if "legend" in kwargs:
-        axes.legend(**kwargs["legend"])
+    # simple splat settings - legend last as predecessors can have labels
+    methods = ("axhspan", "axvspan", "axhline", "axvline", "legend")
+    for m in methods:
+        if m in kwargs and isinstance(kwargs[m], dict):
+            method = getattr(axes, m)
+            method(**kwargs[m])
 
     if "rfooter" in kwargs:
         fig.text(
@@ -139,6 +166,7 @@ def _apply_kwargs(axes, **kwargs):
             axes.set_ylim(top=adj)
 
 
+# private
 def _save_to_file(fig, **kwargs) -> None:
     """Save the figure to file."""
 
@@ -165,6 +193,7 @@ def _save_to_file(fig, **kwargs) -> None:
 # - public functions for finalise_plot()
 
 
+# public
 def set_chart_dir(chart_dir: str | None) -> None:
     """A function to set a global chart directory for finalise_plot(),
     so that it does not need to be included as an argument in each
@@ -174,6 +203,7 @@ def set_chart_dir(chart_dir: str | None) -> None:
     _chart_dir = chart_dir
 
 
+# public
 def finalise_plot(axes, **kwargs):
     """A function to finalise and save plots to the file system. The filename
     for the saved plot is constructed from the chart_dir, the plot's title,
@@ -199,6 +229,10 @@ def finalise_plot(axes, **kwargs):
        - dont_close - bool - dont close the plot
        - dpi - int - dots per inch for the saved chart
        - legend - dict - arguments to pass to axes.legend()
+       - axhspan - dict - arguments to pass to axes.axhspan()
+       - axvspan - dict - arguments to pass to axes.axvspan()
+       - axhline - dict - arguments to pass to axes.axhline()
+       - axvline - dict - arguments to pass to axes.axvline()
        - ylim - tuple[float, float] - set lower and upper limits
        - xlim - tuple[float, float] - set lower and upper limits
      Returns:
@@ -233,57 +267,181 @@ def finalise_plot(axes, **kwargs):
         plt.close()
 
 
-# --- plot_series_highlighted()
+# --- line_plot()
+
+# constants
+STARTS, TAGS = "starts", "tags"
+STYLE, WIDTH, COLOR = "style", "width", "color"
+ALPHA, LEGEND, DROPNA = "alpha", "legend", "dropna"
+DRAWSTYLE, MARKER = "drawstyle", "marker"
 
 
-def plot_series_highlighted(series: pd.Series, **kwargs) -> plt.Axes:
-    """Plot a series of percentage rates, highlighting the increasing runs.
-    Arguments
-     - series - ordered pandas Series of percentages, with PeriodIndex
-     - threshold - float - used to ignore micro noise near zero
-       (for example, threshhold=0.001)
-     - round - int - rounding for highlight text
-    Return
-     - matplotlib Axes object"""
+# private
+def _apply_defaults(list_len: int, defaults: dict, kwargs: dict) -> tuple[dict, dict]:
+    """Get arguments from kwargs, and apply a default from the
+    defaults dict if not there."""
 
-    # default arguments - in **kwargs
-    threshold = 0.001 if "threshold" not in kwargs else kwargs["threshold"]
-    round_ = 2 if "round" not in kwargs else kwargs["round"]  # int
-
-    # identify the runs
-    diffed = series.diff()
-    change_points = pd.concat(
-        [diffed[diffed.gt(threshold)], diffed[diffed.lt(-threshold)]]
-    ).sort_index()
-    if series.index[0] not in change_points.index:
-        starting_point = pd.Series([0], index=[series.index[0]])
-        change_points = pd.concat([change_points, starting_point]).sort_index()
-    rising = change_points > 0
-    cycles = (rising & ~rising.shift().astype(bool)).cumsum()
-    rising_stretches = cycles[rising]
-
-    # chart the series
-    axes = series.plot(drawstyle="steps-post", lw=2, c="#dd0000")
-
-    # highlight the runs
-    for k in range(1, rising_stretches.max() + 1):
-        stretch = rising_stretches[rising_stretches == k]
-        axes.axvspan(stretch.index.min(), stretch.index.max(), color="gold", zorder=-1)
-        if series[stretch.index].min() < (series.max() + series.min()) / 2:
-            y_pos, vert_align = series.max(), "top"
+    r = {}  # return vehicle
+    for option, default in defaults.items():
+        if option in kwargs:
+            # get the argument, ensure it is in a list
+            r[option] = kwargs[option]
+            if not isinstance(r[option], list) and not isinstance(r[option], tuple):
+                r[option] = [r[option]]  # str -> list[str]
+            del kwargs[option]
         else:
-            y_pos, vert_align = series.min(), "bottom"
-        text = axes.text(
-            x=stretch.index.min(),
-            y=y_pos,
-            s=(change_points[stretch.index].sum().round(round_).astype(str) + " pp"),
-            va=vert_align,
-            ha="left",
-            rotation=90,
-        )
-        text.set_path_effects([pe.withStroke(linewidth=5, foreground="w")])
+            # use the default argument
+            r[option] = default if isinstance(default, list) else [default]
 
-    return axes
+        # repeat list if not long enough for all lines to be plotted
+        if len(r[option]) < list_len and list_len > 1:
+            multiplier = (list_len // len(r[option])) + 1
+            r[option] = r[option] * multiplier
+
+    return r, kwargs
+
+
+# private
+def _get_multi_starts(**kwargs) -> tuple[dict[str, list], dict]:
+    """Get the multi-starting point arguments."""
+
+    defaults = {  # defaults
+        STARTS: None,  # should be first item in dictionary
+        TAGS: "",
+    }
+    stags, kwargs = _apply_defaults(1, defaults, kwargs)
+
+    if len(stags[TAGS]) < len(stags[STARTS]):
+        stags[TAGS] = stags[TAGS] * len(stags[STARTS])
+    # Ensure that the tags are not identical ...
+    if len(stags[TAGS]) > 1 and stags[TAGS].count(stags[TAGS][0]) == len(stags[TAGS]):
+        stags[TAGS] = [
+            e + f"{i:02d}" if i > 0 else e for i, e in enumerate(stags[TAGS])
+        ]
+
+    return stags, kwargs
+
+
+def _get_style_width_color_etc(n, **kwargs) -> tuple[dict[str, list], dict]:
+    """Get the plot-line attributes arguemnts."""
+
+    colours = {
+        # default colours change depending on the number of lines
+        1: COLOR_RED,
+        5: [COLOR_BLUE, COLOR_AMBER, COLOR_GREEN, COLOR_RED, "#888888"],
+        9: [
+            "#332288",
+            "#88CCEE",
+            "#44AA99",
+            "#117733",
+            "#999933",
+            "#DDCC77",
+            "#CC6677",
+            "#882255",
+            "#AA4499",
+        ],  # Tol
+    }
+    k = colours.keys()
+    minimum = min(i for i in list(k) + [float("inf")] if i >= n)
+    n_colours = minimum if minimum is not float("inf") else max(k)
+    defaults = {  # defaults
+        STYLE: "-",
+        WIDTH: WIDE_WIDTH,
+        COLOR: colours[n_colours],
+        ALPHA: 1.0,
+        DRAWSTYLE: None,
+        MARKER: None,
+    }
+    swce, kwargs = _apply_defaults(n, defaults, kwargs)
+
+    swce[LEGEND] = None if LEGEND not in kwargs else kwargs[LEGEND]
+    if swce[LEGEND] is None and n > 1:
+        swce[LEGEND] = LEGEND_SET
+    if LEGEND in kwargs:
+        del kwargs[LEGEND]
+    swce[DROPNA] = False if DROPNA not in kwargs else kwargs[DROPNA]
+    if DROPNA in kwargs:
+        del kwargs[DROPNA]
+
+    return swce, kwargs
+
+
+# public
+def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
+    """Plot a series or a dataframe over multiple (starting_point) time horizons.
+    The data must be a pandas Series or DataFrame with a PeriodIndex.
+    Arguments:
+    - starts - str| pd.Period | list[str] | list[pd.Period] -
+      starting dates for plots.
+    - tags - str | list[str] - unique file name tages for multiple plots.
+    - color - str | list[str] - line colors.
+    - width - float | list[float] - line widths.
+    - style - str | list[str] - line styles.
+    - alpha - float | list[float] - line transparencies.
+    - legend - dict | False - arguments to splat in a call to plt.Axes.legend()
+    - drawstyle - str | list[str] - pandas drawing style
+      if False, no legend will be displayed.
+    - dropna - bool - whether to delete NAs before plotting
+    - Remaining arguments as for finalise_plot() [but note, the tag
+      argument to finalise_plot cannot be used. Use tags instead.]"""
+
+    # sanity checks
+    assert isinstance(data, pd.Series) or isinstance(data, pd.DataFrame)
+    assert isinstance(data.index, pd.PeriodIndex)
+
+    # really we are only plotting DataFrames
+    if isinstance(data, pd.Series):
+        data = pd.DataFrame(data)
+
+    # get extra plotting parameters - not passed to finalise_plot()
+    n = len(data.columns)
+    stags, kwargs = _get_multi_starts(**kwargs)  # time horizons
+    swce, kwargs = _get_style_width_color_etc(n, **kwargs)  # lines
+
+    # And plot
+    for start, tag in zip(stags[STARTS], stags[TAGS]):
+        if start and not isinstance(start, pd.Period):
+            start = pd.Period(start, freq=data.index.freq)
+        recent = data[data.index >= start] if start else data
+        ax = None
+        for i, p in enumerate(recent.columns):
+            if recent[p].isna().all():
+                continue
+            series = recent[p].dropna() if DROPNA in swce else recent[p]
+            ax = series.plot(
+                ls=swce[STYLE][i],
+                lw=swce[WIDTH][i],
+                color=swce[COLOR][i],
+                alpha=swce[ALPHA][i],
+                marker=swce[MARKER][i],
+                drawstyle=swce[DRAWSTYLE][i],
+            )
+
+        if LEGEND in swce and isinstance(swce[LEGEND], dict):
+            extra = {} if LEGEND not in kwargs else kwargs[LEGEND]
+            kwargs[LEGEND] = {**swce[LEGEND], **extra}
+            # let finalise plot will add the legend.
+        if ax:
+            finalise_plot(ax, tag=tag, **kwargs)
+
+
+def seas_trend_plot(data: pd.DataFrame, **kwargs) -> None:
+    """Plot a DataFrame, where the first column is seasonally
+    adjusted data, and the second column is trend data."""
+
+    colors = [COLOR_BLUE, COLOR_AMBER]
+    widths = [NARROW_WIDTH, WIDE_WIDTH]
+    styles = "-"
+
+    line_plot(
+        data,
+        width=widths,
+        color=colors,
+        style=styles,
+        legend=LEGEND_SET,
+        dropna=True,
+        **kwargs,
+    )
 
 
 # --- plot_covid_recovery()
@@ -350,26 +508,78 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
             # assume last unaffected quarter ends in December 2019
             start_regression = pd.Period("2016-12-31", freq=freq)
             end_regression = pd.Period("2019-12-31", freq=freq)
+
     recent = series[series.index >= start_regression]
     projection = get_projection(recent, end_regression)
+    projection.name = "Pre-COVID projection"
+    data_set = pd.DataFrame([projection, recent]).T
 
-    axes = recent.plot(lw=2, c="dodgerblue", label=series.name)
-    projection.plot(
-        lw=2,
-        c="darkorange",
-        ls="--",
-        label="Pre-COVID projection",
-        ax=axes,
+    line_plot(
+        data_set,
+        color=[COLOR_AMBER, COLOR_BLUE],
+        width=[NARROW_WIDTH, WIDE_WIDTH],
+        style=["--", "-"],
+        legend=LEGEND_SET,
+        dropna=True,
+        **kwargs,
     )
-    axes.legend(loc="best")
 
-    # augment left-footer
-    kwargs["lfooter"] = "" if "lfooter" not in kwargs else kwargs["lfooter"]
-    kwargs[
-        "lfooter"
-    ] += f"Projection on data from {start_regression} to {end_regression}. "
 
-    finalise_plot(axes, **kwargs)
+# --- plot_series_highlighted()
+
+
+def plot_series_highlighted(series: pd.Series, **kwargs) -> plt.Axes:
+    """Plot a series of percentage rates, highlighting the increasing runs.
+    Arguments
+     - series - ordered pandas Series of percentages, with PeriodIndex
+     - threshold - float - used to ignore micro noise near zero
+       (for example, threshhold=0.001)
+     - round - int - rounding for highlight text
+    Return
+     - matplotlib Axes object"""
+
+    # default arguments - in **kwargs
+    threshold = 0.001 if "threshold" not in kwargs else kwargs["threshold"]
+    round_ = 2 if "round" not in kwargs else kwargs["round"]  # int
+    line_c = "#dd0000"  # rich red
+    hilite_c = "gold"
+
+    # identify the runs
+    diffed = series.diff()
+    change_points = pd.concat(
+        [diffed[diffed.gt(threshold)], diffed[diffed.lt(-threshold)]]
+    ).sort_index()
+    if series.index[0] not in change_points.index:
+        starting_point = pd.Series([0], index=[series.index[0]])
+        change_points = pd.concat([change_points, starting_point]).sort_index()
+    rising = change_points > 0
+    cycles = (rising & ~rising.shift().astype(bool)).cumsum()
+    rising_stretches = cycles[rising]
+
+    # chart the series
+    axes = series.plot(drawstyle="steps-post", lw=WIDE_WIDTH, c=line_c)
+
+    # highlight the runs
+    for k in range(1, rising_stretches.max() + 1):
+        stretch = rising_stretches[rising_stretches == k]
+        axes.axvspan(
+            stretch.index.min(), stretch.index.max(), color=hilite_c, zorder=-1
+        )
+        if series[stretch.index].min() < (series.max() + series.min()) / 2:
+            y_pos, vert_align = series.max(), "top"
+        else:
+            y_pos, vert_align = series.min(), "bottom"
+        text = axes.text(
+            x=stretch.index.min(),
+            y=y_pos,
+            s=(change_points[stretch.index].sum().round(round_).astype(str) + " pp"),
+            va=vert_align,
+            ha="left",
+            rotation=90,
+        )
+        text.set_path_effects([pe.withStroke(linewidth=5, foreground="w")])
+
+    return axes
 
 
 # --- plot_growth(), plot_growth_finalise() and calc_growth()
@@ -378,7 +588,7 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
 def plot_growth(
     annual: pd.Series,
     periodic: pd.Series,
-    from_: pd.Period | None = None,
+    from_: str | pd.Timestamp | pd.Period | None = None,
 ) -> None | plt.Axes:
     """Plot a bar and line percentage growth chart."""
 
@@ -406,24 +616,27 @@ def plot_growth(
 
     # set index to the middle of the period for selection
     if from_:
+        if not isinstance(from_, pd.Period):
+            from_ = pd.Period(from_, freq=periodic.index.freq)
         frame = frame[frame.index >= from_]
     frame = frame.to_timestamp(how="start")
     frame.index = frame.index + pd.Timedelta(days=adjustment)
 
     # plot
+    THICK_LINE_THRESHOLD = 24
     _, axes = plt.subplots()
     axes.plot(
         frame[frame.columns[0]].index,
         frame[frame.columns[0]].values,
-        lw=1,
-        color="#0000dd",
+        lw=WIDE_WIDTH if len(frame) <= THICK_LINE_THRESHOLD else NARROW_WIDTH,
+        color=COLOR_BLUE,
         label="Annual growth",
     )
     axes.bar(
         frame[frame.columns[1]].index,
         frame[frame.columns[1]].values,
-        color="#dd0000",
-        width=0.8 * adjustment * 2,
+        color=COLOR_RED,
+        width=0.7 * adjustment * 2,
         label=f"{period} growth",
     )
 
@@ -445,7 +658,7 @@ def plot_growth_finalise(
         from_,
     )
     if axes:
-        axes.legend(loc="best", fontsize="small")
+        kwargs[LEGEND] = LEGEND_SET if LEGEND not in kwargs else kwargs[LEGEND]
         if "ylabel" not in kwargs:
             kwargs["ylabel"] = "Per cent"
         finalise_plot(axes, **kwargs)
