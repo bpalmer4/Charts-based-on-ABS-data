@@ -56,34 +56,24 @@ _remove = re.compile(r"[^0-9A-Za-z]")  # make sensible file names
 _reduce = re.compile(r"[-]+")  # eliminate multiple hyphens
 
 # map of the acceptable kwargs for finalise_plot()
+# make sure "legend" is last in the _splat_kwargs tuple ...
+_splat_kwargs = ("axhspan", "axvspan", "axhline", "axvline", "legend")
+_value_must_kwargs = ("title", "xlabel", "ylabel")
+_value_may_kwargs = ("ylim", "xlim", "yscale", "xscale")
+_value_kwargs = _value_must_kwargs + _value_may_kwargs
+_file_kwargs = ("pre_tag", "tag", "chart_dir", "file_type", "dpi")
+_foot_kwargs = ("lfooter", "rfooter", "lheader", "rheader")
+_fig_kwargs = ("figsize", "show")
+_oth_kwargs = ("zero_y", "dont_save", "dont_close", "concise_dates")
+_more_kwargs = ("y0",)
 _ACCEPTABLE_KWARGS = frozenset(
-    {
-        "title",
-        "xlabel",
-        "ylabel",
-        "yscale",
-        "xscale",
-        "pre_tag",
-        "tag",
-        "chart_dir",
-        "file_type",
-        "lfooter",
-        "rfooter",
-        "figsize",
-        "show",
-        "concise_dates",
-        "zero_y",
-        "dont_save",
-        "dont_close",
-        "dpi",
-        "ylim",
-        "xlim",
-        "legend",
-        "axhspan",
-        "axvspan",
-        "axhline",
-        "axvline",
-    }
+    _value_kwargs
+    + _splat_kwargs
+    + _file_kwargs
+    + _foot_kwargs
+    + _fig_kwargs
+    + _oth_kwargs
+    + _more_kwargs
 )
 
 
@@ -92,11 +82,22 @@ _ACCEPTABLE_KWARGS = frozenset(
 
 # private
 def _check_kwargs(**kwargs):
-    """Report unrecognised keyword arguments."""
+    """Report any unrecognised keyword arguments."""
 
     for k in kwargs:
         if k not in _ACCEPTABLE_KWARGS:
             print(f"Warning: {k} was an unrecognised keyword argument")
+
+
+# private
+def _apply_value_kwargs(axes, settings: tuple, **kwargs) -> None:
+    """Set matplotlib elements by name using Axes.set()."""
+
+    for setting in settings:
+        value = kwargs.get(setting, None)
+        if value is None and setting not in _value_must_kwargs:
+            continue
+        axes.set(**{setting: value})
 
 
 # private
@@ -105,44 +106,36 @@ def _apply_kwargs(axes, **kwargs):
 
     fig = axes.figure
 
-    # simple settings
-    settings = ("title", "xlabel", "ylabel", "yscale", "xscale")
-    for setting in settings:
-        value = kwargs.get(setting, None)
-        if value is None and setting in ("yscale", "xscale"):
-            continue
-        axes.set(**{setting: value})
+    # simple value-based settings
+    _apply_value_kwargs(axes, _value_kwargs, **kwargs)
 
-    # simple splat settings - legend last as predecessors can have labels
-    methods = ("axhspan", "axvspan", "axhline", "axvline", "legend")
-    for m in methods:
-        if m in kwargs and isinstance(kwargs[m], dict):
-            method = getattr(axes, m)
-            method(**kwargs[m])
+    # simple splat settings
+    for meth_name in _splat_kwargs:
+        if meth_name in kwargs:
+            if isinstance(kwargs[meth_name], dict):
+                method = getattr(axes, meth_name)
+                method(**kwargs[meth_name])
+            else:
+                print(f"Warning expected dictionary argument: {meth_name}")
 
-    if "rfooter" in kwargs:
-        fig.text(
-            0.99,
-            0.001,
-            kwargs["rfooter"],
-            ha="right",
-            va="bottom",
-            fontsize=9,
-            fontstyle="italic",
-            color="#999999",
-        )
-
-    if "lfooter" in kwargs:
-        fig.text(
-            0.01,
-            0.001,
-            kwargs["lfooter"],
-            ha="left",
-            va="bottom",
-            fontsize=9,
-            fontstyle="italic",
-            color="#999999",
-        )
+    annotations = {
+        "rfooter": (0.99, 0.001, "right", "bottom"),
+        "lfooter": (0.01, 0.001, "left", "bottom"),
+        "rheader": (0.99, 0.999, "right", "top"),
+        "lheader": (0.01, 0.999, "left", "top"),
+    }
+    for annotation, (x, y, ha, va) in annotations.items():
+        if annotation in kwargs:
+            fig.text(
+                x,
+                y,
+                kwargs[annotation],
+                ha=ha,
+                va=va,
+                fontsize=9,
+                fontstyle="italic",
+                color="#999999",
+            )
 
     if "figsize" in kwargs:
         fig.set_size_inches(*kwargs["figsize"])
@@ -164,6 +157,11 @@ def _apply_kwargs(axes, **kwargs):
             axes.set_ylim(bottom=-adj)
         if top < adj:
             axes.set_ylim(top=adj)
+
+    if "y0" in kwargs and kwargs["y0"]:
+        lo, hi = axes.get_ylim()
+        if lo < 0 < hi:
+            axes.axhline(y=0, lw=0.75, c="#555555")
 
 
 # private
@@ -221,10 +219,13 @@ def finalise_plot(axes, **kwargs):
        - file_type - string - specify a file type - eg. 'png' or 'svg'
        - lfooter - string - text to display on bottom left of plot
        - rfooter - string - text to display of bottom right of plot
+       - lheader - string - text to display on top left of plot
+       - rheader - string - text to display of top right of plot
        - figsize - tuple - figure size in inches - eg. (8, 4)
        - show - Boolean - whether to show the plot or not
        - concise_dates - bool - use the matplotlib concise dates formatter
        - zero_y - bool - ensure y=0 is included in the plot.
+       - y0 - bool - highlight the y=0 line on the plot
        - dont_save - bool - dont save the plot to the file system
        - dont_close - bool - dont close the plot
        - dpi - int - dots per inch for the saved chart
@@ -233,8 +234,8 @@ def finalise_plot(axes, **kwargs):
        - axvspan - dict - arguments to pass to axes.axvspan()
        - axhline - dict - arguments to pass to axes.axhline()
        - axvline - dict - arguments to pass to axes.axvline()
-       - ylim - tuple[float, float] - set lower and upper limits
-       - xlim - tuple[float, float] - set lower and upper limits
+       - ylim - tuple[float, float] - set lower and upper y-axis limits
+       - xlim - tuple[float, float] - set lower and upper x-axis limits
      Returns:
        - None
     """
@@ -245,10 +246,6 @@ def finalise_plot(axes, **kwargs):
     axes.use_sticky_margins = False
     axes.margins(0.02)
     axes.autoscale(tight=False)  # This is problematic ...
-    if "ylim" in kwargs:
-        axes.set_ylim(*(kwargs["ylim"]))
-    if "xlim" in kwargs:
-        axes.set_xlim(*(kwargs["xlim"]))
 
     _apply_kwargs(axes, **kwargs)
 
@@ -403,26 +400,27 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
         if start and not isinstance(start, pd.Period):
             start = pd.Period(start, freq=data.index.freq)
         recent = data[data.index >= start] if start else data
-        ax = None
+        axes = None
         for i, p in enumerate(recent.columns):
             if recent[p].isna().all():
                 continue
             series = recent[p].dropna() if DROPNA in swce else recent[p]
-            ax = series.plot(
+            axes = series.plot(
                 ls=swce[STYLE][i],
                 lw=swce[WIDTH][i],
                 color=swce[COLOR][i],
                 alpha=swce[ALPHA][i],
                 marker=swce[MARKER][i],
                 drawstyle=swce[DRAWSTYLE][i],
+                ax=axes,
             )
 
         if LEGEND in swce and isinstance(swce[LEGEND], dict):
             extra = {} if LEGEND not in kwargs else kwargs[LEGEND]
             kwargs[LEGEND] = {**swce[LEGEND], **extra}
             # let finalise plot will add the legend.
-        if ax:
-            finalise_plot(ax, tag=tag, **kwargs)
+        if axes:
+            finalise_plot(axes, tag=tag, **kwargs)
 
 
 def seas_trend_plot(data: pd.DataFrame, **kwargs) -> None:
