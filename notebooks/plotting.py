@@ -24,7 +24,7 @@ DEFAULT_FIG_SIZE = (9, 4.5)
 DEFAULT_DPI = 125
 DEFAULT_CHART_DIR = "."
 
-COLOR_AMBER = "orange"
+COLOR_AMBER = "darkorange"
 COLOR_BLUE = "mediumblue"
 COLOR_RED = "#dd0000"
 COLOR_GREEN = "mediumseagreen"
@@ -61,19 +61,18 @@ _splat_kwargs = ("axhspan", "axvspan", "axhline", "axvline", "legend")
 _value_must_kwargs = ("title", "xlabel", "ylabel")
 _value_may_kwargs = ("ylim", "xlim", "yscale", "xscale")
 _value_kwargs = _value_must_kwargs + _value_may_kwargs
+_annotation_kwargs = ("lfooter", "rfooter", "lheader", "rheader")
+
 _file_kwargs = ("pre_tag", "tag", "chart_dir", "file_type", "dpi")
-_foot_kwargs = ("lfooter", "rfooter", "lheader", "rheader")
 _fig_kwargs = ("figsize", "show")
-_oth_kwargs = ("zero_y", "dont_save", "dont_close", "concise_dates")
-_more_kwargs = ("y0",)
+_oth_kwargs = ("zero_y", "y0", "dont_save", "dont_close")
 _ACCEPTABLE_KWARGS = frozenset(
     _value_kwargs
     + _splat_kwargs
     + _file_kwargs
-    + _foot_kwargs
+    + _annotation_kwargs
     + _fig_kwargs
     + _oth_kwargs
-    + _more_kwargs
 )
 
 
@@ -101,22 +100,31 @@ def _apply_value_kwargs(axes, settings: tuple, **kwargs) -> None:
 
 
 # private
+def _apply_splat_kwargs(axes, settings: tuple, **kwargs) -> None:
+    """Set matplotlib elements dynamically using setting_name and splat."""
+    
+    for method_name in settings:
+        if method_name in kwargs:
+            if isinstance(kwargs[method_name], dict):
+                method = getattr(axes, method_name)
+                method(**kwargs[method_name])
+            else:
+                print(f"Warning expected dict argument: {method_name}")
+
+
+# private
 def _apply_kwargs(axes, **kwargs):
     """Apply settings found in kwargs."""
 
-    fig = axes.figure
-
-    # simple value-based settings
+    def check_kwargs(name):
+        return name in kwargs and kwargs[name]
+    
     _apply_value_kwargs(axes, _value_kwargs, **kwargs)
+    _apply_splat_kwargs(axes, _splat_kwargs, **kwargs)
 
-    # simple splat settings
-    for meth_name in _splat_kwargs:
-        if meth_name in kwargs:
-            if isinstance(kwargs[meth_name], dict):
-                method = getattr(axes, meth_name)
-                method(**kwargs[meth_name])
-            else:
-                print(f"Warning expected dictionary argument: {meth_name}")
+    fig = axes.figure
+    fs = DEFAULT_FIG_SIZE if "figsize" not in kwargs else kwargs["figsize"]
+    fig.set_size_inches(*fs)
 
     annotations = {
         "rfooter": (0.99, 0.001, "right", "bottom"),
@@ -124,8 +132,9 @@ def _apply_kwargs(axes, **kwargs):
         "rheader": (0.99, 0.999, "right", "top"),
         "lheader": (0.01, 0.999, "left", "top"),
     }
-    for annotation, (x, y, ha, va) in annotations.items():
+    for annotation in _annotation_kwargs:
         if annotation in kwargs:
+            x, y, ha, va = annotations[annotation]
             fig.text(
                 x,
                 y,
@@ -137,20 +146,7 @@ def _apply_kwargs(axes, **kwargs):
                 color="#999999",
             )
 
-    if "figsize" in kwargs:
-        fig.set_size_inches(*kwargs["figsize"])
-    else:
-        fig.set_size_inches(*DEFAULT_FIG_SIZE)
-
-    if "concise_dates" in kwargs and kwargs["concise_dates"]:
-        locator = mdates.AutoDateLocator(minticks=4, maxticks=10)
-        formatter = mdates.ConciseDateFormatter(locator)
-        axes.xaxis.set_major_locator(locator)
-        axes.xaxis.set_major_formatter(formatter)
-        for label in axes.get_xticklabels(which="major"):
-            label.set(rotation=0, horizontalalignment="center")
-
-    if "zero_y" in kwargs and kwargs["zero_y"]:
+    if check_kwargs("zero_y"):
         bottom, top = axes.get_ylim()
         adj = (top - bottom) * 0.02
         if bottom > -adj:
@@ -158,7 +154,7 @@ def _apply_kwargs(axes, **kwargs):
         if top < adj:
             axes.set_ylim(top=adj)
 
-    if "y0" in kwargs and kwargs["y0"]:
+    if check_kwargs("y0"):
         lo, hi = axes.get_ylim()
         if lo < 0 < hi:
             axes.axhline(y=0, lw=0.75, c="#555555")
@@ -223,7 +219,6 @@ def finalise_plot(axes, **kwargs):
        - rheader - string - text to display of top right of plot
        - figsize - tuple - figure size in inches - eg. (8, 4)
        - show - Boolean - whether to show the plot or not
-       - concise_dates - bool - use the matplotlib concise dates formatter
        - zero_y - bool - ensure y=0 is included in the plot.
        - y0 - bool - highlight the y=0 line on the plot
        - dont_save - bool - dont save the plot to the file system
@@ -588,7 +583,9 @@ def plot_growth(
     periodic: pd.Series,
     from_: str | pd.Timestamp | pd.Period | None = None,
 ) -> None | plt.Axes:
-    """Plot a bar and line percentage growth chart."""
+    """Plot a bar and line percentage growth chart. 
+       Both pandas Series should have a quarterly or monthly 
+       PeriodIndex."""
 
     # sanity checks
     for series in (annual, periodic):
@@ -603,15 +600,15 @@ def plot_growth(
     frame = pd.DataFrame(
         [annual.copy(), periodic.copy()], index=["Annual", "Periodic"]
     ).T
-
-    if frame.index.freq == "Q":
-        period, adjustment = "Quarterly", 45
-    elif frame.index.freq == "M":
-        period, adjustment = "Monthly", 15
-    else:
-        print("Unrecognised frequency")
+    
+    period, adjustment = {
+        "Q": ("Quarterly", 45),
+        "M": ("Monthly", 15),
+    }.get(p:=frame.index.freqstr[:1], (None, None))
+    if period is None:
+        print(f"Unrecognised frequency: {p} :")
         return None
-
+    
     # set index to the middle of the period for selection
     if from_:
         if not isinstance(from_, pd.Period):
