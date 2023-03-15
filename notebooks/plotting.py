@@ -768,6 +768,8 @@ def recalibrate(
     result.index = data.index
     if len(data.shape) == 2:
         result.columns = data.columns
+    if len(data.shape) == 1:
+        result.name = data.name
     return result, units
 
 
