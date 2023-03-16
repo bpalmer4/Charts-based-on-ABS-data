@@ -34,6 +34,25 @@ WIDE_WIDTH = 2.0
 LEGEND_FONTSIZE = "x-small"
 LEGEND_SET = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 
+state_colors = {
+    'NSW': 'lightblue',
+    'New South Wales': 'lightblue',
+    'Vic': 'navy',
+    'Victoria': 'navy',
+    'Qld': 'maroon',
+    'Queensland': 'maroon',
+    'SA': 'red',
+    'South Australia': 'red',
+    'WA': 'gold',
+    'Western Australia': 'gold',
+    'Tas': 'green',
+    'Tasmania': 'green',
+    'NT': 'lightsalmon',  # ochre?
+    'Northern Territory': 'lightsalmon',
+    'ACT': 'royalblue',
+    'Australian Capital Territory': 'royalblue',
+}
+
 
 # --- clear_chart_dir()
 
@@ -506,6 +525,10 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
     projection = get_projection(recent, end_regression)
     projection.name = "Pre-COVID projection"
     data_set = pd.DataFrame([projection, recent]).T
+    kwargs['lfooter'] = (
+        kwargs.get('lfooter', '')
+        + f'Projection from {start_regression} to {end_regression}. '
+    )
 
     line_plot(
         data_set,
