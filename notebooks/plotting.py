@@ -53,6 +53,21 @@ state_colors = {
     'Australian Capital Territory': 'royalblue',
 }
 
+state_abbr = {
+    'New South Wales': 'NSW',
+    'Victoria': 'Vic',
+    'Queensland': 'Qld',
+    'South Australia': 'SA',
+    'Western Australia': 'WA',
+    'Tasmania': 'Tas',
+    'Northern Territory': 'NT',
+    'Australian Capital Territory': 'ACT',
+}
+
+
+def abbreviate(name: str) -> str:
+    return state_abbr.get(name, name)
+
 
 # --- clear_chart_dir()
 
