@@ -98,7 +98,7 @@ def decompose(
         raise ValueError("The input series is not long enough to decompose")
 
     # --- settle the length of the Henderson moving average
-    h = max(n_periods, 7)  # ABS uses 13-term HMA for monthly and 7-term for quarterly
+    h = max(n_periods, 9)  # ABS uses 13-term HMA for monthly and 7-term for quarterly
     if h % 2 == 0:
         h += 1  # we need an odd number
 
