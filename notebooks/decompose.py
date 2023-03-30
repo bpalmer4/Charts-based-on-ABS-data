@@ -1,10 +1,11 @@
 """Produce a simple time series decomposition."""
 
 from operator import sub, truediv
-import pandas as pd
-import numpy as np
-from henderson import hma
 
+import numpy as np
+import pandas as pd
+
+from henderson import hma
 
 # --- A selection of seasonal smoothing weights, from which you can select
 #     Note: these are end-weights, they are reversed for the start of a series
@@ -86,10 +87,10 @@ def decompose(
 
     # --- initialise
     result = pd.DataFrame(s)
-    result.columns = ['Original']
-    result['period'] = {
-        'Q': result.index.quarter,
-        'M': result.index.month,
+    result.columns = ["Original"]
+    result["period"] = {
+        "Q": result.index.quarter,
+        "M": result.index.month,
     }[result.index.freqstr[0]]
 
     # --- determine the period
@@ -161,13 +162,12 @@ def decompose(
 
 # --- apply seasonal smoother
 def _smoothSeasonalComponent(
-    result: pd.DataFrame, 
-    constantSeasonal, 
-    seasonalSmoother, 
-    columnToBeSmoothed: str, 
+    result: pd.DataFrame,
+    constantSeasonal,
+    seasonalSmoother,
+    columnToBeSmoothed: str,
     newColumn: str,
 ):
-    
     # get the key smoothing constants
     if not constantSeasonal:
         kS = len(seasonalSmoother)
@@ -178,9 +178,9 @@ def _smoothSeasonalComponent(
     result[newColumn] = np.repeat(np.nan, len(result))
 
     # populate the return column ...
-    for u in result['period'].unique():
+    for u in result["period"].unique():
         # get each of of the seasonals
-        thisSeason = result.loc[result['period'] == u, columnToBeSmoothed]
+        thisSeason = result.loc[result["period"] == u, columnToBeSmoothed]
 
         # smooth to a constant seasonal value
         if constantSeasonal:
@@ -213,13 +213,13 @@ def _smoothSeasonalComponent(
             for i in range(kS - 1):
                 if np.isnan(thisSeasonSmoothed.iat[i]):
                     thisSeasonSmoothed.iat[i] = (
-                        thisSeason.iloc[0:(i + kS)] * (seasonalSmoother[i][::-1])
+                        thisSeason.iloc[0 : (i + kS)] * (seasonalSmoother[i][::-1])
                     ).sum()  # note: reversed order at start
 
             for i in range(len(thisSeason) - 1, len(thisSeason) - kS, -1):
                 if np.isnan(thisSeasonSmoothed.iat[i]):
                     thisSeasonSmoothed.iat[i] = (
-                        thisSeason.iloc[(i - (kS - 1)):len(thisSeason)]
+                        thisSeason.iloc[(i - (kS - 1)) : len(thisSeason)]
                         * seasonalSmoother[len(thisSeason) - 1 - i]
                     ).sum()
 
@@ -247,7 +247,7 @@ def _extendSeries(result, periods, columnToBeExtended, newColumn):
     # back-cast
     if np.isnan(result.iat[0, result.columns.get_loc(newColumn)]):
         fill = pd.DataFrame(result[newColumn].dropna().iloc[0:periods])
-        fill["period"] = result["period"][fill.index[0]:fill.index[len(fill) - 1]]
+        fill["period"] = result["period"][fill.index[0] : fill.index[len(fill) - 1]]
         endPoint = fill.index[0] - 1
         fill.index = fill["period"]
         fillup(result=result, fill=fill, startPoint=0, endPoint=endPoint)
@@ -255,8 +255,8 @@ def _extendSeries(result, periods, columnToBeExtended, newColumn):
     # forward-cast
     if np.isnan(result.iat[len(result) - 1, result.columns.get_loc(newColumn)]):
         fill = result[newColumn].dropna()
-        fill = pd.DataFrame(fill[(len(fill) - periods):len(fill)])
-        fill["period"] = result["period"][fill.index[0]:fill.index[len(fill) - 1]]
+        fill = pd.DataFrame(fill[(len(fill) - periods) : len(fill)])
+        fill["period"] = result["period"][fill.index[0] : fill.index[len(fill) - 1]]
         startPoint = result.index.get_loc(fill.index[len(fill) - 1] + 1)
         fill.index = fill["period"]
         endPoint = result.index[len(result) - 1]

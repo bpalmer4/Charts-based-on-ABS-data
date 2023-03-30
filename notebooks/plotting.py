@@ -2,19 +2,18 @@
 
 # --- imports
 # system imports
-import sys
 import re
-from pathlib import Path
+import sys
 from operator import mul, truediv
+from pathlib import Path
 
 # data science imports
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.patheffects as pe
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import statsmodels.formula.api as smf
-
 
 # --- constants - default settings
 
@@ -35,33 +34,33 @@ LEGEND_FONTSIZE = "x-small"
 LEGEND_SET = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 
 state_colors = {
-    'NSW': 'lightblue',
-    'New South Wales': 'lightblue',
-    'Vic': 'navy',
-    'Victoria': 'navy',
-    'Qld': 'maroon',
-    'Queensland': 'maroon',
-    'SA': 'red',
-    'South Australia': 'red',
-    'WA': 'gold',
-    'Western Australia': 'gold',
-    'Tas': 'green',
-    'Tasmania': 'green',
-    'NT': 'lightsalmon',  # ochre?
-    'Northern Territory': 'lightsalmon',
-    'ACT': 'royalblue',
-    'Australian Capital Territory': 'royalblue',
+    "NSW": "lightblue",
+    "New South Wales": "lightblue",
+    "Vic": "navy",
+    "Victoria": "navy",
+    "Qld": "maroon",
+    "Queensland": "maroon",
+    "SA": "red",
+    "South Australia": "red",
+    "WA": "gold",
+    "Western Australia": "gold",
+    "Tas": "green",
+    "Tasmania": "green",
+    "NT": "lightsalmon",  # ochre?
+    "Northern Territory": "lightsalmon",
+    "ACT": "royalblue",
+    "Australian Capital Territory": "royalblue",
 }
 
 state_abbr = {
-    'New South Wales': 'NSW',
-    'Victoria': 'Vic',
-    'Queensland': 'Qld',
-    'South Australia': 'SA',
-    'Western Australia': 'WA',
-    'Tasmania': 'Tas',
-    'Northern Territory': 'NT',
-    'Australian Capital Territory': 'ACT',
+    "New South Wales": "NSW",
+    "Victoria": "Vic",
+    "Queensland": "Qld",
+    "South Australia": "SA",
+    "Western Australia": "WA",
+    "Tasmania": "Tas",
+    "Northern Territory": "NT",
+    "Australian Capital Territory": "ACT",
 }
 
 
@@ -136,7 +135,7 @@ def _apply_value_kwargs(axes, settings: tuple, **kwargs) -> None:
 # private
 def _apply_splat_kwargs(axes, settings: tuple, **kwargs) -> None:
     """Set matplotlib elements dynamically using setting_name and splat."""
-    
+
     for method_name in settings:
         if method_name in kwargs:
             if isinstance(kwargs[method_name], dict):
@@ -152,7 +151,7 @@ def _apply_kwargs(axes, **kwargs):
 
     def check_kwargs(name):
         return name in kwargs and kwargs[name]
-    
+
     _apply_value_kwargs(axes, _value_kwargs, **kwargs)
     _apply_splat_kwargs(axes, _splat_kwargs, **kwargs)
 
@@ -510,7 +509,7 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
         raise TypeError("The series argument must be a pandas Series")
     if not isinstance(series.index, pd.PeriodIndex):
         raise TypeError("The series must have a pandas PeriodIndex")
-    if not series.index.freqstr[:1] in ("Q", "M", "D"):
+    if series.index.freqstr[:1] not in ("Q", "M", "D"):
         raise ValueError("The series index must have a D, M or Q freq")
 
     # plot COVID counterfactural
@@ -519,7 +518,8 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
         # set by argument - note must set both start_r and end_r
         if verbose:
             print(
-                f'Using special start/end dates: {kwargs["start_r"]} - {kwargs["end_r"]}'
+                "Using special start/end dates: "
+                f'{kwargs["start_r"]} - {kwargs["end_r"]}'
             )
         start_regression = pd.Period(kwargs["start_r"], freq=freq)
         end_regression = pd.Period(kwargs["end_r"], freq=freq)
@@ -540,9 +540,9 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
     projection = get_projection(recent, end_regression)
     projection.name = "Pre-COVID projection"
     data_set = pd.DataFrame([projection, recent]).T
-    kwargs['lfooter'] = (
-        kwargs.get('lfooter', '')
-        + f'Projection from {start_regression} to {end_regression}. '
+    kwargs["lfooter"] = (
+        kwargs.get("lfooter", "")
+        + f"Projection from {start_regression} to {end_regression}. "
     )
 
     line_plot(
@@ -621,9 +621,9 @@ def plot_growth(
     periodic: pd.Series,
     from_: str | pd.Timestamp | pd.Period | None = None,
 ) -> None | plt.Axes:
-    """Plot a bar and line percentage growth chart. 
-       Both pandas Series should have a quarterly or monthly 
-       PeriodIndex."""
+    """Plot a bar and line percentage growth chart.
+    Both pandas Series should have a quarterly or monthly
+    PeriodIndex."""
 
     # sanity checks
     for series in (annual, periodic):
@@ -638,15 +638,15 @@ def plot_growth(
     frame = pd.DataFrame(
         [annual.copy(), periodic.copy()], index=["Annual", "Periodic"]
     ).T
-    
+
     period, adjustment = {
         "Q": ("Quarterly", 45),
         "M": ("Monthly", 15),
-    }.get(p:=frame.index.freqstr[:1], (None, None))
+    }.get(p := frame.index.freqstr[:1], (None, None))
     if period is None:
         print(f"Unrecognised frequency: {p} :")
         return None
-    
+
     # set index to the middle of the period for selection
     if from_:
         if not isinstance(from_, pd.Period):

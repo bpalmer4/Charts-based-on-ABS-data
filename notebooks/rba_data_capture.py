@@ -1,20 +1,19 @@
 """Get data from the Reserve Bank of Australia (RBA)."""
 
 # system imports
-from typing import Iterable
 import re
 from datetime import datetime
 from pathlib import Path
-import pytz
+from typing import Iterable
 
 # analytic imports
 import pandas as pd
-from bs4 import BeautifulSoup
+import pytz
 import requests
+from bs4 import BeautifulSoup
 
 # local imports
 import common
-
 
 # -- Establish an RBA cache directory
 CACHE_DIR = "./RBA_CACHE/"
