@@ -90,17 +90,17 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "labour/employment-and-unemployment/"
         "labour-force-australia-detailed/latest-release",
     },
-    "6354": {
-        "Name": "Job Vacancies, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "labour/employment-and-unemployment/"
-        "job-vacancies-australia/latest-release",
-    },
     "6345": {
         "Name": "Wage Price Index, Australia",
         "URL": "https://www.abs.gov.au/statistics/"
         "economy/price-indexes-and-inflation/"
         "wage-price-index-australia/latest-release",
+    },
+    "6354": {
+        "Name": "Job Vacancies, Australia",
+        "URL": "https://www.abs.gov.au/statistics/"
+        "labour/employment-and-unemployment/"
+        "job-vacancies-australia/latest-release",
     },
     "6401": {
         "Name": "Consumer Price Index, Australia",

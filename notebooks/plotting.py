@@ -432,7 +432,7 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
         for i, p in enumerate(recent.columns):
             if recent[p].isna().all():
                 continue
-            series = recent[p].dropna() if DROPNA in swce else recent[p]
+            series = recent[p].dropna() if DROPNA in swce and swce[DROPNA] else recent[p]
             axes = series.plot(
                 ls=swce[STYLE][i],
                 lw=swce[WIDTH][i],
@@ -459,13 +459,15 @@ def seas_trend_plot(data: pd.DataFrame, **kwargs) -> None:
     widths = [NARROW_WIDTH, WIDE_WIDTH]
     styles = "-"
 
+    if DROPNA not in kwargs:
+        kwargs[DROPNA] = True
+    
     line_plot(
         data,
         width=widths,
         color=colors,
         style=styles,
         legend=LEGEND_SET,
-        dropna=True,
         **kwargs,
     )
 
@@ -533,8 +535,9 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
             end_regression = pd.Period("2020-01-31", freq=freq)
         else:
             # assume last unaffected quarter ends in December 2019
-            start_regression = pd.Period("2016-12-31", freq=freq)
-            end_regression = pd.Period("2019-12-31", freq=freq)
+            full_freq = series.index.freq
+            start_regression = pd.Period("2016-10-01", freq=full_freq)
+            end_regression = pd.Period("2019-10-01", freq=full_freq)
 
     recent = series[series.index >= start_regression]
     projection = get_projection(recent, end_regression)
@@ -545,13 +548,15 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
         + f"Projection from {start_regression} to {end_regression}. "
     )
 
+    if DROPNA not in kwargs:
+        kwargs[DROPNA] = True
+    
     line_plot(
         data_set,
         color=[COLOR_AMBER, COLOR_BLUE],
         width=[NARROW_WIDTH, WIDE_WIDTH],
         style=["--", "-"],
         legend=LEGEND_SET,
-        dropna=True,
         **kwargs,
     )
 
