@@ -25,6 +25,7 @@ import io
 import re
 import zipfile
 from pathlib import Path
+from typing import Callable, Any
 
 # analytical imports
 import arrow
@@ -33,6 +34,13 @@ from bs4 import BeautifulSoup
 
 # local imports
 import common
+from plotting import (
+    recalibrate,
+    seas_trend_plot,
+    line_plot,
+    abbreviate,
+    LEGEND_SET,
+)
 
 # --- ABS catalgue map - these are the possible downloads we know about
 ABS_data_map: dict[str, dict[str, str]] = {
@@ -229,6 +237,9 @@ def get_meta_constants() -> tuple[str, str, str, str, str]:
     type_col = "Series Type"
     unit_col = "Unit"
     return did_col, id_col, table_col, type_col, unit_col
+
+
+did_col, id_col, table_col, type_col, unit_col = get_meta_constants()
 
 
 # public
@@ -643,13 +654,52 @@ def get_ABS_meta_and_data(
 
 # --- identify the specific data series from the meta data DataFrame
 # public
+def find_rows(
+    meta: pd.DataFrame,
+    search_terms: dict[str, str],
+    exact: bool = False,
+    regex: bool = False,
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """Extract from meta the rows that match the search_terms.
+    Arguments:
+     - meta - pandas DataFrame of metadata from the ABS
+     - search_terms - dictionary - {search_phrase: meta_column_name}
+     - exact - bool - whether to match with == or .str.contains()
+     - regex - bool - for .str.contains() - use regulare expressions
+     - verbose - bool - print additional information when searching.
+    Returns a pandas DataFrame (subseted from meta):"""
+
+    meta_select = meta.copy()
+    for phrase, column in search_terms.items():
+        if verbose:
+            print(
+                f"Searching {len(meta_select)}: " f"term: {phrase} in-column: {column}"
+            )
+        if exact or column == "Table":  # always match the table column exactly
+            meta_select = meta_select[meta_select[column] == phrase]
+        else:
+            meta_select = meta_select[
+                meta_select[column].str.contains(phrase, regex=regex)
+            ]
+    if verbose:
+        print(len(meta_select))
+
+    if len(meta_select) == 0:
+        print("Nothing selected?")
+        return None
+
+    return meta_select
+
+
+# public
 def find_id(
     meta: pd.DataFrame,
     search_terms: dict[str, str],
     exact=False,
     verbose: bool = False,
     validate_unique: bool = True,
-) -> tuple[str]:
+) -> tuple[str, str]:
     """Get the ABS series identifier that matches the given
     search-terms. This is a more generalised search function than
     get_identifier() below.
@@ -663,20 +713,7 @@ def find_id(
      - the ABS Series Identifier - str - which ws found using the search terms
      - units - str - unit of measurement."""
 
-    meta_select = meta.copy()
-    for phrase, column in search_terms.items():
-        if verbose:
-            print(
-                f"Searching {len(meta_select)}: " f"term: {phrase} in-column: {column}"
-            )
-        if exact or column == "Table":  # always match the table column exactly
-            meta_select = meta_select[meta_select[column] == phrase]
-        else:
-            meta_select = meta_select[
-                meta_select[column].str.contains(phrase, regex=False)
-            ]
-    if verbose:
-        print(len(meta_select))
+    meta_select = find_rows(meta, search_terms, exact, verbose)
     if verbose and len(meta_select) != 1:
         print(meta_select)
     if validate_unique:
@@ -712,3 +749,181 @@ def get_identifier(
     }
 
     return find_id(meta, search, exact=True, verbose=verbose)
+
+
+# --- simplified plotting of ABS data ...
+# public
+def iudts_from_row(row: pd.Series) -> tuple[str, str, str, str, str]:
+    return (row[id_col], row[unit_col], row[did_col], row[table_col], row[type_col])
+
+
+def longest_common_prefex(strings: list[str]) -> str:
+    num_strings: int = len(strings)
+
+    # trivial cases
+    if num_strings == 0:
+        return ""
+    if num_strings == 1:
+        return strings[0]
+
+    # harder cases
+    broken = False
+    for i in range(0, len(strings[0]) + 1):
+        if i == len(strings[0]):
+            break
+        for j in range(1, num_strings):
+            if i >= len(strings[j]) or strings[0][i] != strings[j][i]:
+                broken = True
+                break
+        if broken:
+            break
+
+    return strings[0][:i]
+
+
+def plot_rows_collectively(
+    meta: pd.DataFrame,
+    abs: dict[str, pd.DataFrame],
+    selector: dict[str, str],
+    regex=False,  # passed to find_rows()
+    verbose: bool = False,  # passed to find_rows()
+    **kwargs: dict[str, Any],  # passed to plotting function
+) -> None:
+    """Produce an collective/single chart covering each row
+    selected from the meta data with selector.
+    Agruments:
+    - meta - pd.DataFrame - table of ABS meta data.
+    - abs - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - selector - dict - used with find_rows() to select rows from meta
+    - regex - bool - used with selector in find_rows()
+    - verbose - bool - used for feedback from find_rows()
+    - **kwargs - arguments passed to plotting function."""
+
+    rows = find_rows(meta, selector, regex=regex, verbose=verbose)
+    if rows is None:
+        return None
+
+    frame = pd.DataFrame()
+    for index, row in rows.iterrows():
+        id, units, did, table, series_type = iudts_from_row(row)
+        name = did.replace(" ;  ", ": ").replace(" ;", "")
+        frame[name] = abs[table][id]
+
+    frame, units = recalibrate(frame, units)
+
+    columns = frame.columns.to_list()
+    title = longest_common_prefex(columns)
+    renamer = {x: x.replace(title, "") for x in columns}
+    frame = frame.rename(columns=renamer)
+    renamer = {x: abbreviate(x) for x in frame.columns}
+    frame = frame.rename(columns=renamer)
+
+    line_plot(
+        frame,
+        title=title,  # final comma is tuple operator
+        ylabel=units,
+        legend={**LEGEND_SET, "ncols": 2},
+        **kwargs,
+    )
+    # end plot_rows_collectively()
+
+
+def plot_rows_individually(
+    meta: pd.DataFrame,
+    abs: dict[str, pd.DataFrame],
+    selector: dict[str, str],
+    plot_function: Callable[[pd.Series, ...], None],
+    regex=False,  # passed to find_rows()
+    verbose: bool = False,  # passed to find_rows()
+    **kwargs: dict[str, Any],  # passed to plotting function
+) -> None:
+    """Produce an single chart for each row selected from
+    the meta data with selector.
+    Agruments:
+    - meta - pd.DataFrame - table of ABS meta data.
+    - abs - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - selector - dict - used with find_rows() to select rows from meta
+    - plot_function - callable - for plotting a series of dara
+    - regex - bool - used with selector in find_rows()
+    - verbose - bool - used for feedback from find_rows()
+    - **kwargs - arguments passed to plotting function."""
+
+    rows = find_rows(meta, selector, regex=regex, verbose=verbose)
+    for index, row in rows.iterrows():
+        id, units, did, table, series_type = iudts_from_row(row)
+        series, units = recalibrate(abs[table][id], units)
+        series.name = f"{series_type} series"
+
+        plot_function(
+            series,
+            title=did.replace(" ;  ", ": ").replace(" ;", ""),
+            ylabel=units,
+            **kwargs,
+        )
+
+
+def plot_rows_seas_trend(
+    meta: pd.DataFrame,
+    abs: dict[str, pd.DataFrame],
+    selector: dict[str, str],
+    regex=False,  # passed to find_rows()
+    verbose: bool = False,  # passed to find_rows()
+    **kwargs: dict[str, Any],  # passed to plotting function
+) -> None:
+    """Produce an seasonal/Trend chart for the rows selected from
+    the metat data with selector.
+    Agruments:
+    - meta - pd.DataFrame - table of ABS meta data.
+    - abs - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - selector - dict - used with find_rows() to select rows from meta
+      this needs to select both a Trend and Seasonally Adjusted row, and
+      must exclude the "Series Type" column
+    - regex - bool - used with selector in find_rows()
+    - verbose - bool - used for feedback from find_rows()
+    - **kwargs - arguments passed to plotting function."""
+
+    if type_col in selector.values():
+        print(f'Check: unexpected column "{type_col}" in the selector')
+        return None
+
+    sa = find_rows(
+        meta,
+        {**selector, "Seasonally Adjusted": type_col},
+        regex=regex,
+        verbose=verbose,
+    )
+    trend = find_rows(
+        meta, {**selector, "Trend": type_col}, regex=regex, verbose=verbose
+    )
+
+    if len(trend) != len(sa):
+        print("The number of Trend and Seasonally Adjusted rows do not match")
+        return None
+
+    if not trend[did_col].is_unique or not sa[did_col].is_unique:
+        print("Data item descriptions are not unique")
+        return None
+
+    for did in trend[did_col]:
+        trend_row = trend[trend[did_col] == did]
+        sa_row = sa[sa[did_col] == did]
+
+        assert len(trend_row) == 1 and len(sa_row) == 1
+        trend_row, sa_row = trend_row.iloc[0], sa_row.iloc[0]
+
+        t_id, t_units, t_did, t_table, t_series_type = iudts_from_row(trend_row)
+        s_id, s_units, s_did, s_table, s_series_type = iudts_from_row(sa_row)
+        assert t_units == s_units
+
+        frame = pd.DataFrame(
+            [abs[s_table][s_id], abs[t_table][t_id]],
+            index=["Seasonally adjusted", "Trend"],
+        ).T
+        frame, units = recalibrate(frame, s_units)
+
+        seas_trend_plot(
+            frame,
+            title=did.replace(" ;  ", ": ").replace(" ;", ""),
+            ylabel=units,
+            **kwargs,
+        )

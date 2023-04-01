@@ -432,7 +432,9 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
         for i, p in enumerate(recent.columns):
             if recent[p].isna().all():
                 continue
-            series = recent[p].dropna() if DROPNA in swce and swce[DROPNA] else recent[p]
+            series = (
+                recent[p].dropna() if DROPNA in swce and swce[DROPNA] else recent[p]
+            )
             axes = series.plot(
                 ls=swce[STYLE][i],
                 lw=swce[WIDTH][i],
@@ -461,7 +463,7 @@ def seas_trend_plot(data: pd.DataFrame, **kwargs) -> None:
 
     if DROPNA not in kwargs:
         kwargs[DROPNA] = True
-    
+
     line_plot(
         data,
         width=widths,
@@ -550,7 +552,7 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
 
     if DROPNA not in kwargs:
         kwargs[DROPNA] = True
-    
+
     line_plot(
         data_set,
         color=[COLOR_AMBER, COLOR_BLUE],
@@ -625,6 +627,7 @@ def plot_growth(
     annual: pd.Series,
     periodic: pd.Series,
     from_: str | pd.Timestamp | pd.Period | None = None,
+    # Note: from_ is neither a list nor a tuple ...
 ) -> None | plt.Axes:
     """Plot a bar and line percentage growth chart.
     Both pandas Series should have a quarterly or monthly
@@ -686,20 +689,31 @@ def plot_growth(
 
 
 def plot_growth_finalise(
-    annual: pd.Series, periodic: pd.Series, from_: pd.Period | None = None, **kwargs
+    annual: pd.Series,
+    periodic: pd.Series,
+    from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
+    **kwargs,
 ) -> None:
-    """Plot growth and finalise the plot."""
+    """Plot growth and finalise the plot. Repeat if multiple starting
+    times in the from_ argument."""
 
-    axes = plot_growth(
-        annual,
-        periodic,
-        from_,
-    )
-    if axes:
-        kwargs[LEGEND] = LEGEND_SET if LEGEND not in kwargs else kwargs[LEGEND]
-        if "ylabel" not in kwargs:
-            kwargs["ylabel"] = "Per cent"
-        finalise_plot(axes, **kwargs)
+    if not isinstance(from_, list) and not isinstance(from_, tuple):
+        from_ = (from_,)
+
+    kwargs[LEGEND] = LEGEND_SET if LEGEND not in kwargs else kwargs[LEGEND]
+    tag_stem = kwargs["tag"] if "tag" in kwargs else ""
+    if "ylabel" not in kwargs:
+        kwargs["ylabel"] = "Per cent Growth"
+
+    for i, start in enumerate(from_):
+        axes = plot_growth(
+            annual,
+            periodic,
+            start,
+        )
+        if axes:
+            kwargs["tag"] = f"{tag_stem}-{i}"
+            finalise_plot(axes, **kwargs)
 
 
 def calc_growth(
@@ -714,6 +728,29 @@ def calc_growth(
     for periods in ppy, 1:
         returnable.append(series.pct_change(periods=periods) * 100)
     return returnable  # [annual, periodic]
+
+
+def calc_and_plot_growth(
+    series: pd.Series,
+    from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
+    **kwargs,
+) -> None:
+    # kludge for when called by abs_data_capture.plot_rows_individually()
+    if "ylabel" in kwargs:
+        if (
+            "percent" not in kwargs["ylabel"].lower()
+            or "per cent" not in kwargs["ylabel"].lower()
+        ):
+            print(f"Warning: removing ylabel of {kwargs['ylabel']}")
+            del kwargs["ylabel"]
+
+    growth = calc_growth(series)
+
+    plot_growth_finalise(
+        *growth,
+        from_,
+        **kwargs,
+    )
 
 
 # --- data recalibration
