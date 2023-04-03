@@ -743,9 +743,9 @@ def get_identifier(
          - units - string - unit of measurement."""
 
     search = {
-        table: "Table",
-        series_type: "Series Type",
-        data_item_description: "Data Item Description",
+        table: table_col,
+        series_type: type_col,
+        data_item_description: did_col,
     }
 
     return find_id(meta, search, exact=True, verbose=verbose)
@@ -852,7 +852,7 @@ def plot_rows_individually(
     for index, row in rows.iterrows():
         id, units, did, table, series_type = iudts_from_row(row)
         series, units = recalibrate(abs[table][id], units)
-        series.name = f"{series_type} series"
+        series.name = f"{series_type.capitalize()} series"
 
         plot_function(
             series,
