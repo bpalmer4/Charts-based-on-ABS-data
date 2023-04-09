@@ -20,7 +20,7 @@ import statsmodels.formula.api as smf
 
 DEFAULT_FILE_TYPE = "png"
 DEFAULT_FIG_SIZE = (9, 4.5)
-DEFAULT_DPI = 125
+DEFAULT_DPI = 150
 DEFAULT_CHART_DIR = "."
 
 COLOR_AMBER = "darkorange"
