@@ -80,6 +80,12 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "business-indicators/business-indicators-australia/"
         "latest-release",
     },
+    "5682": {
+        "Name": "Monthly Household Spending Indicator",
+        "URL": "https://www.abs.gov.au/statistics/economy/"
+        "finance/monthly-household-spending-indicator/"
+        "latest-release",
+    },
     "6150": {
         "Name": "Labour Account, Australia",
         "URL": "https://www.abs.gov.au/statistics/"
