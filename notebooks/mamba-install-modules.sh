@@ -1,7 +1,8 @@
 mamba install pandas numpy
 mamba install matplotlib seaborn 
 mamba install statsmodels scipy scikit-learn nltk
-mamba install jupyter jupyterlab nodejs
+mamba install jupyter jupyterlab nodejs 
+mamba install jupyterlab-spellchecker jupyterlab_code_formatter
 mamba install pyarrow parquet fastparquet h5py
 mamba install watermark
 mamba install lxml bs4
