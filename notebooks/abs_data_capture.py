@@ -128,6 +128,12 @@ ABS_data_map: dict[str, dict[str, str]] = {
         "economy/price-indexes-and-inflation/"
         "producer-price-indexes-australia/latest-release",
     },
+    "6467": {
+        "Name": "Selected Living Cost Indexes, Australiaa",
+        "URL": "https://www.abs.gov.au/statistics/"
+        "economy/price-indexes-and-inflation/"
+        "selected-living-cost-indexes-australia/latest-release",
+    },
     "6484": {
         "Name": "Monthly CPI Indicator, Australia",
         "URL": "https://www.abs.gov.au/statistics/"
