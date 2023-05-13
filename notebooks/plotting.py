@@ -299,6 +299,7 @@ STARTS, TAGS = "starts", "tags"
 STYLE, WIDTH, COLOR = "style", "width", "color"
 ALPHA, LEGEND, DROPNA = "alpha", "legend", "dropna"
 DRAWSTYLE, MARKER = "drawstyle", "marker"
+MARKERSIZE = "markersize"
 
 
 # private
@@ -376,6 +377,7 @@ def _get_style_width_color_etc(n, **kwargs) -> tuple[dict[str, list], dict]:
         ALPHA: 1.0,
         DRAWSTYLE: None,
         MARKER: None,
+        MARKERSIZE: 10,
     }
     swce, kwargs = _apply_defaults(n, defaults, kwargs)
 
@@ -441,6 +443,7 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
                 color=swce[COLOR][i],
                 alpha=swce[ALPHA][i],
                 marker=swce[MARKER][i],
+                ms=swce[MARKERSIZE][i],
                 drawstyle=swce[DRAWSTYLE][i],
                 ax=axes,
             )
