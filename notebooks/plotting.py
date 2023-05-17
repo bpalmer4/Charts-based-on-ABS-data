@@ -33,35 +33,40 @@ WIDE_WIDTH = 2.0
 LEGEND_FONTSIZE = "x-small"
 LEGEND_SET = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 
-state_colors = {
-    "NSW": "lightblue",
-    "New South Wales": "lightblue",
-    "Vic": "navy",
-    "Victoria": "navy",
-    "Qld": "maroon",
-    "Queensland": "maroon",
-    "SA": "red",
-    "South Australia": "red",
-    "WA": "gold",
-    "Western Australia": "gold",
-    "Tas": "green",
-    "Tasmania": "green",
-    "NT": "lightsalmon",  # ochre?
-    "Northern Territory": "lightsalmon",
-    "ACT": "royalblue",
-    "Australian Capital Territory": "royalblue",
-}
 
-state_abbr = {
-    "New South Wales": "NSW",
-    "Victoria": "Vic",
-    "Queensland": "Qld",
-    "South Australia": "SA",
-    "Western Australia": "WA",
-    "Tasmania": "Tas",
-    "Northern Territory": "NT",
-    "Australian Capital Territory": "ACT",
-}
+def _states():
+    """Abbreviation names and standardised state colors."""
+    
+    state_colors = {
+        "NSW": "lightblue",
+        "Vic": "navy",
+        "Qld": "maroon",
+        "SA": "red",
+        "WA": "gold",
+        "Tas": "green",
+        "NT": "lightsalmon",  # ochre?
+        "ACT": "royalblue",
+    }
+
+    state_abbr = {
+        "New South Wales": "NSW",
+        "Victoria": "Vic",
+        "Queensland": "Qld",
+        "South Australia": "SA",
+        "Western Australia": "WA",
+        "Tasmania": "Tas",
+        "Northern Territory": "NT",
+        "Australian Capital Territory": "ACT",
+    }
+
+    for name, abbr in state_abbr.items():
+        state_colors[name] = state_colors[abbr]
+        state_colors[name.lower()] = state_colors[abbr]
+        state_colors[abbr.lower()] = state_colors[abbr]
+
+    return state_colors, state_abbr
+
+state_colors, state_abbr = _states()
 
 
 def abbreviate(name: str) -> str:
