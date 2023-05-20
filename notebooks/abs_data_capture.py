@@ -829,12 +829,17 @@ def plot_rows_collectively(
     frame = frame.rename(columns=renamer)
     renamer = {x: abbreviate(x) for x in frame.columns}
     frame = frame.rename(columns=renamer)
-
+    
+    legend = {**LEGEND_SET, "ncols": 2} 
+    if "legend" in kwargs:
+        legend |= kwargs["legend"]
+        del kwargs["legend"]
+    
     line_plot(
         frame,
         title=title,  # final comma is tuple operator
         ylabel=units,
-        legend={**LEGEND_SET, "ncols": 2},
+        legend=legend,
         **kwargs,
     )
     # end plot_rows_collectively()
