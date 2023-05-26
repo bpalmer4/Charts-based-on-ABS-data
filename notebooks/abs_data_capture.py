@@ -503,13 +503,10 @@ def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes | N
 
 # private
 def _get_meta(
-    excel: pd.ExcelFile, tab_num: str, tab_desc: str, meta: pd.DataFrame
+    excel: pd.ExcelFile, tab_num: str, tab_desc: str
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Capture the metadata from the Index sheet of an ABS excel file.
-    Returns a tuple of two DataFrames. The first Dataframe (meta) is the
-    cumulative meta data for all excel files in an ABS zip download.
-    The second dataframe is the meta data specific to the current
-    excel file."""
+    Returns a DataFrame specific to the current excel file."""
 
     file_meta = excel.parse(
         "Index",
@@ -528,11 +525,7 @@ def _get_meta(
     )
     file_meta["Table"] = tab_num.strip()
     file_meta["Table Description"] = tab_desc
-    if meta is None:
-        meta = file_meta
-    else:
-        meta = pd.concat([meta, file_meta])
-    return meta, file_meta
+    return file_meta
 
 
 # private
@@ -625,7 +618,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
             tab_desc = ".".join(splat[1:]).strip()
 
             # get the metadata
-            meta, file_meta = _get_meta(excel, tab_num, tab_desc, meta)
+            file_meta = _get_meta(excel, tab_num, tab_desc)
 
             # establish freq - used for making the index a PeriodIndex
             freq = file_meta["Freq."].str.lower().unique()
@@ -635,8 +628,17 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
             if freq is None:
                 print(f"Unrecognised data frequency for {table}")
 
-            # get the actual data
-            returnable[tab_num] = _get_data(excel, meta, freq, verbose)
+            # fix tabulation when ABS uses the same table numbers for Qrtly and Mthly data
+            # which it does, for example, in the experimental household spending indicator
+            if tab_num in returnable:
+                tab_num += freq
+                file_meta["Table"] = tab_num
+                
+            # aggregate the meta data
+            meta = pd.concat([meta, file_meta])
+                
+            # add the table to the returnable dictionary
+            returnable[tab_num] = _get_data(excel, file_meta, freq, verbose)
 
     returnable[_META_DATA] = meta
     return returnable
