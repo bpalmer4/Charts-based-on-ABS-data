@@ -735,6 +735,7 @@ def calc_growth(
     if ppy is None:
         ppy = {"Q": 4, "M": 12}[series.index.freqstr[:1]]
     for periods in ppy, 1:
+        # think about: do we need a ffill() in the next line....
         returnable.append(series.pct_change(periods=periods) * 100)
     return returnable  # [annual, periodic]
 
@@ -832,25 +833,36 @@ def recalibrate(
 ) -> tuple[pd.Series | pd.DataFrame, str]:
     """Recalibrate a pandas Series or DataFrame."""
 
-    n = data.to_numpy().flatten()  #
-    if not _can_recalibrate(n, units, verbose):
-        return data, units
+    n = data.to_numpy().flatten()
+    money = False
+    if units.strip() == "$":
+        if verbose:
+            print("recalibrate() is wrking with money.")
+        money = True
+        units = "number"
 
-    while True:
-        maximum = np.nanmax(np.abs(n))
-        if maximum > 1000:
-            if _max_recalibrate in units.lower():
-                print("recalibrate() is not designed for very big units")
-                break
-            n, units = _do_recal(n, units, 3, truediv)
-            continue
-        if maximum < 1:
-            if _min_recalibrate in units.lower():
-                print("recalibrate() is not designed for very small units")
-                break
-            n, units = _do_recal(n, units, -3, mul)
-            continue
-        break
+    if _can_recalibrate(n, units, verbose):
+        while True:
+            maximum = np.nanmax(np.abs(n))
+            if maximum > 1000:
+                if _max_recalibrate in units.lower():
+                    print("recalibrate() is not designed for very big units")
+                    break
+                n, units = _do_recal(n, units, 3, truediv)
+                continue
+            if maximum < 1:
+                if _min_recalibrate in units.lower():
+                    print("recalibrate() is not designed for very small units")
+                    break
+                n, units = _do_recal(n, units, -3, mul)
+                continue
+            break
+
+    if money:
+        if units == "number":
+            units = "$"
+        else:
+            units = f"{units} $" 
 
     restore_pandas = pd.DataFrame if len(data.shape) == 2 else pd.Series
     result = restore_pandas(n.reshape(data.shape))

@@ -602,7 +602,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
             # We get a new pandas DataFrame for every excel file.
 
             # get the zipfile into pandas
-            excel = pd.ExcelFile(zipped.read(element.filename))
+            excel = pd.ExcelFile(io.BytesIO(zipped.read(element.filename)))
 
             # get table information
             if "Index" not in excel.sheet_names:
