@@ -839,7 +839,7 @@ def recalibrate(
         if verbose:
             print("recalibrate() is wrking with money.")
         money = True
-        units = "number"
+        units = "number $"
 
     if _can_recalibrate(n, units, verbose):
         while True:
@@ -858,11 +858,8 @@ def recalibrate(
                 continue
             break
 
-    if money:
-        if units == "number":
-            units = "$"
-        else:
-            units = f"{units} $" 
+    if money and "number" in units:
+        units = units.replace("number", "").strip()
 
     restore_pandas = pd.DataFrame if len(data.shape) == 2 else pd.Series
     result = restore_pandas(n.reshape(data.shape))
