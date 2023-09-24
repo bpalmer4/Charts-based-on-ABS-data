@@ -228,7 +228,7 @@ def get_plot_constants(meta: pd.DataFrame) -> tuple[pd.Timestamp, list, list]:
     - used in a loop to produce a plot of the full
       series, and a plot of the recent period."""
 
-    recency_period = 5  # years
+    recency_period = 7  # years
     recency_extra = 3  # months
     today = pd.Timestamp("today")
     reasonable_end = meta["Series End"][meta["Series End"] <= today]
