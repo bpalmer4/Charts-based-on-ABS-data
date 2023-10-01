@@ -16,8 +16,6 @@ import pandas as pd
 import statsmodels.formula.api as smf
 
 # --- constants - default settings
-
-
 DEFAULT_FILE_TYPE = "png"
 DEFAULT_FIG_SIZE = (9, 4.5)
 DEFAULT_DPI = 300
@@ -34,37 +32,37 @@ LEGEND_FONTSIZE = "x-small"
 LEGEND_SET = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 
 
-def _states():
-    """Abbreviation names and standardised state colors."""
-    
-    state_colors = {
-        "NSW": "lightblue",
-        "Vic": "navy",
-        "Qld": "maroon",
-        "SA": "red",
-        "WA": "gold",
-        "Tas": "green",
-        "NT": "lightsalmon",  # ochre?
-        "ACT": "royalblue",
+# --- standard Australian state colors and abbreviations
+
+
+def _states() -> tuple[dict[str, str], dict[str, str]]:
+    """Generate standardised state abbreviations and colors.
+    Returns a tuple of two dictionaries. The first dictionary
+    maps state names and abbreviations to their standard colors.
+    The second dictionary maps state names to their
+    standard abbreviations."""
+
+    state_data = {
+        "New South Wales": ("NSW", "deepskyblue"),
+        "Victoria": ("Vic", "navy"),
+        "Queensland": ("Qld", "maroon"),
+        "South Australia": ("SA", "red"),
+        "Western Australia": ("WA", "gold"),
+        "Tasmania": ("Tas", "green"),
+        "Northern Territory": ("NT", "#CC7722"),  # ochre
+        "Australian Capital Territory": ("ACT", "royalblue"),
     }
 
-    state_abbr = {
-        "New South Wales": "NSW",
-        "Victoria": "Vic",
-        "Queensland": "Qld",
-        "South Australia": "SA",
-        "Western Australia": "WA",
-        "Tasmania": "Tas",
-        "Northern Territory": "NT",
-        "Australian Capital Territory": "ACT",
-    }
-
-    for name, abbr in state_abbr.items():
-        state_colors[name] = state_colors[abbr]
-        state_colors[name.lower()] = state_colors[abbr]
-        state_colors[abbr.lower()] = state_colors[abbr]
+    state_colors, state_abbr = {}, {}
+    for name, (abbr, color) in state_data.items():
+        state_abbr[name] = abbr
+        state_colors[name] = color
+        state_colors[name.lower()] = color
+        state_colors[abbr] = color
+        state_colors[abbr.lower()] = color
 
     return state_colors, state_abbr
+
 
 state_colors, state_abbr = _states()
 
@@ -76,15 +74,16 @@ def abbreviate(name: str) -> str:
 # --- clear_chart_dir()
 
 
-def clear_chart_dir(chart_dir):
-    """Remove all .png files from the chart_dir."""
+def clear_chart_dir(chart_dir: str) -> None:
+    """Remove all graph-image files from the chart_dir."""
 
-    for fs_object in Path(chart_dir).glob("*.png"):
+    for fs_object in Path(chart_dir).glob(f"*.{DEFAULT_FILE_TYPE}"):
         if fs_object.is_file():
             fs_object.unlink()
 
 
 # --- finalise_plot()
+
 
 # global chart_dir - modified by set_chart_dir() below
 _chart_dir: str | None = DEFAULT_CHART_DIR
@@ -118,7 +117,7 @@ _ACCEPTABLE_KWARGS = frozenset(
 
 
 # private
-def _check_kwargs(**kwargs):
+def _check_kwargs(**kwargs) -> None:
     """Report any unrecognised keyword arguments."""
 
     for k in kwargs:
@@ -151,7 +150,7 @@ def _apply_splat_kwargs(axes, settings: tuple, **kwargs) -> None:
 
 
 # private
-def _apply_kwargs(axes, **kwargs):
+def _apply_kwargs(axes, **kwargs) -> None:
     """Apply settings found in kwargs."""
 
     def check_kwargs(name):
@@ -226,6 +225,11 @@ def _save_to_file(fig, **kwargs) -> None:
 
 
 # public
+def get_possible_kwargs() -> list:
+    return list(_ACCEPTABLE_KWARGS)
+
+
+# public
 def set_chart_dir(chart_dir: str | None) -> None:
     """A function to set a global chart directory for finalise_plot(),
     so that it does not need to be included as an argument in each
@@ -236,7 +240,7 @@ def set_chart_dir(chart_dir: str | None) -> None:
 
 
 # public
-def finalise_plot(axes, **kwargs):
+def finalise_plot(axes, **kwargs) -> None:
     """A function to finalise and save plots to the file system. The filename
     for the saved plot is constructed from the chart_dir, the plot's title,
     any specified tag text, and the file_type for the plot.
