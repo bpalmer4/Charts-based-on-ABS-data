@@ -1,4 +1,7 @@
-"""A set of functions for plotting with matplotlib."""
+"""A set of functions for plotting with matplotlib.
+   The intent is to reduce repetitive code, while 
+   maintaining a consistent look and feel for chart
+   outputs. """
 
 # --- imports
 # system imports
@@ -35,6 +38,7 @@ LEGEND_SET = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 # --- standard Australian state colors and abbreviations
 
 
+# private
 def _states() -> tuple[dict[str, str], dict[str, str]]:
     """Generate standardised state abbreviations and colors.
     Returns a tuple of two dictionaries. The first dictionary
@@ -53,21 +57,24 @@ def _states() -> tuple[dict[str, str], dict[str, str]]:
         "Australian Capital Territory": ("ACT", "royalblue"),
     }
 
-    state_colors, state_abbr = {}, {}
-    for name, (abbr, color) in state_data.items():
-        state_abbr[name] = abbr
-        state_colors[name] = color
-        state_colors[name.lower()] = color
-        state_colors[abbr] = color
-        state_colors[abbr.lower()] = color
+    colors, abbreviations = {}, {}
+    for name, (abbreviation, color) in state_data.items():
+        abbreviations[name] = abbreviation
+        colors[name] = color
+        colors[name.lower()] = color
+        colors[abbreviation] = color
+        colors[abbreviation.lower()] = color
 
-    return state_colors, state_abbr
+    return colors, abbreviations
 
 
+# public
 state_colors, state_abbr = _states()
 
 
+# public
 def abbreviate(name: str) -> str:
+    """Abbreviate a state name. Returns an abbreviation."""
     return state_abbr.get(name, name)
 
 
@@ -150,6 +157,36 @@ def _apply_splat_kwargs(axes, settings: tuple, **kwargs) -> None:
 
 
 # private
+def _apply_annotations(axes, **kwargs) -> None:
+    """Set figure size and apply chart annotations."""
+
+    fig = axes.figure
+    fig_size = DEFAULT_FIG_SIZE if "figsize" not in kwargs else kwargs["figsize"]
+    fig.set_size_inches(*fig_size)
+
+    annotations = {
+        "rfooter": (0.99, 0.001, "right", "bottom"),
+        "lfooter": (0.01, 0.001, "left", "bottom"),
+        "rheader": (0.99, 0.999, "right", "top"),
+        "lheader": (0.01, 0.999, "left", "top"),
+    }
+
+    for annotation in _annotation_kwargs:
+        if annotation in kwargs:
+            x_pos, y_pos, h_align, v_align = annotations[annotation]
+            fig.text(
+                x_pos,
+                y_pos,
+                kwargs[annotation],
+                ha=h_align,
+                va=v_align,
+                fontsize=9,
+                fontstyle="italic",
+                color="#999999",
+            )
+
+
+# private
 def _apply_kwargs(axes, **kwargs) -> None:
     """Apply settings found in kwargs."""
 
@@ -158,30 +195,7 @@ def _apply_kwargs(axes, **kwargs) -> None:
 
     _apply_value_kwargs(axes, _value_kwargs, **kwargs)
     _apply_splat_kwargs(axes, _splat_kwargs, **kwargs)
-
-    fig = axes.figure
-    fs = DEFAULT_FIG_SIZE if "figsize" not in kwargs else kwargs["figsize"]
-    fig.set_size_inches(*fs)
-
-    annotations = {
-        "rfooter": (0.99, 0.001, "right", "bottom"),
-        "lfooter": (0.01, 0.001, "left", "bottom"),
-        "rheader": (0.99, 0.999, "right", "top"),
-        "lheader": (0.01, 0.999, "left", "top"),
-    }
-    for annotation in _annotation_kwargs:
-        if annotation in kwargs:
-            x, y, ha, va = annotations[annotation]
-            fig.text(
-                x,
-                y,
-                kwargs[annotation],
-                ha=ha,
-                va=va,
-                fontsize=9,
-                fontstyle="italic",
-                color="#999999",
-            )
+    _apply_annotations(axes, **kwargs)
 
     if check_kwargs("zero_y"):
         bottom, top = axes.get_ylim()
@@ -192,8 +206,8 @@ def _apply_kwargs(axes, **kwargs) -> None:
             axes.set_ylim(top=adj)
 
     if check_kwargs("y0"):
-        lo, hi = axes.get_ylim()
-        if lo < 0 < hi:
+        low, high = axes.get_ylim()
+        if low < 0 < high:
             axes.axhline(y=0, lw=0.75, c="#555555")
 
 
@@ -225,7 +239,8 @@ def _save_to_file(fig, **kwargs) -> None:
 
 
 # public
-def get_possible_kwargs() -> list:
+def get_possible_kwargs() -> list[str]:
+    """Return a list of possible kwargs for finalise_plot()."""
     return list(_ACCEPTABLE_KWARGS)
 
 
@@ -235,7 +250,7 @@ def set_chart_dir(chart_dir: str | None) -> None:
     so that it does not need to be included as an argument in each
     call to finalise_plot()."""
 
-    global _chart_dir
+    global _chart_dir  # Yes, this is ugly.
     _chart_dir = chart_dir
 
 
@@ -316,24 +331,26 @@ def _apply_defaults(list_len: int, defaults: dict, kwargs: dict) -> tuple[dict, 
     """Get arguments from kwargs, and apply a default from the
     defaults dict if not there."""
 
-    r = {}  # return vehicle
+    returnable = {}  # return vehicle
     for option, default in defaults.items():
         if option in kwargs:
             # get the argument, ensure it is in a list
-            r[option] = kwargs[option]
-            if not isinstance(r[option], list) and not isinstance(r[option], tuple):
-                r[option] = [r[option]]  # str -> list[str]
+            returnable[option] = kwargs[option]
+            if not isinstance(returnable[option], list) and not isinstance(
+                returnable[option], tuple
+            ):
+                returnable[option] = [returnable[option]]  # str -> list[str]
             del kwargs[option]
         else:
             # use the default argument
-            r[option] = default if isinstance(default, list) else [default]
+            returnable[option] = default if isinstance(default, list) else [default]
 
         # repeat list if not long enough for all lines to be plotted
-        if len(r[option]) < list_len and list_len > 1:
-            multiplier = (list_len // len(r[option])) + 1
-            r[option] = r[option] * multiplier
+        if len(returnable[option]) < list_len and list_len > 1:
+            multiplier = (list_len // len(returnable[option])) + 1
+            returnable[option] = returnable[option] * multiplier
 
-    return r, kwargs
+    return returnable, kwargs
 
 
 # private
@@ -357,7 +374,7 @@ def _get_multi_starts(**kwargs) -> tuple[dict[str, list], dict]:
     return stags, kwargs
 
 
-def _get_style_width_color_etc(n, **kwargs) -> tuple[dict[str, list], dict]:
+def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], dict]:
     """Get the plot-line attributes arguemnts."""
 
     colours = {
@@ -377,7 +394,7 @@ def _get_style_width_color_etc(n, **kwargs) -> tuple[dict[str, list], dict]:
         ],  # Tol
     }
     k = colours.keys()
-    minimum = min(i for i in list(k) + [float("inf")] if i >= n)
+    minimum = min(i for i in list(k) + [float("inf")] if i >= item_count)
     n_colours = minimum if minimum is not float("inf") else max(k)
     defaults = {  # defaults
         STYLE: "-",
@@ -388,10 +405,10 @@ def _get_style_width_color_etc(n, **kwargs) -> tuple[dict[str, list], dict]:
         MARKER: None,
         MARKERSIZE: 10,
     }
-    swce, kwargs = _apply_defaults(n, defaults, kwargs)
+    swce, kwargs = _apply_defaults(item_count, defaults, kwargs)
 
     swce[LEGEND] = None if LEGEND not in kwargs else kwargs[LEGEND]
-    if swce[LEGEND] is None and n > 1:
+    if swce[LEGEND] is None and item_count > 1:
         swce[LEGEND] = LEGEND_SET
     if LEGEND in kwargs:
         del kwargs[LEGEND]
@@ -422,7 +439,7 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
       argument to finalise_plot cannot be used. Use tags instead.]"""
 
     # sanity checks
-    assert isinstance(data, pd.Series) or isinstance(data, pd.DataFrame)
+    assert isinstance(data, (pd.Series, pd.DataFrame))
     assert isinstance(data.index, pd.PeriodIndex)
 
     # really we are only plotting DataFrames
@@ -430,9 +447,9 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
         data = pd.DataFrame(data)
 
     # get extra plotting parameters - not passed to finalise_plot()
-    n = len(data.columns)
+    item_count = len(data.columns)
     stags, kwargs = _get_multi_starts(**kwargs)  # time horizons
-    swce, kwargs = _get_style_width_color_etc(n, **kwargs)  # lines
+    swce, kwargs = _get_style_width_color_etc(item_count, **kwargs)  # lines
 
     # And plot
     for start, tag in zip(stags[STARTS], stags[TAGS]):
@@ -440,11 +457,13 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
             start = pd.Period(start, freq=data.index.freq)
         recent = data[data.index >= start] if start else data
         axes = None
-        for i, p in enumerate(recent.columns):
-            if recent[p].isna().all():
+        for i, column in enumerate(recent.columns):
+            if recent[column].isna().all():
                 continue
             series = (
-                recent[p].dropna() if DROPNA in swce and swce[DROPNA] else recent[p]
+                recent[column].dropna()
+                if DROPNA in swce and swce[DROPNA]
+                else recent[column]
             )
             axes = series.plot(
                 ls=swce[STYLE][i],
@@ -663,9 +682,9 @@ def plot_growth(
     period, adjustment = {
         "Q": ("Quarterly", 45),
         "M": ("Monthly", 15),
-    }.get(p := frame.index.freqstr[:1], (None, None))
+    }.get(df_period := frame.index.freqstr[:1], (None, None))
     if period is None:
-        print(f"Unrecognised frequency: {p} :")
+        print(f"Unrecognised frequency: {df_period} :")
         return None
 
     # set index to the middle of the period for selection
@@ -677,12 +696,12 @@ def plot_growth(
     frame.index = frame.index + pd.Timedelta(days=adjustment)
 
     # plot
-    THICK_LINE_THRESHOLD = 24
+    thick_line_threshold = 24  # data items
     _, axes = plt.subplots()
     axes.plot(
         frame[frame.columns[0]].index,
         frame[frame.columns[0]].values,
-        lw=WIDE_WIDTH if len(frame) <= THICK_LINE_THRESHOLD else NARROW_WIDTH,
+        lw=WIDE_WIDTH if len(frame) <= thick_line_threshold else NARROW_WIDTH,
         color=COLOR_BLUE,
         label="Annual growth",
     )
@@ -749,6 +768,8 @@ def calc_and_plot_growth(
     from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
     **kwargs,
 ) -> None:
+    """Calculate and plot growth for a series."""
+
     # kludge for when called by abs_data_capture.plot_rows_individually()
     if "ylabel" in kwargs:
         if (
@@ -770,10 +791,10 @@ def calc_and_plot_growth(
 # --- data recalibration
 
 # private
-_min_recalibrate = "number"  # all lower case
-_max_recalibrate = "decillion"  # all lower case
+_MIN_RECALIBRATE = "number"  # all lower case
+_MAX_RECALIBRATE = "decillion"  # all lower case
 _keywords = {
-    _min_recalibrate.title(): 0,
+    _MIN_RECALIBRATE.title(): 0,
     "Thousand": 3,
     "Million": 6,
     "Billion": 9,
@@ -784,7 +805,7 @@ _keywords = {
     "Septillion": 24,
     "Octillion": 27,
     "Nonillion": 30,
-    _max_recalibrate.title(): 33,
+    _MAX_RECALIBRATE.title(): 33,
 }
 _r_keywords = {v: k for k, v in _keywords.items()}
 
@@ -800,15 +821,15 @@ def _find_calibration(units: str) -> str | None:
 
 
 # private
-def _can_recalibrate(n: np.ndarray, units: str, verbose: bool = False) -> bool:
-    if not np.issubdtype(n.dtype, np.number):
+def _can_recalibrate(flat_data: np.ndarray, units: str, verbose: bool = False) -> bool:
+    if not np.issubdtype(flat_data.dtype, np.number):
         print("recalibrate(): Non numeric input data")
         return False
     if _find_calibration(units) is None:
         if verbose:
             print(f"recalibrate(): Units not appropriately calibrated: {units}")
         return False
-    if n.max() <= 1000 and n.max() >= 1:
+    if flat_data.max() <= 1000 and flat_data.max() >= 1:
         if verbose:
             print("recalibrate(): No adjustments needed")
         return False
@@ -816,7 +837,7 @@ def _can_recalibrate(n: np.ndarray, units: str, verbose: bool = False) -> bool:
 
 
 # private
-def _do_recal(n, units, step, operator):
+def _do_recal(flat_data, units, step, operator):
     calibration = _find_calibration(units)
     factor = _keywords[calibration]
     if factor + step not in _r_keywords:
@@ -825,8 +846,8 @@ def _do_recal(n, units, step, operator):
     replacement = _r_keywords[factor + step]
     units = units.replace(calibration, replacement)
     units = units.replace(calibration.lower(), replacement)
-    n = operator(n, 1000)
-    return n, units
+    flat_data = operator(flat_data, 1000)
+    return flat_data, units
 
 
 # public
@@ -837,7 +858,7 @@ def recalibrate(
 ) -> tuple[pd.Series | pd.DataFrame, str]:
     """Recalibrate a pandas Series or DataFrame."""
 
-    n = data.to_numpy().flatten()
+    flat_data = data.to_numpy().flatten()
     money = False
     if units.strip() == "$":
         if verbose:
@@ -845,20 +866,20 @@ def recalibrate(
         money = True
         units = "number $"
 
-    if _can_recalibrate(n, units, verbose):
+    if _can_recalibrate(flat_data, units, verbose):
         while True:
-            maximum = np.nanmax(np.abs(n))
+            maximum = np.nanmax(np.abs(flat_data))
             if maximum > 1000:
-                if _max_recalibrate in units.lower():
+                if _MAX_RECALIBRATE in units.lower():
                     print("recalibrate() is not designed for very big units")
                     break
-                n, units = _do_recal(n, units, 3, truediv)
+                flat_data, units = _do_recal(flat_data, units, 3, truediv)
                 continue
             if maximum < 1:
-                if _min_recalibrate in units.lower():
+                if _MIN_RECALIBRATE in units.lower():
                     print("recalibrate() is not designed for very small units")
                     break
-                n, units = _do_recal(n, units, -3, mul)
+                flat_data, units = _do_recal(flat_data, units, -3, mul)
                 continue
             break
 
@@ -866,7 +887,7 @@ def recalibrate(
         units = units.replace("number", "").strip()
 
     restore_pandas = pd.DataFrame if len(data.shape) == 2 else pd.Series
-    result = restore_pandas(n.reshape(data.shape))
+    result = restore_pandas(flat_data.reshape(data.shape))
     result.index = data.index
     if len(data.shape) == 2:
         result.columns = data.columns
