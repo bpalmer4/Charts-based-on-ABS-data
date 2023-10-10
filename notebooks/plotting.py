@@ -1,5 +1,5 @@
 """A set of functions for plotting with matplotlib.
-   The intent is to reduce repetitive code, while 
+   The intent is to reduce repetitive code, while
    maintaining a consistent look and feel for chart
    outputs. """
 
@@ -827,7 +827,7 @@ def _can_recalibrate(flat_data: np.ndarray, units: str, verbose: bool = False) -
         return False
     if _find_calibration(units) is None:
         if verbose:
-            print(f"recalibrate(): Units not appropriately calibrated: {units}")
+            print("recalibrate(): Units not appropriately " f"calibrated: {units}")
         return False
     if flat_data.max() <= 1000 and flat_data.max() >= 1:
         if verbose:
