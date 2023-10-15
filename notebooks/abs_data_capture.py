@@ -39,6 +39,8 @@ from plotting import (
     seas_trend_plot,
     line_plot,
     abbreviate,
+    state_colors, 
+    state_abbr,
     LEGEND_SET,
 )
 
@@ -184,13 +186,13 @@ def _establish_cache_directory() -> str:
 
 
 _CACHE_DIR = _establish_cache_directory()
-
-
-# --- utility functions
-# public
 _META_DATA = "META_DATA"
 
 
+# --- utility functions
+
+
+# public
 def get_fs_constants(catalogue_id: str) -> tuple[str, str, str]:
     """Get file system constants for a catalogue ID."""
 
@@ -273,17 +275,7 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
             title = title.replace(f"{c} ;", "")
             lfooter += f"{c}. "
 
-    states = {
-        "New South Wales": "NSW",
-        "Victoria": "Vic.",
-        "Queensland": "Qld.",
-        "South Australia": "SA",
-        "Western Australia": "WA",
-        "Tasmania": "Tas.",
-        "Northern Territory": "NT",
-        "Australian Capital Territory": "ACT",
-    }
-    for s, abbr in states.items():
+    for s, abbr in state_abbr.items():
         title = title.replace(s, abbr)
 
     title = (
@@ -830,6 +822,7 @@ def plot_rows_collectively(
     renamer = {x: x.replace(title, "") for x in columns}
     frame = frame.rename(columns=renamer)
     renamer = {x: abbreviate(x) for x in frame.columns}
+    colours = [state_colors[x] for x in renamer.values()]
     frame = frame.rename(columns=renamer)
     
     legend = {**LEGEND_SET, "ncols": 2} 
@@ -842,6 +835,7 @@ def plot_rows_collectively(
         title=title,  # final comma is tuple operator
         ylabel=units,
         legend=legend,
+        color=colours,
         **kwargs,
     )
     # end plot_rows_collectively()
