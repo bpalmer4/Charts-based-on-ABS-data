@@ -22,6 +22,8 @@ dependencies:
   - pyarrow 
   - fastparquet 
   - h5py
+  - selenium
+  - webdriver-manager
   - lxml 
   - bs4 
   - openpyxl 
