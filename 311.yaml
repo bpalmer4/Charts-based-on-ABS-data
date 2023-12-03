@@ -1,0 +1,63 @@
+# micromamba env create -f 311.yaml
+# Note: in conda-forge, pytensor 2.18 requires python 3.11
+# Note: pandasdmx also requires python 3.11
+name: 311
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  # python version 11
+  - python >=3.11, <3.12
+  # Jupyter notebooks
+  - jupyter 
+  - jupyterlab 
+  - nodejs 
+  - watermark
+  - jupyterlab-spellchecker 
+  - jupyterlab_code_formatter
+  # data science
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - statsmodels 
+  - scipy 
+  - scikit-learn 
+  - nltk
+  # Microsoft Excel 
+  - openpyxl 
+  - xlrd 
+  # data base
+  - pyarrow 
+  - fastparquet 
+  - h5py
+  - arrow 
+  - polars 
+  - pandasdmx 
+  # web stuff
+  - selenium
+  - webdriver-manager
+  - lxml 
+  - bs4
+  - requests_cache
+  # PyMC - Bayesian statistics
+  - pymc >= 5.10.0 
+  - pytensor >= 2.18.1
+  - numpyro
+  - jax
+  # python linters and formatters
+  - pylint 
+  - flake8 
+  - black 
+  - nbqa 
+  - ruff 
+  - isort
+  - mypy
+  - pandas-stubs
+  - types-Pillow
+  - types-Pygments 
+  - types-colorama 
+  - types-decorator 
+  - types-jsonschema 
+  - types-six 
+  - types-ujson
