@@ -250,10 +250,11 @@ def get_meta_constants() -> tuple[str, str, str, str, str]:
     table_col = "Table"
     type_col = "Series Type"
     unit_col = "Unit"
-    return did_col, id_col, table_col, type_col, unit_col
+    tdesc_col = "Table Description"
+    return did_col, id_col, table_col, type_col, unit_col, tdesc_col
 
 
-did_col, id_col, table_col, type_col, unit_col = get_meta_constants()
+did_col, id_col, table_col, type_col, unit_col, tdesc_col = get_meta_constants()
 
 
 # public
