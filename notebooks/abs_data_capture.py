@@ -25,11 +25,12 @@ import io
 import re
 import zipfile
 from pathlib import Path
-from typing import Callable, Any
+from typing import Callable, Any, cast
 
 # analytical imports
 import arrow
 import pandas as pd
+import numpy as np
 from bs4 import BeautifulSoup
 
 # local imports
@@ -39,7 +40,7 @@ from plotting import (
     seas_trend_plot,
     line_plot,
     abbreviate,
-    state_colors, 
+    state_colors,
     state_abbr,
     LEGEND_SET,
 )
@@ -225,7 +226,7 @@ def get_ABS_catalogue_IDs() -> dict[str, str]:
 
 
 # public
-def get_plot_constants(meta: pd.DataFrame) -> tuple[pd.Timestamp, list, list]:
+def get_plot_constants(meta: pd.DataFrame) -> tuple[pd.Timestamp, list[None | pd.Timestamp], tuple[str, str]]:
     """Get plotting constants from ABS meta data table
     - used in a loop to produce a plot of the full
       series, and a plot of the recent period."""
@@ -242,23 +243,26 @@ def get_plot_constants(meta: pd.DataFrame) -> tuple[pd.Timestamp, list, list]:
 
 
 # public
-def get_meta_constants() -> tuple[str, str, str, str, str]:
+def get_meta_constants() -> tuple[str, str, str, str, str, str]:
     """Key column names in the meta data."""
 
-    did_col = "Data Item Description"
-    id_col = "Series ID"
-    table_col = "Table"
-    type_col = "Series Type"
-    unit_col = "Unit"
-    tdesc_col = "Table Description"
-    return did_col, id_col, table_col, type_col, unit_col, tdesc_col
+    did_col_ = "Data Item Description"
+    id_col_ = "Series ID"
+    table_col_ = "Table"
+    type_col_ = "Series Type"
+    unit_col_ = "Unit"
+    tdesc_col_ = "Table Description"
+    return did_col_, id_col_, table_col_, type_col_, unit_col_, tdesc_col_
 
 
+# public - available for import
 did_col, id_col, table_col, type_col, unit_col, tdesc_col = get_meta_constants()
 
 
 # public
 def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
+    """Simplify complex ABS series names."""
+
     check = [
         "Chain volume measures",  # National Accounts,
         "Chain Volume Measures",  # Business indicators,
@@ -497,7 +501,7 @@ def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes | N
 # private
 def _get_meta(
     excel: pd.ExcelFile, tab_num: str, tab_desc: str
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     """Capture the metadata from the Index sheet of an ABS excel file.
     Returns a DataFrame specific to the current excel file."""
 
@@ -529,7 +533,7 @@ def _get_data(
     pandas DataFrame and return that DataFrame."""
 
     data = pd.DataFrame()
-    data_sheets = [x for x in excel.sheet_names if x.startswith("Data")]
+    data_sheets = [x for x in excel.sheet_names if cast(str, x).startswith("Data")]
     for sheet_name in data_sheets:
         sheet_data = excel.parse(
             sheet_name,
@@ -565,7 +569,7 @@ def _get_data(
             )
     if freq:
         if freq in ("Q", "A"):
-            month = calendar.month_abbr[data.index.month.max()].upper()
+            month = calendar.month_abbr[cast(pd.DatetimeIndex, data.index).month.max()].upper()
             freq = f"{freq}-{month}"
         data = data.to_period(freq=freq)
     return data
@@ -588,7 +592,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
     freq_dict = {"annual": "Y", "quarter": "Q", "month": "M"}
 
     print("Extracting DataFrames from the zip-file ...")
-    returnable = {}
+    returnable: dict[str, pd.DataFrame] = {}
     meta = pd.DataFrame()
     with zipfile.ZipFile(io.BytesIO(zip_file)) as zipped:
         for element in zipped.infolist():
@@ -614,7 +618,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
             file_meta = _get_meta(excel, tab_num, tab_desc)
 
             # establish freq - used for making the index a PeriodIndex
-            freq = file_meta["Freq."].str.lower().unique()
+            freq = file_meta["Freq."].str.lower().unique().tolist()
             freq = (
                 freq_dict[freq[0]] if len(freq) == 1 and freq[0] in freq_dict else None
             )
@@ -626,10 +630,10 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
             if tab_num in returnable:
                 tab_num += freq
                 file_meta["Table"] = tab_num
-                
+
             # aggregate the meta data
             meta = pd.concat([meta, file_meta])
-                
+
             # add the table to the returnable dictionary
             returnable[tab_num] = _get_data(excel, file_meta, freq, verbose)
 
@@ -678,23 +682,24 @@ def find_rows(
     Returns a pandas DataFrame (subseted from meta):"""
 
     meta_select = meta.copy()
+
     for phrase, column in search_terms.items():
         if verbose:
             print(
                 f"Searching {len(meta_select)}: " f"term: {phrase} in-column: {column}"
             )
-        if exact or column == "Table":  # always match the table column exactly
-            meta_select = meta_select[meta_select[column] == phrase]
-        else:
-            meta_select = meta_select[
-                meta_select[column].str.contains(phrase, regex=regex)
-            ]
+        pick_me = (
+            (meta_select[column] == phrase)
+            if (exact or column == table_col)
+            else meta_select[column].str.contains(phrase, regex=regex)
+        )
+        meta_select = meta_select[pick_me]
+
     if verbose:
         print(len(meta_select))
 
     if len(meta_select) == 0:
         print("Nothing selected?")
-        return None
 
     return meta_select
 
@@ -735,7 +740,7 @@ def get_identifier(
     series_type: str,
     table: str,
     verbose: bool = False,
-) -> tuple[str]:
+) -> tuple[str, str]:
     """Get the ABS series identifier that matches the given
     data_item_description, series_type, table
     Arguments:
@@ -761,10 +766,13 @@ def get_identifier(
 # --- simplified plotting of ABS data ...
 # public
 def iudts_from_row(row: pd.Series) -> tuple[str, str, str, str, str]:
+    """Return a tuple comrising series_id, units, data_description,
+    table_number, series_type."""
     return (row[id_col], row[unit_col], row[did_col], row[table_col], row[type_col])
 
 
 def longest_common_prefex(strings: list[str]) -> str:
+    """Find the longest common string prefix."""
     num_strings: int = len(strings)
 
     # trivial cases
@@ -790,7 +798,7 @@ def longest_common_prefex(strings: list[str]) -> str:
 
 def plot_rows_collectively(
     meta: pd.DataFrame,
-    abs: dict[str, pd.DataFrame],
+    abs_dict: dict[str, pd.DataFrame],
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
@@ -800,7 +808,7 @@ def plot_rows_collectively(
     selected from the meta data with selector.
     Agruments:
     - meta - pd.DataFrame - table of ABS meta data.
-    - abs - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
     - regex - bool - used with selector in find_rows()
     - verbose - bool - used for feedback from find_rows()
@@ -811,10 +819,10 @@ def plot_rows_collectively(
         return None
 
     frame = pd.DataFrame()
-    for index, row in rows.iterrows():
-        id, units, did, table, series_type = iudts_from_row(row)
+    for _, row in rows.iterrows():
+        series_id, units, did, table, _ = iudts_from_row(row)
         name = did.replace(" ;  ", ": ").replace(" ;", "")
-        frame[name] = abs[table][id]
+        frame[name] = abs_dict[table][series_id]
 
     frame, units = recalibrate(frame, units)
 
@@ -825,12 +833,12 @@ def plot_rows_collectively(
     renamer = {x: abbreviate(x) for x in frame.columns}
     colours = [state_colors[x] for x in renamer.values()]
     frame = frame.rename(columns=renamer)
-    
-    legend = {**LEGEND_SET, "ncols": 2} 
+
+    legend = {**LEGEND_SET, "ncols": 2}
     if "legend" in kwargs:
         legend |= kwargs["legend"]
         del kwargs["legend"]
-    
+
     line_plot(
         frame,
         title=title,  # final comma is tuple operator
@@ -844,9 +852,9 @@ def plot_rows_collectively(
 
 def plot_rows_individually(
     meta: pd.DataFrame,
-    abs: dict[str, pd.DataFrame],
+    abs_dict: dict[str, pd.DataFrame],
     selector: dict[str, str],
-    plot_function: Callable[[pd.Series, ...], None],
+    plot_function: Callable,
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
     **kwargs: dict[str, Any],  # passed to plotting function
@@ -855,7 +863,7 @@ def plot_rows_individually(
     the meta data with selector.
     Agruments:
     - meta - pd.DataFrame - table of ABS meta data.
-    - abs - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
     - plot_function - callable - for plotting a series of dara
     - regex - bool - used with selector in find_rows()
@@ -863,9 +871,9 @@ def plot_rows_individually(
     - **kwargs - arguments passed to plotting function."""
 
     rows = find_rows(meta, selector, regex=regex, verbose=verbose)
-    for index, row in rows.iterrows():
-        id, units, did, table, series_type = iudts_from_row(row)
-        series, units = recalibrate(abs[table][id], units)
+    for _, row in rows.iterrows():
+        series_id, units, did, table, series_type = iudts_from_row(row)
+        series, units = recalibrate(abs_dict[table][series_id], units)
         series.name = f"{series_type.capitalize()} series"
 
         plot_function(
@@ -878,7 +886,7 @@ def plot_rows_individually(
 
 def plot_rows_seas_trend(
     meta: pd.DataFrame,
-    abs: dict[str, pd.DataFrame],
+    abs_dict: dict[str, pd.DataFrame],
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
@@ -888,7 +896,7 @@ def plot_rows_seas_trend(
     the metat data with selector.
     Agruments:
     - meta - pd.DataFrame - table of ABS meta data.
-    - abs - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
       this needs to select both a Trend and Seasonally Adjusted row, and
       must exclude the "Series Type" column
@@ -925,12 +933,12 @@ def plot_rows_seas_trend(
         assert len(trend_row) == 1 and len(sa_row) == 1
         trend_row, sa_row = trend_row.iloc[0], sa_row.iloc[0]
 
-        t_id, t_units, t_did, t_table, t_series_type = iudts_from_row(trend_row)
-        s_id, s_units, s_did, s_table, s_series_type = iudts_from_row(sa_row)
+        t_id, t_units, _, t_table, _ = iudts_from_row(trend_row)
+        s_id, s_units, _, s_table, _ = iudts_from_row(sa_row)
         assert t_units == s_units
 
         frame = pd.DataFrame(
-            [abs[s_table][s_id], abs[t_table][t_id]],
+            [abs_dict[s_table][s_id], abs_dict[t_table][t_id]],
             index=["Seasonally adjusted", "Trend"],
         ).T
         frame, units = recalibrate(frame, s_units)

@@ -61,3 +61,5 @@ dependencies:
   - types-jsonschema 
   - types-six 
   - types-ujson
+  - types-beautifulsoup4
+

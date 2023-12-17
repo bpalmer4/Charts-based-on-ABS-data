@@ -9,6 +9,7 @@ import re
 import sys
 from operator import mul, truediv
 from pathlib import Path
+from typing import Any, Final, cast
 
 # data science imports
 import matplotlib.dates as mdates
@@ -19,20 +20,20 @@ import pandas as pd
 import statsmodels.formula.api as smf
 
 # --- constants - default settings
-DEFAULT_FILE_TYPE = "png"
-DEFAULT_FIG_SIZE = (9, 4.5)
-DEFAULT_DPI = 300
-DEFAULT_CHART_DIR = "."
+DEFAULT_FILE_TYPE: Final[str] = "png"
+DEFAULT_FIG_SIZE: Final[tuple[float, float]] = (9.0, 4.5)
+DEFAULT_DPI: Final[int] = 300
+DEFAULT_CHART_DIR: Final[str] = "."
 
-COLOR_AMBER = "darkorange"
-COLOR_BLUE = "mediumblue"
-COLOR_RED = "#dd0000"
-COLOR_GREEN = "mediumseagreen"
+COLOR_AMBER: Final[str] = "darkorange"
+COLOR_BLUE: Final[str] = "mediumblue"
+COLOR_RED: Final[str] = "#dd0000"
+COLOR_GREEN: Final[str] = "mediumseagreen"
 
 NARROW_WIDTH = 1.0
 WIDE_WIDTH = 2.0
-LEGEND_FONTSIZE = "x-small"
-LEGEND_SET = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
+LEGEND_FONTSIZE: Final[str] = "x-small"
+LEGEND_SET: Final[dict[str, Any]] = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 
 
 # --- standard Australian state colors and abbreviations
@@ -308,7 +309,8 @@ def finalise_plot(axes, **kwargs) -> None:
     _save_to_file(fig, **kwargs)
 
     # show the plot in Jupyter Lab
-    _ = plt.show() if "show" in kwargs and kwargs["show"] else None
+    if "show" in kwargs and kwargs["show"]:
+        plt.show()
 
     # And close
     closing = True if "dont_close" not in kwargs else not kwargs["dont_close"]
@@ -377,7 +379,7 @@ def _get_multi_starts(**kwargs) -> tuple[dict[str, list], dict]:
 def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], dict]:
     """Get the plot-line attributes arguemnts."""
 
-    colours = {
+    colours: dict[int, str | list[str]] = {
         # default colours change depending on the number of lines
         1: COLOR_RED,
         5: [COLOR_BLUE, COLOR_AMBER, COLOR_GREEN, COLOR_RED, "#888888"],
@@ -394,9 +396,9 @@ def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], d
         ],  # Tol
     }
     k = colours.keys()
-    minimum = min(i for i in list(k) + [float("inf")] if i >= item_count)
-    n_colours = minimum if minimum is not float("inf") else max(k)
-    defaults = {  # defaults
+    minimum: float | int = min(i for i in list(k) + [float("inf")] if i >= item_count)
+    n_colours = int(minimum if minimum is not float("inf") else max(k))
+    defaults: dict[str, Any] = {
         STYLE: "-",
         WIDTH: WIDE_WIDTH,
         COLOR: colours[n_colours],
@@ -420,7 +422,7 @@ def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], d
 
 
 # public
-def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
+def line_plot(data: pd.Series | pd.DataFrame, **kwargs: Any) -> None:
     """Plot a series or a dataframe over multiple (starting_point) time horizons.
     The data must be a pandas Series or DataFrame with a PeriodIndex.
     Arguments:
@@ -454,7 +456,7 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
     # And plot
     for start, tag in zip(stags[STARTS], stags[TAGS]):
         if start and not isinstance(start, pd.Period):
-            start = pd.Period(start, freq=data.index.freq)
+            start = pd.Period(start, freq=cast(pd.PeriodIndex, data.index).freq)
         recent = data[data.index >= start] if start else data
         axes = None
         for i, column in enumerate(recent.columns):
@@ -477,8 +479,8 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs) -> None:
             )
 
         if LEGEND in swce and isinstance(swce[LEGEND], dict):
-            extra = {} if LEGEND not in kwargs else kwargs[LEGEND]
-            kwargs[LEGEND] = {**swce[LEGEND], **extra}
+            extra: dict[str, Any] = {} if LEGEND not in kwargs else kwargs[LEGEND]
+            kwargs[LEGEND] = {**swce[LEGEND], **extra}  ### PERHAPS PROBLEMATIC
             # let finalise plot will add the legend.
         if axes:
             finalise_plot(axes, tag=tag, **kwargs)
@@ -679,18 +681,20 @@ def plot_growth(
         [annual.copy(), periodic.copy()], index=["Annual", "Periodic"]
     ).T
 
+    # CHECK next block - has been reworked - Dec 2023
+    df_period = cast(pd.PeriodIndex, frame.index).freqstr[:1]
+    if not df_period or df_period not in "QM":
+        print(f"Unrecognised frequency: {df_period} :")
+        return None
     period, adjustment = {
         "Q": ("Quarterly", 45),
         "M": ("Monthly", 15),
-    }.get(df_period := frame.index.freqstr[:1], (None, None))
-    if period is None:
-        print(f"Unrecognised frequency: {df_period} :")
-        return None
+    }[df_period]
 
     # set index to the middle of the period for selection
     if from_:
         if not isinstance(from_, pd.Period):
-            from_ = pd.Period(from_, freq=periodic.index.freq)
+            from_ = pd.Period(from_, freq=cast(pd.PeriodIndex, periodic.index).freq)
         frame = frame[frame.index >= from_]
     frame = frame.to_timestamp(how="start")
     frame.index = frame.index + pd.Timedelta(days=adjustment)
@@ -750,17 +754,16 @@ def plot_growth_finalise(
 
 def calc_growth(
     series: pd.Series, ppy: int | None = None
-) -> list[pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series]:
     """Calculate annual and periodic growth for a pandas Series,
     with ppy periods per year."""
 
-    returnable = []
     if ppy is None:
-        ppy = {"Q": 4, "M": 12}[series.index.freqstr[:1]]
-    for periods in ppy, 1:
-        # think about: do we need a ffill() in the next line....
-        returnable.append(series.pct_change(periods=periods) * 100)
-    return returnable  # [annual, periodic]
+        ppy = {"Q": 4, "M": 12}[cast(pd.PeriodIndex, series.index).freqstr[:1]]
+    # think about: do we need a ffill() in the next lines ...
+    annual = series.pct_change(periods=ppy) * 100
+    periodic = series.pct_change(periods=1) * 100
+    return annual, periodic
 
 
 def calc_and_plot_growth(
@@ -851,6 +854,8 @@ def _do_recal(flat_data, units, step, operator):
 
 
 # public
+
+
 def recalibrate(
     data: pd.Series | pd.DataFrame,
     units: str,
@@ -898,20 +903,21 @@ def recalibrate(
 
 # public
 def recalibrate_series(
-    data: pd.Series,
+    input_series: pd.Series,
     units: str,
     verbose: bool = False,
 ) -> tuple[pd.Series, str]:
     """Retained for compatibility with earlier code.
     It calls recalibrate()."""
 
-    return recalibrate(data, units, verbose)
+    recal_series, units = recalibrate(input_series, units, verbose)
+    return cast(pd.Series, recal_series), units
 
 
 # public
 def recalibrate_value(value: float, units: str) -> tuple[float, str]:
     """Recalibrate a floating point value."""
 
-    input_ = pd.Series([value])
-    output, units = recalibrate(input_, units)
-    return output[0], units
+    series = pd.Series([value])
+    output, units = recalibrate(series, units)
+    return output.values[0], units
