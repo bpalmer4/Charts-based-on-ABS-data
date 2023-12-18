@@ -25,12 +25,11 @@ import io
 import re
 import zipfile
 from pathlib import Path
-from typing import Callable, Any, cast
+from typing import Any, Callable, Final, cast
 
 # analytical imports
 import arrow
 import pandas as pd
-import numpy as np
 from bs4 import BeautifulSoup
 
 # local imports
@@ -45,8 +44,13 @@ from plotting import (
     LEGEND_SET,
 )
 
+# --- Some useful constants
+SEAS_ADJ: Final[str] = "Seasonally Adjusted"
+TREND: Final[str] = "Trend"
+
+
 # --- ABS catalgue map - these are the possible downloads we know about
-ABS_data_map: dict[str, dict[str, str]] = {
+ABS_DATA_MAP: Final[dict[str, dict[str, str]]] = {
     "3101": {
         "Name": "National, State and Territory " "Estimated Resident Population",
         "URL": "https://www.abs.gov.au/statistics/"
@@ -166,15 +170,15 @@ ABS_data_map: dict[str, dict[str, str]] = {
 
 # --- initialisation
 # private
-def _check_abs_data_map(data_map: dict[str, dict[str, str]]) -> None:
-    """Check the integrity of the ABS_data_map."""
+def _check_abs_data_map() -> None:
+    """Check the integrity of the ABS_DATA_MAP."""
 
-    for data in data_map.values():
+    for data in ABS_DATA_MAP.values():
         assert "Name" in data
         assert "URL" in data
 
 
-_check_abs_data_map(ABS_data_map)
+_check_abs_data_map()
 
 
 # private
@@ -186,8 +190,8 @@ def _establish_cache_directory() -> str:
     return cache_dir
 
 
-_CACHE_DIR = _establish_cache_directory()
-_META_DATA = "META_DATA"
+_CACHE_DIR: Final[str] = _establish_cache_directory()
+_META_DATA: Final[str] = "META_DATA"
 
 
 # --- utility functions
@@ -197,9 +201,9 @@ _META_DATA = "META_DATA"
 def get_fs_constants(catalogue_id: str) -> tuple[str, str, str]:
     """Get file system constants for a catalogue ID."""
 
-    assert catalogue_id in ABS_data_map  # sanity check
+    assert catalogue_id in ABS_DATA_MAP  # sanity check
     source = f"ABS {catalogue_id}"
-    chart_dir = f"./CHARTS/{catalogue_id} - {ABS_data_map[catalogue_id]['Name']}/"
+    chart_dir = f"./CHARTS/{catalogue_id} - {ABS_DATA_MAP[catalogue_id]['Name']}/"
     Path(chart_dir).mkdir(parents=True, exist_ok=True)
     return source, chart_dir, _META_DATA
 
@@ -220,18 +224,20 @@ def get_ABS_catalogue_IDs() -> dict[str, str]:
     """Return a dictionary of known ABS catalogue identifiers."""
 
     response = {}
-    for identifer, data in ABS_data_map.items():
+    for identifer, data in ABS_DATA_MAP.items():
         response[identifer] = data["Name"]
     return response
 
 
 # public
-def get_plot_constants(meta: pd.DataFrame) -> tuple[pd.Timestamp, list[None | pd.Timestamp], tuple[str, str]]:
+def get_plot_constants(
+    meta: pd.DataFrame,
+) -> tuple[pd.Timestamp, list[None | pd.Timestamp], tuple[str, str]]:
     """Get plotting constants from ABS meta data table
     - used in a loop to produce a plot of the full
       series, and a plot of the recent period."""
 
-    recency_period = 7  # years
+    recency_period = 8  # years
     recency_extra = 3  # months
     today = pd.Timestamp("today")
     reasonable_end = meta["Series End"][meta["Series End"] <= today]
@@ -300,10 +306,10 @@ def _get_abs_webpage(catalogue_id: str) -> bytes | None:
     """Get the ABS web page for latest data in respect
     of a specified ABS catalogue identifier."""
 
-    if catalogue_id not in ABS_data_map:
+    if catalogue_id not in ABS_DATA_MAP:
         print(f"Catalogue identifier not recognised: {catalogue_id}")
         return None
-    url = ABS_data_map[catalogue_id]["URL"]
+    url = ABS_DATA_MAP[catalogue_id]["URL"]
     return common.request_get(url)
 
 
@@ -499,9 +505,7 @@ def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes | N
 
 
 # private
-def _get_meta(
-    excel: pd.ExcelFile, tab_num: str, tab_desc: str
-) -> pd.DataFrame:
+def _get_meta(excel: pd.ExcelFile, tab_num: str, tab_desc: str) -> pd.DataFrame:
     """Capture the metadata from the Index sheet of an ABS excel file.
     Returns a DataFrame specific to the current excel file."""
 
@@ -569,7 +573,9 @@ def _get_data(
             )
     if freq:
         if freq in ("Q", "A"):
-            month = calendar.month_abbr[cast(pd.DatetimeIndex, data.index).month.max()].upper()
+            month = calendar.month_abbr[
+                cast(pd.DatetimeIndex, data.index).month.max()
+            ].upper()
             freq = f"{freq}-{month}"
         data = data.to_period(freq=freq)
     return data
@@ -816,7 +822,7 @@ def plot_rows_collectively(
 
     rows = find_rows(meta, selector, regex=regex, verbose=verbose)
     if rows is None:
-        return None
+        return
 
     frame = pd.DataFrame()
     for _, row in rows.iterrows():
@@ -824,7 +830,8 @@ def plot_rows_collectively(
         name = did.replace(" ;  ", ": ").replace(" ;", "")
         frame[name] = abs_dict[table][series_id]
 
-    frame, units = recalibrate(frame, units)
+    r_frame, units = recalibrate(frame, units)
+    frame = cast(pd.DataFrame, r_frame)
 
     columns = frame.columns.to_list()
     title = longest_common_prefex(columns)
@@ -841,7 +848,7 @@ def plot_rows_collectively(
 
     line_plot(
         frame,
-        title=title,  # final comma is tuple operator
+        title=title,
         ylabel=units,
         legend=legend,
         color=colours,
@@ -893,7 +900,7 @@ def plot_rows_seas_trend(
     **kwargs: dict[str, Any],  # passed to plotting function
 ) -> None:
     """Produce an seasonal/Trend chart for the rows selected from
-    the metat data with selector.
+    the metadata with selector.
     Agruments:
     - meta - pd.DataFrame - table of ABS meta data.
     - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
@@ -906,25 +913,22 @@ def plot_rows_seas_trend(
 
     if type_col in selector.values():
         print(f'Check: unexpected column "{type_col}" in the selector')
-        return None
+        return
 
     sa = find_rows(
         meta,
-        {**selector, "Seasonally Adjusted": type_col},
+        {**selector, SEAS_ADJ: type_col},
         regex=regex,
         verbose=verbose,
     )
-    trend = find_rows(
-        meta, {**selector, "Trend": type_col}, regex=regex, verbose=verbose
-    )
-
+    trend = find_rows(meta, {**selector, TREND: type_col}, regex=regex, verbose=verbose)
     if len(trend) != len(sa):
         print("The number of Trend and Seasonally Adjusted rows do not match")
-        return None
+        return
 
     if not trend[did_col].is_unique or not sa[did_col].is_unique:
         print("Data item descriptions are not unique")
-        return None
+        return
 
     for did in trend[did_col]:
         trend_row = trend[trend[did_col] == did]
@@ -939,13 +943,13 @@ def plot_rows_seas_trend(
 
         frame = pd.DataFrame(
             [abs_dict[s_table][s_id], abs_dict[t_table][t_id]],
-            index=["Seasonally adjusted", "Trend"],
+            index=[SEAS_ADJ, TREND],
         ).T
-        frame, units = recalibrate(frame, s_units)
+        r_frame, r_units = recalibrate(frame, s_units)
 
         seas_trend_plot(
-            frame,
+            cast(pd.DataFrame, r_frame),
             title=did.replace(" ;  ", ": ").replace(" ;", ""),
-            ylabel=units,
+            ylabel=r_units,
             **kwargs,
         )

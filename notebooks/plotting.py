@@ -30,8 +30,8 @@ COLOR_BLUE: Final[str] = "mediumblue"
 COLOR_RED: Final[str] = "#dd0000"
 COLOR_GREEN: Final[str] = "mediumseagreen"
 
-NARROW_WIDTH = 1.0
-WIDE_WIDTH = 2.0
+NARROW_WIDTH: Final[float] = 1.0
+WIDE_WIDTH: Final[float] = 2.0
 LEGEND_FONTSIZE: Final[str] = "x-small"
 LEGEND_SET: Final[dict[str, Any]] = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 
@@ -79,9 +79,10 @@ def abbreviate(name: str) -> str:
     return state_abbr.get(name, name)
 
 
-# --- clear_chart_dir()
+# --- chart directory stuff
 
 
+# public
 def clear_chart_dir(chart_dir: str) -> None:
     """Remove all graph-image files from the chart_dir."""
 
@@ -90,11 +91,36 @@ def clear_chart_dir(chart_dir: str) -> None:
             fs_object.unlink()
 
 
+# private - global chart directory ...
+class ChartDirSingleton:
+    """Global repository for the class directory.
+    Singleton instance implied, but not enforced."""
+
+    def __init__(self, chart_dir: str | None):
+        self.set(chart_dir)
+
+    def set(self, chart_dir: str | None) -> None:
+        """Setter."""
+        self.chart_dir = chart_dir
+
+    def get(self) -> str:
+        """Getter."""
+        return DEFAULT_CHART_DIR if self.chart_dir is None else self.chart_dir
+
+
+_chart_dir = ChartDirSingleton(None)  # global chart directory stored here
+
+
+# public
+def set_chart_dir(chart_dir: str | None) -> None:
+    """A function to set a global chart directory for finalise_plot(),
+    so that it does not need to be included as an argument in each
+    call to finalise_plot()."""
+    _chart_dir.set(chart_dir)
+
+
 # --- finalise_plot()
 
-
-# global chart_dir - modified by set_chart_dir() below
-_chart_dir: str | None = DEFAULT_CHART_DIR
 
 # filename limitations - used to map the plot title to a filename
 _remove = re.compile(r"[^0-9A-Za-z]")  # make sensible file names
@@ -216,13 +242,11 @@ def _apply_kwargs(axes, **kwargs) -> None:
 def _save_to_file(fig, **kwargs) -> None:
     """Save the figure to file."""
 
-    saving = True if "dont_save" not in kwargs else not kwargs["dont_save"]
+    saving = not kwargs.get("dont_save", False)  # save by default
     if saving:
-        chart_dir = None if "chart_dir" not in kwargs else kwargs["chart_dir"]
+        chart_dir = kwargs.get("chart_dir", None)
         if chart_dir is None:
-            chart_dir = _chart_dir
-            if chart_dir is None:
-                chart_dir = ""
+            chart_dir = _chart_dir.get()
 
         title = "" if "title" not in kwargs else kwargs["title"]
         pre_tag = "" if "pre_tag" not in kwargs else kwargs["pre_tag"]
@@ -243,16 +267,6 @@ def _save_to_file(fig, **kwargs) -> None:
 def get_possible_kwargs() -> list[str]:
     """Return a list of possible kwargs for finalise_plot()."""
     return list(_ACCEPTABLE_KWARGS)
-
-
-# public
-def set_chart_dir(chart_dir: str | None) -> None:
-    """A function to set a global chart directory for finalise_plot(),
-    so that it does not need to be included as an argument in each
-    call to finalise_plot()."""
-
-    global _chart_dir  # Yes, this is ugly.
-    _chart_dir = chart_dir
 
 
 # public
@@ -409,12 +423,13 @@ def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], d
     }
     swce, kwargs = _apply_defaults(item_count, defaults, kwargs)
 
-    swce[LEGEND] = None if LEGEND not in kwargs else kwargs[LEGEND]
+    swce[LEGEND] = kwargs.get(LEGEND, None)
     if swce[LEGEND] is None and item_count > 1:
         swce[LEGEND] = LEGEND_SET
     if LEGEND in kwargs:
         del kwargs[LEGEND]
-    swce[DROPNA] = False if DROPNA not in kwargs else kwargs[DROPNA]
+
+    swce[DROPNA] = kwargs.get(DROPNA, False)
     if DROPNA in kwargs:
         del kwargs[DROPNA]
 
@@ -479,9 +494,8 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs: Any) -> None:
             )
 
         if LEGEND in swce and isinstance(swce[LEGEND], dict):
-            extra: dict[str, Any] = {} if LEGEND not in kwargs else kwargs[LEGEND]
-            kwargs[LEGEND] = {**swce[LEGEND], **extra}  ### PERHAPS PROBLEMATIC
-            # let finalise plot will add the legend.
+            # Have pruned here - might be problematic
+            kwargs[LEGEND] = swce[LEGEND].copy()
         if axes:
             finalise_plot(axes, tag=tag, **kwargs)
 

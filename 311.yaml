@@ -62,4 +62,5 @@ dependencies:
   - types-six 
   - types-ujson
   - types-beautifulsoup4
+  - types-requests
 
