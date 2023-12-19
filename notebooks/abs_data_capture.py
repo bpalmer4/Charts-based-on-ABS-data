@@ -802,8 +802,19 @@ def longest_common_prefex(strings: list[str]) -> str:
     return strings[0][:i]
 
 
+def _column_name_fix(r_frame: pd.DataFrame) -> tuple[pd.DataFrame, str, list[str]]:
+    """Shorten column names."""
+    columns = r_frame.columns.to_list()
+    title = longest_common_prefex(columns)
+    renamer = {x: x.replace(title, "") for x in columns}
+    r_frame = r_frame.rename(columns=renamer)
+    renamer = {x: abbreviate(x) for x in r_frame.columns}
+    colours = [state_colors[x] for x in renamer.values()]
+    r_frame = r_frame.rename(columns=renamer)
+    return r_frame, title, colours
+
+
 def plot_rows_collectively(
-    meta: pd.DataFrame,
     abs_dict: dict[str, pd.DataFrame],
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
@@ -813,41 +824,29 @@ def plot_rows_collectively(
     """Produce an collective/single chart covering each row
     selected from the meta data with selector.
     Agruments:
-    - meta - pd.DataFrame - table of ABS meta data.
     - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
     - regex - bool - used with selector in find_rows()
     - verbose - bool - used for feedback from find_rows()
     - **kwargs - arguments passed to plotting function."""
 
-    rows = find_rows(meta, selector, regex=regex, verbose=verbose)
-    if rows is None:
+    frame: pd.DataFrame | pd.Series = pd.DataFrame()  # hint is a mypy kludge
+    for _, row in find_rows(
+        abs_dict[_META_DATA], selector, regex=regex, verbose=verbose
+    ).iterrows():
+        series_id, units, did, table, _ = iudts_from_row(row)
+        frame[did.replace(" ;  ", ": ").replace(" ;", "")] = abs_dict[table][series_id]
+    if len(frame) == 0:
         return
 
-    frame = pd.DataFrame()
-    for _, row in rows.iterrows():
-        series_id, units, did, table, _ = iudts_from_row(row)
-        name = did.replace(" ;  ", ": ").replace(" ;", "")
-        frame[name] = abs_dict[table][series_id]
+    frame, units = recalibrate(frame, units)
+    r_frame = cast(pd.DataFrame, frame)
+    r_frame, title, colours = _column_name_fix(r_frame)
 
-    r_frame, units = recalibrate(frame, units)
-    frame = cast(pd.DataFrame, r_frame)
-
-    columns = frame.columns.to_list()
-    title = longest_common_prefex(columns)
-    renamer = {x: x.replace(title, "") for x in columns}
-    frame = frame.rename(columns=renamer)
-    renamer = {x: abbreviate(x) for x in frame.columns}
-    colours = [state_colors[x] for x in renamer.values()]
-    frame = frame.rename(columns=renamer)
-
-    legend = {**LEGEND_SET, "ncols": 2}
-    if "legend" in kwargs:
-        legend |= kwargs["legend"]
-        del kwargs["legend"]
+    legend = {**LEGEND_SET, "ncols": 2, **(kwargs.pop("legend", {}))}
 
     line_plot(
-        frame,
+        r_frame,
         title=title,
         ylabel=units,
         legend=legend,
@@ -858,7 +857,6 @@ def plot_rows_collectively(
 
 
 def plot_rows_individually(
-    meta: pd.DataFrame,
     abs_dict: dict[str, pd.DataFrame],
     selector: dict[str, str],
     plot_function: Callable,
@@ -869,7 +867,6 @@ def plot_rows_individually(
     """Produce an single chart for each row selected from
     the meta data with selector.
     Agruments:
-    - meta - pd.DataFrame - table of ABS meta data.
     - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
     - plot_function - callable - for plotting a series of dara
@@ -877,7 +874,7 @@ def plot_rows_individually(
     - verbose - bool - used for feedback from find_rows()
     - **kwargs - arguments passed to plotting function."""
 
-    rows = find_rows(meta, selector, regex=regex, verbose=verbose)
+    rows = find_rows(abs_dict[_META_DATA], selector, regex=regex, verbose=verbose)
     for _, row in rows.iterrows():
         series_id, units, did, table, series_type = iudts_from_row(row)
         series, units = recalibrate(abs_dict[table][series_id], units)
@@ -892,17 +889,15 @@ def plot_rows_individually(
 
 
 def plot_rows_seas_trend(
-    meta: pd.DataFrame,
     abs_dict: dict[str, pd.DataFrame],
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
-    **kwargs: dict[str, Any],  # passed to plotting function
+    **kwargs: Any,  # passed to plotting function
 ) -> None:
     """Produce an seasonal/Trend chart for the rows selected from
     the metadata with selector.
     Agruments:
-    - meta - pd.DataFrame - table of ABS meta data.
     - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
       this needs to select both a Trend and Seasonally Adjusted row, and
@@ -911,44 +906,46 @@ def plot_rows_seas_trend(
     - verbose - bool - used for feedback from find_rows()
     - **kwargs - arguments passed to plotting function."""
 
+    # sanity checks - make sure seas/trend not in the selector
     if type_col in selector.values():
         print(f'Check: unexpected column "{type_col}" in the selector')
         return
 
-    sa = find_rows(
-        meta,
-        {**selector, SEAS_ADJ: type_col},
-        regex=regex,
-        verbose=verbose,
-    )
-    trend = find_rows(meta, {**selector, TREND: type_col}, regex=regex, verbose=verbose)
-    if len(trend) != len(sa):
+    # identify the plot-sets using the selector ...
+    st_data = {}
+    for data_type in SEAS_ADJ, TREND:
+        st_data[data_type] = find_rows(
+            abs_dict[_META_DATA],
+            {**selector, data_type: type_col},
+            regex=regex,
+            verbose=verbose,
+        )
+
+    # check plot-sets look reasonable
+    if len(st_data[SEAS_ADJ]) != len(st_data[TREND]):
         print("The number of Trend and Seasonally Adjusted rows do not match")
         return
-
-    if not trend[did_col].is_unique or not sa[did_col].is_unique:
+    if (
+        not st_data[SEAS_ADJ][did_col].is_unique
+        or not st_data[TREND][did_col].is_unique
+    ):
         print("Data item descriptions are not unique")
         return
 
-    for did in trend[did_col]:
-        trend_row = trend[trend[did_col] == did]
-        sa_row = sa[sa[did_col] == did]
+    # plot Seaspnal + Trend charts one-by-one
+    for did in st_data[TREND][did_col]:
+        # get data series
+        frame_data = {}
+        for row_type in SEAS_ADJ, TREND:
+            row = st_data[row_type][st_data[row_type][did_col] == did].iloc[0]
+            r_id, r_units, _, r_table, _ = iudts_from_row(row)
+            frame_data[row_type] = abs_dict[r_table][r_id]
 
-        assert len(trend_row) == 1 and len(sa_row) == 1
-        trend_row, sa_row = trend_row.iloc[0], sa_row.iloc[0]
-
-        t_id, t_units, _, t_table, _ = iudts_from_row(trend_row)
-        s_id, s_units, _, s_table, _ = iudts_from_row(sa_row)
-        assert t_units == s_units
-
-        frame = pd.DataFrame(
-            [abs_dict[s_table][s_id], abs_dict[t_table][t_id]],
-            index=[SEAS_ADJ, TREND],
-        ).T
-        r_frame, r_units = recalibrate(frame, s_units)
-
+        # put the data into a frame and plot
+        # Note - assume SA and Trend units are the same, this is not checked.
+        frame, r_units = recalibrate(pd.DataFrame(frame_data), r_units)
         seas_trend_plot(
-            cast(pd.DataFrame, r_frame),
+            cast(pd.DataFrame, frame),
             title=did.replace(" ;  ", ": ").replace(" ;", ""),
             ylabel=r_units,
             **kwargs,
