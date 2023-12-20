@@ -614,6 +614,20 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
 # --- plot_series_highlighted()
 
 
+def _identify_runs(series: pd.Series, threshold: float) -> tuple[pd.Series, pd.Series]:
+    """Identify monotonic increasing runs."""
+    diffed = series.diff()
+    change_points = pd.concat(
+        [diffed[diffed.gt(threshold)], diffed[diffed.lt(-threshold)]]
+    ).sort_index()
+    if series.index[0] not in change_points.index:
+        starting_point = pd.Series([0], index=[series.index[0]])
+        change_points = pd.concat([change_points, starting_point]).sort_index()
+    rising = change_points > 0
+    cycles = (rising & ~rising.shift().astype(bool)).cumsum()
+    return cycles[rising], change_points
+
+
 def plot_series_highlighted(series: pd.Series, **kwargs) -> plt.Axes:
     """Plot a series of percentage rates, highlighting the increasing runs.
     Arguments
@@ -630,17 +644,7 @@ def plot_series_highlighted(series: pd.Series, **kwargs) -> plt.Axes:
     line_c = "#dd0000"  # rich red
     hilite_c = "gold"
 
-    # identify the runs
-    diffed = series.diff()
-    change_points = pd.concat(
-        [diffed[diffed.gt(threshold)], diffed[diffed.lt(-threshold)]]
-    ).sort_index()
-    if series.index[0] not in change_points.index:
-        starting_point = pd.Series([0], index=[series.index[0]])
-        change_points = pd.concat([change_points, starting_point]).sort_index()
-    rising = change_points > 0
-    cycles = (rising & ~rising.shift().astype(bool)).cumsum()
-    rising_stretches = cycles[rising]
+    rising_stretches, change_points = _identify_runs(series, threshold)
 
     # chart the series
     axes = series.plot(drawstyle="steps-post", lw=WIDE_WIDTH, c=line_c)
@@ -868,8 +872,6 @@ def _do_recal(flat_data, units, step, operator):
 
 
 # public
-
-
 def recalibrate(
     data: pd.Series | pd.DataFrame,
     units: str,

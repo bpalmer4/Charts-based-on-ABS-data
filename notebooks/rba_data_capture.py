@@ -2,6 +2,7 @@
 
 # system imports
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
@@ -20,16 +21,18 @@ CACHE_DIR = "./RBA_CACHE/"
 Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
 
-def clear_cache():
+def clear_cache() -> None:
     """Remove all files from the cache directory."""
 
     path = Path(CACHE_DIR)
-    _ = [f.unlink() for f in path.iterdir() if f.is_file()]
+    for f in path.iterdir():
+        if f.is_file():
+            f.unlink()
 
 
 # -- get webpage addresses for the RBA links
 #    but ignore the CSV data links (ie collect XLS links)
-def _get_rba_links():
+def _get_rba_links() -> dict[str, str]:
     """Scrape RBA website for links to datasets."""
 
     excel = re.compile(r"\.xlsx?$")  # ends in .xls or .xlsx
@@ -38,7 +41,7 @@ def _get_rba_links():
     url = "https://www.rba.gov.au/statistics/tables/"
     page = common.request_get(url)
     if page is None:
-        return None
+        sys.exit(f"Could not get page from {url}")
 
     # extract web addresses
     white_space = re.compile(r"\s+")
@@ -64,10 +67,11 @@ _extracted_links = _get_rba_links()
 
 
 # -- build a truely unique links table
-def _truely_unique(iterable_):
+def _truely_unique(iterable_: Iterable[str]) -> set[str]:
     """Ensure unique mapping."""
 
-    found, bad = set(), set()
+    found: set[str] = set()
+    bad: set[str] = set()
     for item in iterable_:
         if item in bad:
             continue
@@ -79,16 +83,16 @@ def _truely_unique(iterable_):
     return found
 
 
-_truely_unique = _truely_unique(_extracted_links.values())
+_uniqueness = _truely_unique(_extracted_links.values())
 _unique_links = {
-    value: key for key, value in _extracted_links.items() if value in _truely_unique
+    value: key for key, value in _extracted_links.items() if value in _uniqueness
 }
 
 
 # -- download a specific RBA table using a label.
 def get_data_table_labels() -> Iterable[str]:
     """Return a list of labels for accessing RBA data."""
-    return _truely_unique
+    return _uniqueness
 
 
 def get_data_file(label: str) -> str | None:
@@ -135,7 +139,8 @@ def get_data_file(label: str) -> str | None:
     if not use_cache:
         print(f'Downloading data for "{label}"')
         file_bytes = common.request_get(url)
-        common.save_to_cache(path, file_bytes)
+        if file_bytes is not None:
+            common.save_to_cache(path, file_bytes)
 
     return cache_file_name
 

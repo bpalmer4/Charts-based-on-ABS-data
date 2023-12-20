@@ -240,9 +240,11 @@ def get_plot_constants(
     recency_period = 8  # years
     recency_extra = 3  # months
     today = pd.Timestamp("today")
-    reasonable_end = meta["Series End"][meta["Series End"] <= today]
-    reasonable_end = reasonable_end.max() if len(reasonable_end) > 0 else today
-    recent = reasonable_end - pd.DateOffset(years=recency_period, months=recency_extra)
+    date_series = meta["Series End"][meta["Series End"] <= today]
+    reasonable_end = date_series.max() if len(date_series) > 0 else today
+    recent = reasonable_end - pd.DateOffset(
+        years=recency_period, months=recency_extra
+    )
     plot_times = [None, recent]
     plot_tags = ("full", "recent")
     return recent, plot_times, plot_tags
