@@ -26,7 +26,7 @@ def get_bis_cbpr() -> tuple[pd.DataFrame, pd.DataFrame]:
     bis_data = bis[num_meta_rows:].copy()
     bis_data = bis_data.set_index(0)
     bis_data.index = pd.PeriodIndex(bis_data.index, freq="D")
-    bis_data.columns = bis_meta["Reference area"].str[3:]
+    bis_data.columns = pd.Index(bis_meta["Reference area"].str[3])
     bis_data = bis_data.astype(float)
 
     return (bis_meta, bis_data)

@@ -1,6 +1,7 @@
 """Produce a simple time series decomposition."""
 
 from operator import sub, truediv
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -40,7 +41,7 @@ def decompose(
     s: pd.Series,
     model: str = "multiplicative",
     constant_seasonal: bool = False,
-    seasonal_smoother: tuple[np.array] = s3x5,
+    seasonal_smoother: tuple[np.ndarray, ...] = s3x5,
 ) -> None | pd.DataFrame:
     """The simple decomposition of a pandas Series s into its trend, seasonal
     and irregular components. The default is a multiplicative model:
@@ -89,11 +90,11 @@ def decompose(
 
     # --- initialise
     result = pd.DataFrame(s)
-    result.columns = ["Original"]
+    result.columns = pd.Index(["Original"])
     result["period"] = {
-        "Q": result.index.quarter,
-        "M": result.index.month,
-    }[result.index.freqstr[0]]
+        "Q": cast(pd.PeriodIndex, result.index).quarter,
+        "M": cast(pd.PeriodIndex, result.index).month,
+    }[cast(pd.PeriodIndex, result.index).freqstr[0]]
 
     # --- determine the period
     n_periods = {"Q": 4, "M": 12}[s.index.freqstr[0]]
