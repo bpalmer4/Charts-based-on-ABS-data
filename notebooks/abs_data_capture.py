@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Any, Callable, Final, cast
 
 # analytical imports
-import arrow
 import pandas as pd
 from bs4 import BeautifulSoup
 
@@ -181,16 +180,10 @@ def _check_abs_data_map() -> None:
 _check_abs_data_map()
 
 
-# private
-def _establish_cache_directory() -> str:
-    """Establish the ABS cache directory in the file system."""
-
-    cache_dir = "./ABS_CACHE/"
-    Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    return cache_dir
-
-
-_CACHE_DIR: Final[str] = _establish_cache_directory()
+# private = constants
+_CACHE_DIR: Final[str] = "./ABS_CACHE/"
+_CACHE_PATH: Final[Path] = Path(_CACHE_DIR)
+_CACHE_PATH.mkdir(parents=True, exist_ok=True)
 _META_DATA: Final[str] = "META_DATA"
 
 
@@ -201,7 +194,8 @@ _META_DATA: Final[str] = "META_DATA"
 def get_fs_constants(catalogue_id: str) -> tuple[str, str, str]:
     """Get file system constants for a catalogue ID."""
 
-    assert catalogue_id in ABS_DATA_MAP  # sanity check
+    if catalogue_id not in ABS_DATA_MAP:
+        raise ValueError("Unknown ABS catalogue ID")
     source = f"ABS {catalogue_id}"
     chart_dir = f"./CHARTS/{catalogue_id} - {ABS_DATA_MAP[catalogue_id]['Name']}/"
     Path(chart_dir).mkdir(parents=True, exist_ok=True)
@@ -220,7 +214,7 @@ def clear_cache() -> None:
 
 
 # public
-def get_ABS_catalogue_IDs() -> dict[str, str]:
+def get_abs_catalogue_ids() -> dict[str, str]:
     """Return a dictionary of known ABS catalogue identifiers."""
 
     response = {}
@@ -242,9 +236,7 @@ def get_plot_constants(
     today = pd.Timestamp("today")
     date_series = meta["Series End"][meta["Series End"] <= today]
     reasonable_end = date_series.max() if len(date_series) > 0 else today
-    recent = reasonable_end - pd.DateOffset(
-        years=recency_period, months=recency_extra
-    )
+    recent = reasonable_end - pd.DateOffset(years=recency_period, months=recency_extra)
     plot_times = [None, recent]
     plot_tags = ("full", "recent")
     return recent, plot_times, plot_tags
@@ -304,41 +296,14 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
 
 # --- Data fetch from the ABS
 # private
-def _get_abs_webpage(catalogue_id: str) -> bytes | None:
+def _get_abs_webpage(catalogue_id: str) -> bytes:
     """Get the ABS web page for latest data in respect
     of a specified ABS catalogue identifier."""
 
     if catalogue_id not in ABS_DATA_MAP:
-        print(f"Catalogue identifier not recognised: {catalogue_id}")
-        return None
+        raise ValueError(f"Catalogue identifier not recognised: {catalogue_id}")
     url = ABS_DATA_MAP[catalogue_id]["URL"]
     return common.request_get(url)
-
-
-# private
-def _get_cache_contents(file: Path) -> bytes | None:
-    """Get cache_contents for a particular file.
-    Erase the cache file if it is stale.
-    Return None if cache file not found or is stale."""
-
-    if not file.is_file():
-        return None  # no such zip-file
-
-    # sometimes the ABS does not sufficiently differentiate
-    # file names over time, so we use the concept of staleness
-    # to ensure we have fresh files, without overburdening the
-    # ABS servers.
-    stale = 1  # only use cache files less than stale days old
-    fresh_time = arrow.now().shift(days=-stale)
-    file_time = arrow.get(file.stat().st_mtime)
-    if file_time > fresh_time:
-        print("Retrieving zip-file from cache ...")
-        zip_file = file.read_bytes()
-        return zip_file  # zip-file acquired
-
-    print("Cache looks stale: Removing old cache version")
-    file.unlink()
-    return None  # zip-file is old and stale
 
 
 # private
@@ -357,7 +322,7 @@ def _get_url_iteration(soup, search_terms):
 
 # private
 def _get_urls(page: bytes, table: int, verbose: bool) -> None | str | list[str]:
-    """Scrape a URL for the ZIP file from the ABS page.
+    """Scrape a webpage for the ZIP file from the ABS page.
     If the ZIP file cannot be located, scrape a list of
     URLs for the individual excel files."""
 
@@ -396,113 +361,39 @@ def _get_urls(page: bytes, table: int, verbose: bool) -> None | str | list[str]:
 
 
 # private
-def _get_zip_from_cache(
-    url: str | list[str], prefix: str, verbose: bool
-) -> tuple[Path, bytes | None]:
-    """Get a zip file from the cache if it is there and not stale."""
-
-    stem = (
-        f"{url[0] if isinstance(url, list) else url}".replace(prefix, "")
-        .replace("/", "_")
-        .replace(".xlsx", ".zip")
-        .replace(".XLSX", ".zip")
-    )
-    cache_name = f"{_CACHE_DIR}{stem}"
-    if verbose:
-        print(f"Cache file name: {cache_name}")
-    zip_file = _get_cache_contents(cache_path := Path(cache_name))
-    return cache_path, zip_file
-
-
-# private
-def _get_xlsx_from_abs(
-    url_list: list, prefix: str, cache_path: Path, verbose: bool
-) -> bytes | None:
-    """Get each of individual .xlsx files and put in a
-    zip-file. Return that zip-file as bytes"""
-
-    # get the individual xl-table data from ABS
-    xl_dict = {}
-    for url in url_list:
-        url = url.replace(prefix, "")
-        url = f"{prefix}{url}"
-        name = Path(url).name
-        xl_dict[name] = common.request_get(url)
-    if verbose:
-        print(f"Captured: {xl_dict.keys()}")
-
-    # build a cache file ...
-    with zipfile.ZipFile(cache_path, "w", zipfile.ZIP_DEFLATED) as zfile:
-        for name, contents in xl_dict.items():
-            if not contents:
-                print(f"Something odd happened when zipping {name}")
-                continue
-            zfile.writestr(
-                f"/{name}",
-                contents,
-            )
-
-    # return the zip-file
-    zip_file = _get_cache_contents(cache_path)
-    if zip_file is None:
-        print("Unexpected error: the written zip-file is not there?")
-    else:
-        if verbose:
-            print(f"Zipfile is {len(zip_file):,} bytes long.")
-    return zip_file
-
-
-# private
-def _get_zip_from_abs(
-    url: str, prefix: str, cache_path: Path, verbose: bool
-) -> bytes | None:
-    """Get zip-file from the ABS and place into the cache."""
-
-    # get zip-file from ABS website
-    url = prefix + url
-    print("We need to download this file from the ABS ...")
-    if verbose:
-        print(url)
-    zip_file = common.request_get(url)
-    if zip_file is None:
-        return None
-
-    # cache for next time and return
-    print("Saving ABS download to cache.")
-    cache_path.open(mode="w", buffering=-1, encoding=None, errors=None, newline=None)
-    cache_path.write_bytes(zip_file)
-    return zip_file
-
-
-# private
-def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes | None:
+def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
+    prefix = "http://www.abs.gov.au"
+
     # get relevant web-page from ABS website
     page = _get_abs_webpage(catalogue_id)
-    if not page:
-        print(f"Failed to retrieve ABS web page for {catalogue_id}")
-        return None
 
     # extract web address
     url = _get_urls(page, table, verbose)
-    if not url:
-        print("No URL found for data")
-        return None
-
-    # get from cache:
-    prefix = "https://www.abs.gov.au"
-    cache_path, zip_file = _get_zip_from_cache(url, prefix, verbose)
-    if zip_file:
-        return zip_file
+    if url is None:
+        raise common.HttpError("No URL found on web-page for data")
 
     # get direct from ABS and cache for future use
     returnable = None
     if isinstance(url, list):
-        returnable = _get_xlsx_from_abs(url, prefix, cache_path, verbose)
+        # fake up a zip file from individual spreadsheets ...
+        print("The ABS is being ugly, we need to fake up a zip file")
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for u in url:
+                u = u.replace(prefix, "")
+                u = f"{prefix}{u}"
+                file_bytes = common.get_file(u, _CACHE_PATH)
+                name = Path(u).name
+                zip_file.writestr(f"/{name}", file_bytes)
+        zip_buf.seek(0)
+        returnable = zip_buf.read()
     else:
-        returnable = _get_zip_from_abs(url, prefix, cache_path, verbose)
+        # getting a single zip file ...
+        url = prefix + url
+        returnable = common.get_file(url, _CACHE_PATH)
     return returnable
 
 
@@ -650,7 +541,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
 
 
 # public
-def get_ABS_meta_and_data(
+def get_abs_meta_and_data(
     catalogue_id: str, table: int = 0, verbose: bool = False
 ) -> None | dict[str, pd.DataFrame]:
     """For the relevant catalogue-ID return a dictionary containing

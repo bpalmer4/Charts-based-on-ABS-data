@@ -1,16 +1,14 @@
 """Get data from the Reserve Bank of Australia (RBA)."""
 
 # system imports
+import io
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
 # analytic imports
 import pandas as pd
-import pytz
-import requests
 from bs4 import BeautifulSoup
 
 # local imports
@@ -18,14 +16,13 @@ import common
 
 # -- Establish an RBA cache directory
 CACHE_DIR = "./RBA_CACHE/"
-Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
+CACHE_PATH = Path(CACHE_DIR)
+CACHE_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def clear_cache() -> None:
     """Remove all files from the cache directory."""
-
-    path = Path(CACHE_DIR)
-    for f in path.iterdir():
+    for f in CACHE_PATH.iterdir():
         if f.is_file():
             f.unlink()
 
@@ -95,67 +92,31 @@ def get_data_table_labels() -> Iterable[str]:
     return _uniqueness
 
 
-def get_data_file(label: str) -> str | None:
+def get_data_file(label: str) -> bytes:
     """Ensure latest version of data is in the cache file.
     Return cache file name."""
     if label not in _unique_links.keys():
-        print(f"Data for {label} not found")
-        return None
+        raise ValueError(f"Data for {label} not found")
 
     # get last-modified time from file-header from RBA
     url = _unique_links[label]
     front = "https://www.rba.gov.au"
     if front not in url:
         url = front + url
-    response = requests.head(url, timeout=20)  # only get header
-    code = response.status_code
-    if (
-        code != 200
-        or response.headers is None
-        or "Last-Modified" not in response.headers
-    ):
-        print(f"Could not get web page header ({url}), error code: {code}")
-        return None
-    source_mtime_str = response.headers["Last-Modified"]
-    source_mtime = pd.to_datetime(source_mtime_str, utc=True)
 
-    # check cache version and use if fresh
-    use_cache = True
-    cache_stem = common.cachefy_name(url)
-    cache_file_name = CACHE_DIR + cache_stem
-    if not (path := Path(cache_file_name)).is_file():
-        use_cache = False
-        print(f'Cache data not stored in cache for "{label}"')
-    if use_cache:
-        stat = path.stat()
-        cache_mtime = pd.Timestamp(datetime.fromtimestamp(stat.st_mtime, tz=pytz.utc))
-        if cache_mtime < source_mtime:
-            use_cache = False
-            print(f'Cache data for "{label}" looks too old')
-    if use_cache:
-        print(f'Using cached data for "{label}"')
-
-    # download file and save to cache
-    if not use_cache:
-        print(f'Downloading data for "{label}"')
-        file_bytes = common.request_get(url)
-        if file_bytes is not None:
-            common.save_to_cache(path, file_bytes)
-
-    return cache_file_name
+    # return the data
+    return common.get_file(url, CACHE_PATH)
 
 
 def get_data(label: str) -> tuple[pd.DataFrame, pd.DataFrame] | None:
     """Get the data."""
 
     # convert label to an updated-cache file name
-    cache_file_name = get_data_file(label)
-    if cache_file_name is None:
-        return None
+    data_bytes = io.BytesIO(get_data_file(label))
 
     # separate meta-data from the data
     # assume the series identifier is the last meta-data row
-    frame = pd.read_excel(cache_file_name)
+    frame = pd.read_excel(data_bytes)
     frame = frame.set_index(frame.columns[0])
     series_id = "Series ID"
     if series_id not in frame.index:
