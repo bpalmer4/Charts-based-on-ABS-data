@@ -7,7 +7,7 @@ from pathlib import Path
 import requests
 
 
-# --- functions
+# --- common functions to abs_data_capture.py and rba_data_capture.py
 def cachefy_name(name: str) -> str:
     """Remove characters from a prospe1ctive filename
     that may cause problems."""
