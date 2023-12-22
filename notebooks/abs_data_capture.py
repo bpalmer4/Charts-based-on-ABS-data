@@ -10,10 +10,14 @@ Our general approach here is to:
    the file location on the ABS server changes from
    month to month.
 
-3. Check to see whether I have cached that file previously,
-   if not, download and save the zip-file to the cache.
+3. Get the URL headers for this file, amd compare freshness
+   with the version in the cache directory (if any).
 
-4. Open the zip-file, and save each table to a pandas
+4. Use either the zip-file from the cache, or download
+   the zip-file from the ABS andsave it to the cache,
+   and use that.
+
+5. Open the zip-file, and save each table to a pandas
    DataFrame with a PeriodIndex. And save the metadata
    to a pandas DataFrame. Return all of the DataFrames
    in a dictionary."""
@@ -231,7 +235,7 @@ def get_plot_constants(
     - used in a loop to produce a plot of the full
       series, and a plot of the recent period."""
 
-    recency_period = 8  # years
+    recency_period = 6  # years
     recency_extra = 3  # months
     today = pd.Timestamp("today")
     date_series = meta["Series End"][meta["Series End"] <= today]
@@ -307,21 +311,26 @@ def _get_abs_webpage(catalogue_id: str) -> bytes:
 
 
 # private
-def _get_url_iteration(soup, search_terms):
-    url_list = []
+def _get_url_iteration(soup: BeautifulSoup, search_terms: list[str]) -> list[str]:
+    """Search through webpage (in BS4 format) for search terms
+    within hyperlimk-anchors.  Return a list of matching link URLs."""
+
+    url_list: list[str] = []
     for term in search_terms:
         text = re.compile(term, re.IGNORECASE)
         found = soup.findAll("a", text=text)
         if not found or len(found) == 0:
             continue
         for element in found:
-            url = re.search(r'href="([^ ]+)"', str(element.prettify)).group(1)
-            url_list.append(url)
+            result = re.search(r'href="([^ ]+)"', str(element.prettify))
+            if result is not None:
+                url = result.group(1)
+                url_list.append(url)
     return url_list
 
 
 # private
-def _get_urls(page: bytes, table: int, verbose: bool) -> None | str | list[str]:
+def _get_urls(page: bytes, table: int, verbose: bool) -> str | list[str]:
     """Scrape a webpage for the ZIP file from the ABS page.
     If the ZIP file cannot be located, scrape a list of
     URLs for the individual excel files."""
@@ -351,13 +360,18 @@ def _get_urls(page: bytes, table: int, verbose: bool) -> None | str | list[str]:
     url_list = _get_url_iteration(soup, search_terms)
     if not url_list or not isinstance(url_list, list):
         print("Could not fimd individual urls")
-        if verbose:
-            print(f"-2--> {url_list}")
-        return None
+        raise common.HttpError("No URLs found on web-page for downloading data")
+
     print("URL list of excel files identified")
-    if verbose:
-        print(f"-3--> {url_list}")
     return url_list  # of type list
+
+
+# private
+def _prefix_url(url: str) -> str:
+    """Apply ABS URL prefix to relative links."""
+    prefix = "http://www.abs.gov.au"
+    url = url.replace(prefix, "")
+    return f"{prefix}{url}"
 
 
 # private
@@ -365,35 +379,31 @@ def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
-    prefix = "http://www.abs.gov.au"
-
     # get relevant web-page from ABS website
     page = _get_abs_webpage(catalogue_id)
 
     # extract web address
     url = _get_urls(page, table, verbose)
-    if url is None:
-        raise common.HttpError("No URL found on web-page for data")
 
     # get direct from ABS and cache for future use
-    returnable = None
     if isinstance(url, list):
-        # fake up a zip file from individual spreadsheets ...
-        print("The ABS is being ugly, we need to fake up a zip file")
+        # url is a list of individual spreedsheets
+        # We need to fake up a zip file from these spreadsheets ...
+        print("The ABS is being difficult, we need to fake up a zip file")
         zip_buf = io.BytesIO()
         with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for u in url:
-                u = u.replace(prefix, "")
-                u = f"{prefix}{u}"
+                u = _prefix_url(u)
                 file_bytes = common.get_file(u, _CACHE_PATH)
                 name = Path(u).name
                 zip_file.writestr(f"/{name}", file_bytes)
         zip_buf.seek(0)
         returnable = zip_buf.read()
     else:
-        # getting a single zip file ...
-        url = prefix + url
+        # url is for a single zip file ...
+        url = _prefix_url(url)
         returnable = common.get_file(url, _CACHE_PATH)
+
     return returnable
 
 

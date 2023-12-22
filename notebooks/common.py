@@ -45,23 +45,22 @@ def save_to_cache(file: Path, contents: bytes) -> None:
     file.write_bytes(contents)
 
 
-def get_file(url: str, dir_path: Path) -> bytes:
-    """Get file from URL or local file-system cache."""
+def get_file(url: str, cache_dir: Path) -> bytes:
+    """Get file from URL or local file-system cache, depending on freshness."""
 
-    def get_fpath(url: str) -> Path:
+    def get_fpath() -> Path:
         """Convert URL string into a cache file name,
         then return as a Path object."""
 
         bad_cache_pattern = r'[~"#%&*:<>?\\{|}]+'
-        file_name = re.sub(
-            bad_cache_pattern,
-            "",
-            f"{hashlib.md5(url.encode('utf-8')).hexdigest()}--{url.split(r'/')[-1]}",
+        raw_name = (
+            f"{hashlib.md5(url.encode('utf-8')).hexdigest()}--{url.split(r'/')[-1]}"
         )
-        return Path(dir_path / f"{file_name}")
+        file_name = re.sub(bad_cache_pattern, "", raw_name)
+        return Path(cache_dir / f"{file_name}")
 
     # sanity checks
-    if not dir_path.is_dir():
+    if not cache_dir.is_dir():
         raise ValueError("Cache path is not a directory")
 
     # get URL modification time in UTC
@@ -74,27 +73,26 @@ def get_file(url: str, dir_path: Path) -> bytes:
 
     # get cache modification time in UTC
     target_mtime: datetime | None = None
-    file_path = get_fpath(url)
+    file_path = get_fpath()
     if file_path.exists() and file_path.is_file():
         target_mtime = pd.to_datetime(
             datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc), utc=True
         )
 
-    # get and save URL source
+    # get and save URL source data
     one_day_old = pd.Timestamp.utcnow() - pd.DateOffset(days=1)
     if (
-        target_mtime is None            # cache is empty
-        or source_mtime > target_mtime  # URL is definitely fresher than cache
-        or one_day_old > target_mtime   # prophylaxis: our cache might just be stale
+        target_mtime is None  # cache is empty
+        or source_mtime > target_mtime  # URL is fresher than cache
+        or one_day_old > target_mtime  # prophylaxis: our cache might just be stale
     ):
         print("About to download and cache the latest data.")
-        file_bytes = request_get(url)
-        if file_bytes is not None:
-            save_to_cache(file_path, file_bytes)
-            return file_bytes
+        url_bytes = request_get(url)  # will raise exception if it fails
+        save_to_cache(file_path, url_bytes)
+        return url_bytes
 
-    # return the data that has been cached
-    file_path = get_fpath(url)
+    # return the data that has been cached previously
+    file_path = get_fpath()
     print(f"Retrieving data from the cache file: {file_path}")
     if not file_path.exists() or not file_path.is_file():
         raise CacheError("Cached file not available?")
@@ -102,21 +100,21 @@ def get_file(url: str, dir_path: Path) -> bytes:
     return file_bytes
 
 
-### --- preliminary testing
+# --- preliminary testing:
 DO_TEST = False
 
 if __name__ == "__main__" and DO_TEST:
+    # prepare for the test cases
     URL1 = (  # ABS
         "https://www.abs.gov.au/statistics/labour/employment-and-unemployment/"
         "labour-force-australia/nov-2023/6202001.xlsx"
     )
-    URL2 = (  # RBA
-        'https://www.rba.gov.au/statistics/tables/xls/a02hist.xls'
-    )
-
+    URL2 = "https://www.rba.gov.au/statistics/tables/xls/a02hist.xls"  # RBA
     TEST_CACHE_DIR = "./TEST_CACHE/"
     path = Path(TEST_CACHE_DIR)
+    path.mkdir(parents=True, exist_ok=True)
+
+    # do the testing
     for url_ in (URL1, URL2):
-        path.mkdir(parents=True, exist_ok=True)
         content = get_file(url_, path)
         print(len(content))
