@@ -136,7 +136,7 @@ _annotation_kwargs = ("lfooter", "rfooter", "lheader", "rheader")
 
 _file_kwargs = ("pre_tag", "tag", "chart_dir", "file_type", "dpi")
 _fig_kwargs = ("figsize", "show")
-_oth_kwargs = ("zero_y", "y0", "dont_save", "dont_close")
+_oth_kwargs = ("zero_y", "y0", "x0",  "dont_save", "dont_close")
 _ACCEPTABLE_KWARGS = frozenset(
     _value_kwargs
     + _splat_kwargs
@@ -180,7 +180,8 @@ def _apply_splat_kwargs(axes, settings: tuple, **kwargs) -> None:
                 method = getattr(axes, method_name)
                 method(**kwargs[method_name])
             else:
-                print(f"Warning expected dict argument: {method_name}")
+                if kwargs[method_name] is not None:
+                    print(f"Warning expected dict argument: {method_name}")
 
 
 # private
@@ -236,6 +237,11 @@ def _apply_kwargs(axes, **kwargs) -> None:
         low, high = axes.get_ylim()
         if low < 0 < high:
             axes.axhline(y=0, lw=0.75, c="#555555")
+
+    if check_kwargs("x0"):
+        low, high = axes.get_xlim()
+        if low < 0 < high:
+            axes.axvline(x=0, lw=0.75, c="#555555")
 
 
 # private
@@ -293,6 +299,7 @@ def finalise_plot(axes, **kwargs) -> None:
        - show - Boolean - whether to show the plot or not
        - zero_y - bool - ensure y=0 is included in the plot.
        - y0 - bool - highlight the y=0 line on the plot
+       - x0 - bool - highlights the x=0 line on the plot
        - dont_save - bool - dont save the plot to the file system
        - dont_close - bool - dont close the plot
        - dpi - int - dots per inch for the saved chart
