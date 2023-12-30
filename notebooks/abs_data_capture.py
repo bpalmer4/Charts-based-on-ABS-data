@@ -485,7 +485,7 @@ def _get_data(
 
 
 # private
-def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataFrame]:
+def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, pd.DataFrame]:
     """Get a DataFrame for each table in the zip-file,
     plus an overall DataFrame for the metadata.
     Return these in a dictionary
@@ -493,8 +493,8 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
      - zip_file - bytes array of ABS zip file of excel spreadsheets
      - verbose - provide additional feedback on this step.
     Returns:
-     - either None (failure) or a dictionary containing a
-       separate DataFrame for each table in the zip-file,
+     - either an empty dictionary (failure) or a dictionary containing
+       a separate DataFrame for each table in the zip-file,
        plus a DataFrame called 'META' for the metadata.
     """
 
@@ -553,7 +553,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> None | dict[str, pd.DataF
 # public
 def get_abs_meta_and_data(
     catalogue_id: str, table: int = 0, verbose: bool = False
-) -> None | dict[str, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """For the relevant catalogue-ID return a dictionary containing
     a meta-data Data-Frame and one or more DataFrames of actual
     data from the ABS.
@@ -567,8 +567,6 @@ def get_abs_meta_and_data(
      - verbose - display detailed web-scraping and caching information"""
 
     zip_file = _get_abs_zip_file(catalogue_id, table, verbose)
-    if zip_file is None:
-        return None
     return _get_dataframes(zip_file, verbose)
 
 
