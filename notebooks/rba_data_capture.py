@@ -137,6 +137,6 @@ def get_data(label: str) -> tuple[pd.DataFrame, pd.DataFrame] | None:
 
     # Date adjustments - but not for distributional data
     if "istribution" not in label:
-        data.index = pd.to_datetime(data.index)
+        data.index = pd.DatetimeIndex(data.index)
 
     return meta.T.dropna(how="all", axis=1), data

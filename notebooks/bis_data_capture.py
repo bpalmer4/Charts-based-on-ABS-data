@@ -3,6 +3,9 @@
 
 # --- imports
 import pandas as pd
+import common
+from pathlib import Path
+import io
 
 
 # --- functions
@@ -17,16 +20,21 @@ def get_bis_cbpr() -> tuple[pd.DataFrame, pd.DataFrame]:
           few rows for some nations."""
 
     url = "https://www.bis.org/statistics/full_cbpol_d_csv_row.zip"
-    bis = pd.read_csv(url, low_memory=False, header=None)
+    cache_dir = Path("./BIS_CACHE")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    zipfile = common.get_file(url, cache_dir)
+    bis = pd.read_csv(io.BytesIO(zipfile), compression='zip', low_memory=False, header=None)
 
     num_meta_rows = 9
     bis_meta = bis[:num_meta_rows].copy()
     bis_meta = bis_meta.set_index(0).T
+    #display(bis_meta)
 
     bis_data = bis[num_meta_rows:].copy()
     bis_data = bis_data.set_index(0)
     bis_data.index = pd.PeriodIndex(bis_data.index, freq="D")
-    bis_data.columns = pd.Index(bis_meta["Reference area"].str[3])
+    bis_data.columns = pd.Index(bis_meta["Reference area"].str[3:])
     bis_data = bis_data.astype(float)
+    #display(bis_data)                         
 
     return (bis_meta, bis_data)

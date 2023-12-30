@@ -28,6 +28,7 @@ import calendar
 import io
 import re
 import zipfile
+from functools import cache
 from pathlib import Path
 from typing import Any, Callable, Final, cast
 
@@ -551,6 +552,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, pd.DataFrame]:
 
 
 # public
+@cache
 def get_abs_meta_and_data(
     catalogue_id: str, table: int = 0, verbose: bool = False
 ) -> dict[str, pd.DataFrame]:
@@ -567,7 +569,13 @@ def get_abs_meta_and_data(
      - verbose - display detailed web-scraping and caching information"""
 
     zip_file = _get_abs_zip_file(catalogue_id, table, verbose)
-    return _get_dataframes(zip_file, verbose)
+    if not zip_file:
+        raise TypeError("An unexpected empty zipfile.")
+    dictionary = _get_dataframes(zip_file, verbose)
+    if len(dictionary) <= 1:
+        # dictionary should contain meta_data, plus one or more other dataframes
+        raise TypeError("Could not extract dataframes from zipfile")
+    return dictionary
 
 
 # --- identify the specific data series from the meta data DataFrame
