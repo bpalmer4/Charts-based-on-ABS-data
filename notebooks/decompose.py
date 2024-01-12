@@ -1,7 +1,7 @@
 """Produce a simple time series decomposition."""
 
 from operator import sub, truediv
-from typing import cast
+from typing import cast, Final
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,24 @@ s3x9 = (
 )
 
 
+# --- decomposition process steps ---
+ORIGINAL: Final[str] = "Original"
+EXTENDED: Final[str] = "Extended"
+PERIOD: Final[str] = "Period"
+FIRST_TREND_ESTIMATE: Final[str] = "1stTrendEst"
+FIRST_SEAS_ESTIMATE: Final[str] = "1stSeasAdjEst"
+SECOND_SEAS_ESTIMATE: Final[str] = "2ndSeasonalEst"
+THIRD_SEAS_ESTIMATE: Final[str] = "3rdSeasonalEst"
+FIRST_SEASADJ_ESTIMATE: Final[str] = "1stSeasAdjEst"
+SECOND_TREND_ESTIMATE: Final[str] = "2ndTrendEst"
+FOURTH_SEAS_ESTIMATE: Final[str] = "4thSeasonalEst"
+
+FINAL_SEASONAL: Final[str] = "Seasonal"
+FINAL_SEASADJ_ESTIMATE: Final[str] = "Seasonally Adjusted"
+FINAL_TREND_ESTIMATE: Final[str] = "Trend"
+FINAL_IRREGULAR: Final[str] = "Irregular"
+
+
 # --- public Decomposition function
 def decompose(
     s: pd.Series,
@@ -56,7 +74,7 @@ def decompose(
         and sorted in ascending order - the index should be a period
         index with a frequency of M or Q
     -   model - string - either 'multiplicative' or 'additive'
-    -   arima_extend - whether to apply arima extentions
+    -   arima_extend - bool - whether to apply arima extentions
     -   constant_seasonal - bool - whether the seasonal component is
         constant or (slowly) variable
     -   seasonal_smoother - when not using a constantSeasonal, which
@@ -82,7 +100,108 @@ def decompose(
     Does not adjust for moving holidays, public holidays, variable number
     of working days in month, etc. (ie. it is quite a simple decomposition)."""
 
-    # --- sanity checks
+    # - preliminaries
+    n_periods = _check_input_validity(s)
+    h = _calculate_henderson_length(n_periods)
+    oper = truediv if model == "multiplicative" else sub
+
+    # - decomposition
+    result = _extend_series_by_arima(s, h, arima_extend)
+    result = _derive_initial_trend(result, n_periods)
+    result[FIRST_SEAS_ESTIMATE] = oper(result[EXTENDED], result[FIRST_TREND_ESTIMATE])
+
+    result = _smooth_seasonal_component(
+        result,
+        constant_seasonal=constant_seasonal,
+        seasonal_smoother=seasonal_smoother,
+        column_to_be_smoothed=FIRST_SEAS_ESTIMATE,
+        new_column=SECOND_SEAS_ESTIMATE,
+    )
+
+    if any(result[SECOND_SEAS_ESTIMATE].isnull()):
+        result = _extend_series(
+            result,
+            periods=n_periods,
+            column_to_be_extended=SECOND_SEAS_ESTIMATE,
+            new_column=THIRD_SEAS_ESTIMATE,
+        )
+    else:
+        result[THIRD_SEAS_ESTIMATE] = result[SECOND_SEAS_ESTIMATE]
+
+    result[FIRST_SEASADJ_ESTIMATE] = oper(result[EXTENDED], result[THIRD_SEAS_ESTIMATE])
+    result[SECOND_TREND_ESTIMATE] = hma(result[FIRST_SEASADJ_ESTIMATE], h)
+    result[FOURTH_SEAS_ESTIMATE] = oper(result[EXTENDED], result[SECOND_TREND_ESTIMATE])
+
+    result = _smooth_seasonal_component(
+        result,
+        constant_seasonal=constant_seasonal,
+        seasonal_smoother=seasonal_smoother,
+        column_to_be_smoothed=FOURTH_SEAS_ESTIMATE,
+        new_column=FINAL_SEASONAL,
+    )
+
+    result[FINAL_SEASADJ_ESTIMATE] = oper(result[ORIGINAL], result[FINAL_SEASONAL])
+    result[FINAL_TREND_ESTIMATE] = hma(result[FINAL_SEASADJ_ESTIMATE].dropna(), h)
+    result[FINAL_IRREGULAR] = oper(
+        result[FINAL_SEASADJ_ESTIMATE], result[FINAL_TREND_ESTIMATE]
+    )
+
+    return result
+
+
+#  === private methods below ===
+def _derive_initial_trend(
+    result: pd.DataFrame,
+    n_periods: int
+) -> pd.DataFrame:
+    """derive an initial estimate for the trend component."""
+
+    result[FIRST_TREND_ESTIMATE] = result[EXTENDED].rolling(
+        window=n_periods + 1, min_periods=n_periods + 1, center=True
+    ).mean()
+    # Note: rolling mean leaves NA values at the start/end of the trend estimate.
+
+    return result
+
+
+def _extend_series_by_arima(
+    s: pd.Series, h: int, arima_extend
+) -> pd.DataFrame:
+    """Use auto_arima() to extend the series in each direction.
+    Returns tuple comprising (0) extended series, and (1) results dataframe/"""
+
+    if arima_extend:
+        freq = int(h / 2)
+        forward = _make_projection(s, freq=freq, direction=1)
+        back = _make_projection(s, freq=freq, direction=-1)
+        combined = forward.combine_first(back)
+    else:
+        combined = s
+    result = pd.DataFrame(combined)
+    result.columns = pd.Index([EXTENDED])
+    result[ORIGINAL] = s
+    result[PERIOD] = {
+        "Q": cast(pd.PeriodIndex, result.index).quarter,
+        "M": cast(pd.PeriodIndex, result.index).month,
+    }[cast(pd.PeriodIndex, result.index).freqstr[0]]
+
+    return result
+
+
+def _calculate_henderson_length(n_periods: int) -> int:
+    """Settle the length of the Henderson moving average
+    Note: ABS uses 13-term HMA for monthly and 7-term for quarterly
+          Here we are using 13-term for monthly and 9-term for quarterly."""
+
+    h = max(n_periods, 9)
+    if h % 2 == 0:
+        h += 1  # we need an odd number
+    return h
+
+
+def _check_input_validity(s: pd.Series) -> int:
+    """Perform sanity checks. Return number of periods in PerdioIndex."""
+
     if not isinstance(s, pd.Series):
         raise TypeError("The s parameter should be a pandas Series")
     if not isinstance(s.index, pd.PeriodIndex):
@@ -91,97 +210,21 @@ def decompose(
         raise ValueError("The index for the s parameter should be unique and sorted")
     if any(s.isnull()) or not all(np.isfinite(s)):
         raise ValueError("The s parameter contains NA or infinite values")
-    ACCEPTABLE = {"Q": 4, "M": 12}
-    if s.index.freqstr[0] not in ACCEPTABLE.keys():
+
+    acceptable = {"Q": 4, "M": 12}
+    if s.index.freqstr[0] not in acceptable:
         raise ValueError(
             "The index for the s parameter should be monthly or quarterly data"
         )
 
-    # --- determine the period
-    n_periods = ACCEPTABLE[s.index.freqstr[0]]
+    n_periods = acceptable[s.index.freqstr[0]]
     if len(s) < (n_periods * 2) + 1:
         raise ValueError("The input series is not long enough to decompose")
 
-    # --- settle the length of the Henderson moving average
-    h = max(n_periods, 7)  # ABS uses 13-term HMA for monthly and 7-term for quarterly
-    if h % 2 == 0:
-        h += 1  # we need an odd number
-
-    # --- On to the decomposition process:
-    # - 0 - use auto_arima() to extend the series in each direction
-    if arima_extend:
-        forward = make_projection(s, freq=n_periods, direction=1)
-        back = make_projection(s, freq=n_periods, direction=-1)
-        combined = forward.combine_first(back)
-    else:
-        combined = s
-    result = pd.DataFrame(combined)
-    result.columns = pd.Index(["Extended"])
-    result["Original"] = s
-    result["period"] = {
-        "Q": cast(pd.PeriodIndex, result.index).quarter,
-        "M": cast(pd.PeriodIndex, result.index).month,
-    }[cast(pd.PeriodIndex, result.index).freqstr[0]]
-    s = combined
-
-    # - 1 - derive an initial estimate for the trend component
-    result["1stTrendEst"] = s.rolling(
-        window=n_periods + 1, min_periods=n_periods + 1, center=True
-    ).mean()
-    # Note: rolling mean leaves NA values at the start/end of the trend estimate.
-
-    # - 2 - preliminary estimate of the seasonal component
-    oper = truediv if model == "multiplicative" else sub
-    result["1stSeasonalEst"] = oper(result["Extended"], result["1stTrendEst"])
-
-    # - 3 - smooth the seasonal
-    result = _smooth_seasonal_component(
-        result,
-        constant_seasonal=constant_seasonal,
-        seasonal_smoother=seasonal_smoother,
-        column_to_be_smoothed="1stSeasonalEst",
-        new_column="2ndSeasonalEst",
-    )
-
-    # - 4 - extend the smoothed seasonal estimate to full scale
-    if any(result["2ndSeasonalEst"].isnull()):
-        result = _extend_series(
-            result,
-            periods=n_periods,
-            column_to_be_extended="2ndSeasonalEst",
-            new_column="3rdSeasonalEst",
-        )
-    else:
-        result["3rdSeasonalEst"] = result["2ndSeasonalEst"]
-
-    # - 5 - preliminary estimate of the seasonally adjusted data
-    result["1stSeasAdjEst"] = oper(result["Extended"], result["3rdSeasonalEst"])
-
-    # - 6 - a better estimate of the trend
-    result["2ndTrendEst"] = hma(result["1stSeasAdjEst"], h)
-
-    # - 7 - final estimate of the seasonal component
-    result["4thSeasonalEst"] = oper(result["Extended"], result["2ndTrendEst"])
-
-    result = _smooth_seasonal_component(
-        result,
-        constant_seasonal=constant_seasonal,
-        seasonal_smoother=seasonal_smoother,
-        column_to_be_smoothed="4thSeasonalEst",
-        new_column="Seasonal",
-    )
-
-    # - 8 - calculate remaining final estimates
-    result["Seasonally Adjusted"] = oper(result["Original"], result["Seasonal"])
-    result["Trend"] = hma(result["Seasonally Adjusted"].dropna(), h)
-    result["Irregular"] = oper(result["Seasonally Adjusted"], result["Trend"])
-
-    # - 9 - our job here is done
-    return result
+    return n_periods
 
 
-# --- projection
-def make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
+def _make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
     """Use auto_arima to project a series into the future/past.
     Arguments
     s - Series to be projected.
@@ -191,7 +234,6 @@ def make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
 
     t = s
     if direction < 0:
-        orig_index = s.index
         t = s[::-1]
         t = t.reset_index(drop=True)
 
@@ -206,12 +248,12 @@ def make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
         max_p=3,
         max_q=3,
         D=None,
-        trace=True,
+        trace=False,
         error_action="ignore",
         suppress_warnings=True,
         stepwise=True,
     )
-    print(arima.summary())
+    # print(arima.summary())
     forward = int(freq / 2) if freq >= 12 else freq
     fc = arima.predict(n_periods=int(forward), return_conf_int=False)
 
@@ -224,7 +266,6 @@ def make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
     return returnable
 
 
-# --- apply seasonal smoother
 def _smooth_seasonal_component(
     result: pd.DataFrame,
     constant_seasonal,
@@ -242,9 +283,9 @@ def _smooth_seasonal_component(
     result[new_column] = np.repeat(np.nan, len(result))
 
     # populate the return column ...
-    for u in result["period"].unique():
+    for u in result[PERIOD].unique():
         # get each of of the seasonals
-        this_season = result.loc[result["period"] == u, column_to_be_smoothed]
+        this_season = result.loc[result[PERIOD] == u, column_to_be_smoothed]
 
         # smooth to a constant seasonal value
         if constant_seasonal:
@@ -297,7 +338,6 @@ def _smooth_seasonal_component(
     return result
 
 
-# --- extend seasonal components to the full length of series
 def _extend_series(result, periods, column_to_be_extended, new_column):
     result[new_column] = result[column_to_be_extended].copy()
 
@@ -305,7 +345,7 @@ def _extend_series(result, periods, column_to_be_extended, new_column):
         i = start_point
         while True:
             p = result.index[i]
-            result[new_column].iat[i] = fill[new_column].at[result["period"].iat[i]]
+            result[new_column].iat[i] = fill[new_column].at[result[PERIOD].iat[i]]
             if p >= end_point:
                 break
             i += 1
@@ -313,18 +353,18 @@ def _extend_series(result, periods, column_to_be_extended, new_column):
     # back-cast
     if np.isnan(result.iat[0, result.columns.get_loc(new_column)]):
         fill = pd.DataFrame(result[new_column].dropna().iloc[0:periods])
-        fill["period"] = result["period"][fill.index[0] : fill.index[len(fill) - 1]]
+        fill[PERIOD] = result[PERIOD][fill.index[0] : fill.index[len(fill) - 1]]
         end_point = fill.index[0] - 1
-        fill.index = fill["period"]
+        fill.index = fill[PERIOD]
         fillup(result=result, fill=fill, start_point=0, end_point=end_point)
 
     # forward-cast
     if np.isnan(result.iat[len(result) - 1, result.columns.get_loc(new_column)]):
         fill = result[new_column].dropna()
         fill = pd.DataFrame(fill[(len(fill) - periods) : len(fill)])
-        fill["period"] = result["period"][fill.index[0] : fill.index[len(fill) - 1]]
+        fill[PERIOD] = result[PERIOD][fill.index[0] : fill.index[len(fill) - 1]]
         start_point = result.index.get_loc(fill.index[len(fill) - 1] + 1)
-        fill.index = fill["period"]
+        fill.index = fill[PERIOD]
         end_point = result.index[len(result) - 1]
         fillup(result=result, fill=fill, start_point=start_point, end_point=end_point)
 
