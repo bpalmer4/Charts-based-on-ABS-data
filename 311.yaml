@@ -1,6 +1,7 @@
 # micromamba env create -f 311.yaml
 # Note: in conda-forge, pytensor 2.18 requires python 3.11
-# Note: pandasdmx also requires python 3.11
+# Note: pandasdmx alsox requires python 3.11
+# Note: pmdarima alsox requires python 3.11
 name: 311
 channels:
   - conda-forge
@@ -24,6 +25,7 @@ dependencies:
   - scipy 
   - scikit-learn 
   - nltk
+  - pmdarima
   # Microsoft Excel 
   - openpyxl 
   - xlrd 

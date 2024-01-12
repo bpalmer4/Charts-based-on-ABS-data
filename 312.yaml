@@ -22,6 +22,7 @@ dependencies:
   - scipy 
   - scikit-learn 
   - nltk
+  #- pmdarima
   # Microsoft Excel 
   - openpyxl 
   - xlrd 

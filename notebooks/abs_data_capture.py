@@ -728,7 +728,7 @@ def plot_rows_collectively(
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
-    **kwargs: dict[str, Any],  # passed to plotting function
+    **kwargs: Any,  # passed to plotting function
 ) -> None:
     """Produce an collective/single chart covering each row
     selected from the meta data with selector.
@@ -771,7 +771,7 @@ def plot_rows_individually(
     plot_function: Callable,
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
-    **kwargs: dict[str, Any],  # passed to plotting function
+    **kwargs: Any,  # passed to plotting function
 ) -> None:
     """Produce an single chart for each row selected from
     the meta data with selector.
