@@ -5,6 +5,7 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
+from pmdarima.arima import auto_arima
 
 from henderson import hma
 
@@ -40,6 +41,7 @@ s3x9 = (
 def decompose(
     s: pd.Series,
     model: str = "multiplicative",
+    arima_extend=False,
     constant_seasonal: bool = False,
     seasonal_smoother: tuple[np.ndarray, ...] = s3x5,
 ) -> None | pd.DataFrame:
@@ -54,6 +56,7 @@ def decompose(
         and sorted in ascending order - the index should be a period
         index with a frequency of M or Q
     -   model - string - either 'multiplicative' or 'additive'
+    -   arima_extend - whether to apply arima extentions
     -   constant_seasonal - bool - whether the seasonal component is
         constant or (slowly) variable
     -   seasonal_smoother - when not using a constantSeasonal, which
@@ -64,6 +67,7 @@ def decompose(
     decomposition process (enables debugging). The key columns in the
     DataFrame are:
     -   'Original' - the original series
+    -   'Extended' - the arima extended series for decomposition
     -   'Seasonally Adjusted' - the seasonally adjusted series
     -   'Trend' - the trend of the seasonally adjusted series
     -   'Seasonal' - the seasonal component found through the
@@ -87,26 +91,39 @@ def decompose(
         raise ValueError("The index for the s parameter should be unique and sorted")
     if any(s.isnull()) or not all(np.isfinite(s)):
         raise ValueError("The s parameter contains NA or infinite values")
-
-    # --- initialise
-    result = pd.DataFrame(s)
-    result.columns = pd.Index(["Original"])
-    result["period"] = {
-        "Q": cast(pd.PeriodIndex, result.index).quarter,
-        "M": cast(pd.PeriodIndex, result.index).month,
-    }[cast(pd.PeriodIndex, result.index).freqstr[0]]
+    ACCEPTABLE = {"Q": 4, "M": 12}
+    if s.index.freqstr[0] not in ACCEPTABLE.keys():
+        raise ValueError(
+            "The index for the s parameter should be monthly or quarterly data"
+        )
 
     # --- determine the period
-    n_periods = {"Q": 4, "M": 12}[s.index.freqstr[0]]
+    n_periods = ACCEPTABLE[s.index.freqstr[0]]
     if len(s) < (n_periods * 2) + 1:
         raise ValueError("The input series is not long enough to decompose")
 
     # --- settle the length of the Henderson moving average
-    h = max(n_periods, 9)  # ABS uses 13-term HMA for monthly and 7-term for quarterly
+    h = max(n_periods, 7)  # ABS uses 13-term HMA for monthly and 7-term for quarterly
     if h % 2 == 0:
         h += 1  # we need an odd number
 
     # --- On to the decomposition process:
+    # - 0 - use auto_arima() to extend the series in each direction
+    if arima_extend:
+        forward = make_projection(s, freq=n_periods, direction=1)
+        back = make_projection(s, freq=n_periods, direction=-1)
+        combined = forward.combine_first(back)
+    else:
+        combined = s
+    result = pd.DataFrame(combined)
+    result.columns = pd.Index(["Extended"])
+    result["Original"] = s
+    result["period"] = {
+        "Q": cast(pd.PeriodIndex, result.index).quarter,
+        "M": cast(pd.PeriodIndex, result.index).month,
+    }[cast(pd.PeriodIndex, result.index).freqstr[0]]
+    s = combined
+
     # - 1 - derive an initial estimate for the trend component
     result["1stTrendEst"] = s.rolling(
         window=n_periods + 1, min_periods=n_periods + 1, center=True
@@ -115,7 +132,7 @@ def decompose(
 
     # - 2 - preliminary estimate of the seasonal component
     oper = truediv if model == "multiplicative" else sub
-    result["1stSeasonalEst"] = oper(result["Original"], result["1stTrendEst"])
+    result["1stSeasonalEst"] = oper(result["Extended"], result["1stTrendEst"])
 
     # - 3 - smooth the seasonal
     result = _smooth_seasonal_component(
@@ -138,13 +155,13 @@ def decompose(
         result["3rdSeasonalEst"] = result["2ndSeasonalEst"]
 
     # - 5 - preliminary estimate of the seasonally adjusted data
-    result["1stSeasAdjEst"] = oper(result["Original"], result["3rdSeasonalEst"])
+    result["1stSeasAdjEst"] = oper(result["Extended"], result["3rdSeasonalEst"])
 
     # - 6 - a better estimate of the trend
     result["2ndTrendEst"] = hma(result["1stSeasAdjEst"], h)
 
     # - 7 - final estimate of the seasonal component
-    result["4thSeasonalEst"] = oper(result["Original"], result["2ndTrendEst"])
+    result["4thSeasonalEst"] = oper(result["Extended"], result["2ndTrendEst"])
 
     result = _smooth_seasonal_component(
         result,
@@ -156,11 +173,55 @@ def decompose(
 
     # - 8 - calculate remaining final estimates
     result["Seasonally Adjusted"] = oper(result["Original"], result["Seasonal"])
-    result["Trend"] = hma(result["Seasonally Adjusted"], h)
+    result["Trend"] = hma(result["Seasonally Adjusted"].dropna(), h)
     result["Irregular"] = oper(result["Seasonally Adjusted"], result["Trend"])
 
     # - 9 - our job here is done
     return result
+
+
+# --- projection
+def make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
+    """Use auto_arima to project a series into the future/past.
+    Arguments
+    s - Series to be projected.
+    freq - positive int - frequency of series - should be 4 or 12
+    direction - 1 or -1 - direction we are projecting towards.
+    Returns - projected series."""
+
+    t = s
+    if direction < 0:
+        orig_index = s.index
+        t = s[::-1]
+        t = t.reset_index(drop=True)
+
+    arima = auto_arima(
+        t,
+        m=freq,
+        seasonal=True,
+        d=None,
+        test="adf",
+        start_p=0,
+        start_q=0,
+        max_p=3,
+        max_q=3,
+        D=None,
+        trace=True,
+        error_action="ignore",
+        suppress_warnings=True,
+        stepwise=True,
+    )
+    print(arima.summary())
+    forward = int(freq / 2) if freq >= 12 else freq
+    fc = arima.predict(n_periods=int(forward), return_conf_int=False)
+
+    if direction < 0:
+        fc.index = s.index[0] - pd.Series(range(1, forward + 1))
+        fc = fc.sort_index()
+        returnable = pd.concat([fc, s])
+    else:
+        returnable = pd.concat([s, fc])
+    return returnable
 
 
 # --- apply seasonal smoother
