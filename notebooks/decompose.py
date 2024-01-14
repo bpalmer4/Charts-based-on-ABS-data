@@ -87,9 +87,8 @@ def decompose(
     result[FIRST_TREND_ESTIMATE] = _get_trend(
         result[EXTENDED],
         h,
-        discontinuity_list,
-        methodology="Other",
-        n_periods=n_periods,
+        discontinuity_list=(),  # ignore disconinuities initially
+        methodology="Other",  # start with a very simple averaging
     )
     result[FIRST_SEAS_ESTIMATE] = oper(result[EXTENDED], result[FIRST_TREND_ESTIMATE])
 
@@ -128,7 +127,6 @@ def _get_trend(
     h: int,
     discontinuity_list: Sequence[pd.Period],
     methodology: str = "Henderson",
-    n_periods: int = 0,
 ) -> pd.Series:
     """Get trend data taking account of discontinuities."""
 
@@ -143,7 +141,7 @@ def _get_trend(
         result = (
             hma(core, h)
             if methodology == "Henderson"
-            else core.rolling(window=(n_periods + 1), center=True).mean()
+            else core.rolling(window=h, center=True).mean()
         )
         returnable = result if len(returnable) == 0 else pd.concat([returnable, result])
     return returnable
@@ -290,8 +288,9 @@ def _smooth_seasonal(
     index = (
         pd.PeriodIndex(year=year, month=period, freq="M")
         if n_periods == 12
-        else pd.PeriodIndex(year=year, quarter=period,
-                            freq=cast(pd.PeriodIndex, series.index).freqstr)
+        else pd.PeriodIndex(
+            year=year, quarter=period, freq=cast(pd.PeriodIndex, series.index).freqstr
+        )
     )
     returnable.index = index
     if returnable.isna().any():
