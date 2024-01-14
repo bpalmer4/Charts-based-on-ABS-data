@@ -12,17 +12,19 @@ from henderson import hma
 
 # --- decomposition process steps ---
 ORIGINAL: Final[str] = "Original"
-EXTENDED: Final[str] = "Extended"
+EXTENDED: Final[str] = "ARIMA Extended"
 PERIOD: Final[str] = "Period"
 
-FIRST_TREND_ESTIMATE: Final[str] = "1stTrendEst"
-SECOND_TREND_ESTIMATE: Final[str] = "2ndTrendEst"
-FIRST_SEAS_ESTIMATE: Final[str] = "1stSeasonalEst"
-SECOND_SEAS_ESTIMATE: Final[str] = "2ndSeasonalEst"
-THIRD_SEAS_ESTIMATE: Final[str] = "3rdSeasonalEst"
-FIRST_SEASADJ_ESTIMATE: Final[str] = "1stSeasAdjEst"
+FIRST_TREND: Final[str] = "1st Trend Estimate"
+SECOND_TREND: Final[str] = "2nd Trend Estimate"
 
-FINAL_SEASONAL: Final[str] = "Seasonal"
+FIRST_SEAS: Final[str] = "1st Seasonal Weights Estimate"
+SECOND_SEAS: Final[str] = "2nd Seasonal Weights Estimate"
+THIRD_SEAS: Final[str] = "3rd Seasonal Weights Estimate"
+
+FIRST_SEASADJ: Final[str] = "1st Seasonally Adjusted Estimate"
+
+FINAL_SEASONAL: Final[str] = "Seasonal Weights"
 FINAL_SEASADJ: Final[str] = "Seasonally Adjusted"
 FINAL_TREND: Final[str] = "Trend"
 FINAL_IRREGULAR: Final[str] = "Irregular"
@@ -45,27 +47,28 @@ def decompose(
 
     Parameters:
     -   s - the pandas Series, without any missing or NA values,
-        and sorted in ascending order - the index should be a period
+        and sorted in ascending order - the index must be a period
         index with a frequency of M or Q
     -   model - string - either 'multiplicative' or 'additive'
-    -   arima_extend - bool - whether to apply arima extentions
+    -   arima_extend - bool - whether to apply ARIMA extentions to the
+        priginal series before seasonal decomposition
     -   constant_seasonal - bool - whether the seasonal component is
         constant or (slowly) variable
-    -   len_seasonal_smoother - int - number of years for seasonal
-        smoothing.
+    -   len_seasonal_smoother - int - number of years for slowly variable
+        seasonal smoothing (if not constant_seasonal)
     -   discontinuity_list - Sequence[pd.Period] - list of the last
         dates immediately before a sequence discontinuity. Useful for
         reflecting abrupt movements in the data that can be pegged to
-        a significant event.
+        a significant or meaningful event (eg the COVID pandemic)
 
     Returns a pandas DataFrame with columns for each step in the
-    decomposition process (enables debugging). The key columns in the
-    DataFrame are:
+    decomposition process (largely for debugging). The key result
+    columns in the DataFrame are:
     -   'Original' - the original series
-    -   'Extended' - the arima extended series for decomposition
+    -   'Extended' - the ARIMA extended series before decomposition
     -   'Seasonally Adjusted' - the seasonally adjusted series
     -   'Trend' - the trend of the seasonally adjusted series
-    -   'Seasonal' - the seasonal component found through the
+    -   'Seasonal Weights' - the seasonal component found through the
         decomposition process
     -   'Irregular' - the irregular component found through the
         decomposition process
@@ -81,43 +84,31 @@ def decompose(
     n_periods = _check_input_validity(s, discontinuity_list)
     h = _calculate_henderson_length(n_periods)
     oper = truediv if model == "multiplicative" else sub
+    result = _extend_series_by_arima(s, h, arima_extend)
 
     # - decomposition
-    result = _extend_series_by_arima(s, h, arima_extend)
-    result[FIRST_TREND_ESTIMATE] = _get_trend(
+    result[FIRST_TREND] = _get_trend(
         result[EXTENDED],
         h,
-        discontinuity_list=(),  # ignore disconinuities initially
-        methodology="Other",  # start with a very simple averaging
+        (),  # no discontinuities at this initial stage
+        "Other",  # first pass trend is a simple rolling average
     )
-    result[FIRST_SEAS_ESTIMATE] = oper(result[EXTENDED], result[FIRST_TREND_ESTIMATE])
-
-    result[SECOND_SEAS_ESTIMATE] = _smooth_seasonal(
-        result[FIRST_SEAS_ESTIMATE],
-        constant_seasonal=constant_seasonal,
-        len_seasonal_smoother=len_seasonal_smoother,
-        n_periods=n_periods,
+    result[FIRST_SEAS] = oper(result[EXTENDED], result[FIRST_TREND])
+    result[SECOND_SEAS] = _smooth_seasonal(
+        result[FIRST_SEAS], constant_seasonal, len_seasonal_smoother, n_periods
     )
-
-    result[FIRST_SEASADJ_ESTIMATE] = oper(
-        result[EXTENDED], result[SECOND_SEAS_ESTIMATE]
-    )
-    result[SECOND_TREND_ESTIMATE] = _get_trend(
-        result[FIRST_SEASADJ_ESTIMATE], h, discontinuity_list
-    )
-    result[THIRD_SEAS_ESTIMATE] = oper(result[EXTENDED], result[SECOND_TREND_ESTIMATE])
-
+    result[FIRST_SEASADJ] = oper(result[EXTENDED], result[SECOND_SEAS])
+    result[SECOND_TREND] = _get_trend(result[FIRST_SEASADJ], h, discontinuity_list)
+    result[THIRD_SEAS] = oper(result[EXTENDED], result[SECOND_TREND])
     result[FINAL_SEASONAL] = _smooth_seasonal(
-        result[THIRD_SEAS_ESTIMATE],
-        constant_seasonal=constant_seasonal,
-        len_seasonal_smoother=len_seasonal_smoother,
-        n_periods=n_periods,
+        result[THIRD_SEAS],
+        constant_seasonal,
+        len_seasonal_smoother,
+        n_periods,
     )
-
     result[FINAL_SEASADJ] = oper(result[ORIGINAL], result[FINAL_SEASONAL])
     result[FINAL_TREND] = _get_trend(result[FINAL_SEASADJ], h, discontinuity_list)
     result[FINAL_IRREGULAR] = oper(result[FINAL_SEASADJ], result[FINAL_TREND])
-
     return result
 
 
@@ -160,7 +151,7 @@ def _extend_series_by_arima(s: pd.Series, h: int, arima_extend) -> pd.DataFrame:
         combined = s
     result = pd.DataFrame(combined)
     result.columns = pd.Index([EXTENDED])
-    result[ORIGINAL] = s
+    result.insert(0, ORIGINAL, s)  # put in first prosition
     result[PERIOD] = {
         "Q": cast(pd.PeriodIndex, result.index).quarter,
         "M": cast(pd.PeriodIndex, result.index).month,
