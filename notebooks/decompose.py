@@ -1,7 +1,7 @@
 """Produce a simple time series decomposition."""
 
 from operator import sub, truediv
-from typing import cast, Final
+from typing import cast, Final, Sequence
 
 import numpy as np
 import pandas as pd
@@ -9,49 +9,22 @@ from pmdarima.arima import auto_arima
 
 from henderson import hma
 
-# --- A selection of seasonal smoothing weights, from which you can select
-#     Note: these are end-weights, they are reversed for the start of a series
-#     Note: your own weights in this form should also work
-#     Note: the central smoother should be the last one in the tuple.
-#           the edge case smoothers come before the central smoother.
-s3x3 = (
-    np.array([5, 11, 11]) / 27.0,
-    np.array([3, 7, 10, 7]) / 27.0,
-    np.array([1, 2, 3, 2, 1]) / 9.0,
-)
-
-s3x5 = (
-    np.array([9, 17, 17, 17]) / 60.0,
-    np.array([4, 11, 15, 15, 15]) / 60.0,
-    np.array([4, 8, 13, 13, 13, 9]) / 60.0,
-    np.array([1, 2, 3, 3, 3, 2, 1]) / 15.0,
-)
-
-s3x9 = (
-    np.array([0.051, 0.112, 0.173, 0.197, 0.221, 0.246]),
-    np.array([0.028, 0.092, 0.144, 0.160, 0.176, 0.192, 0.208]),
-    np.array([0.032, 0.079, 0.123, 0.133, 0.143, 0.154, 0.163, 0.173]),
-    np.array([0.034, 0.075, 0.113, 0.117, 0.123, 0.128, 0.132, 0.137, 0.141]),
-    np.array([0.034, 0.073, 0.111, 0.113, 0.114, 0.116, 0.117, 0.118, 0.120, 0.084]),
-    np.array([1, 2, 3, 3, 3, 3, 3, 3, 3, 2, 1]) / 27.0,
-)
-
 
 # --- decomposition process steps ---
 ORIGINAL: Final[str] = "Original"
 EXTENDED: Final[str] = "Extended"
 PERIOD: Final[str] = "Period"
+
 FIRST_TREND_ESTIMATE: Final[str] = "1stTrendEst"
-FIRST_SEAS_ESTIMATE: Final[str] = "1stSeasAdjEst"
+SECOND_TREND_ESTIMATE: Final[str] = "2ndTrendEst"
+FIRST_SEAS_ESTIMATE: Final[str] = "1stSeasonalEst"
 SECOND_SEAS_ESTIMATE: Final[str] = "2ndSeasonalEst"
 THIRD_SEAS_ESTIMATE: Final[str] = "3rdSeasonalEst"
 FIRST_SEASADJ_ESTIMATE: Final[str] = "1stSeasAdjEst"
-SECOND_TREND_ESTIMATE: Final[str] = "2ndTrendEst"
-FOURTH_SEAS_ESTIMATE: Final[str] = "4thSeasonalEst"
 
 FINAL_SEASONAL: Final[str] = "Seasonal"
-FINAL_SEASADJ_ESTIMATE: Final[str] = "Seasonally Adjusted"
-FINAL_TREND_ESTIMATE: Final[str] = "Trend"
+FINAL_SEASADJ: Final[str] = "Seasonally Adjusted"
+FINAL_TREND: Final[str] = "Trend"
 FINAL_IRREGULAR: Final[str] = "Irregular"
 
 
@@ -61,7 +34,8 @@ def decompose(
     model: str = "multiplicative",
     arima_extend=False,
     constant_seasonal: bool = False,
-    seasonal_smoother: tuple[np.ndarray, ...] = s3x5,
+    len_seasonal_smoother: int = 20,  # years
+    discontinuity_list: Sequence[pd.Period] = (),
 ) -> None | pd.DataFrame:
     """The simple decomposition of a pandas Series s into its trend, seasonal
     and irregular components. The default is a multiplicative model:
@@ -77,9 +51,12 @@ def decompose(
     -   arima_extend - bool - whether to apply arima extentions
     -   constant_seasonal - bool - whether the seasonal component is
         constant or (slowly) variable
-    -   seasonal_smoother - when not using a constantSeasonal, which
-        of the seasonal smoothers to use (s3x3, s3x5 or s3x9) -
-        default is s3x5 (ie over 7 years for monthly or quarterly data)
+    -   len_seasonal_smoother - int - number of years for seasonal
+        smoothing.
+    -   discontinuity_list - Sequence[pd.Period] - list of the last
+        dates immediately before a sequence discontinuity. Useful for
+        reflecting abrupt movements in the data that can be pegged to
+        a significant event.
 
     Returns a pandas DataFrame with columns for each step in the
     decomposition process (enables debugging). The key columns in the
@@ -101,72 +78,78 @@ def decompose(
     of working days in month, etc. (ie. it is quite a simple decomposition)."""
 
     # - preliminaries
-    n_periods = _check_input_validity(s)
+    n_periods = _check_input_validity(s, discontinuity_list)
     h = _calculate_henderson_length(n_periods)
     oper = truediv if model == "multiplicative" else sub
 
     # - decomposition
     result = _extend_series_by_arima(s, h, arima_extend)
-    result = _derive_initial_trend(result, n_periods)
+    result[FIRST_TREND_ESTIMATE] = _get_trend(
+        result[EXTENDED],
+        h,
+        discontinuity_list,
+        methodology="Other",
+        n_periods=n_periods,
+    )
     result[FIRST_SEAS_ESTIMATE] = oper(result[EXTENDED], result[FIRST_TREND_ESTIMATE])
 
-    result = _smooth_seasonal_component(
-        result,
+    result[SECOND_SEAS_ESTIMATE] = _smooth_seasonal(
+        result[FIRST_SEAS_ESTIMATE],
         constant_seasonal=constant_seasonal,
-        seasonal_smoother=seasonal_smoother,
-        column_to_be_smoothed=FIRST_SEAS_ESTIMATE,
-        new_column=SECOND_SEAS_ESTIMATE,
+        len_seasonal_smoother=len_seasonal_smoother,
+        n_periods=n_periods,
     )
 
-    if any(result[SECOND_SEAS_ESTIMATE].isnull()):
-        result = _extend_series(
-            result,
-            periods=n_periods,
-            column_to_be_extended=SECOND_SEAS_ESTIMATE,
-            new_column=THIRD_SEAS_ESTIMATE,
-        )
-    else:
-        result[THIRD_SEAS_ESTIMATE] = result[SECOND_SEAS_ESTIMATE]
+    result[FIRST_SEASADJ_ESTIMATE] = oper(
+        result[EXTENDED], result[SECOND_SEAS_ESTIMATE]
+    )
+    result[SECOND_TREND_ESTIMATE] = _get_trend(
+        result[FIRST_SEASADJ_ESTIMATE], h, discontinuity_list
+    )
+    result[THIRD_SEAS_ESTIMATE] = oper(result[EXTENDED], result[SECOND_TREND_ESTIMATE])
 
-    result[FIRST_SEASADJ_ESTIMATE] = oper(result[EXTENDED], result[THIRD_SEAS_ESTIMATE])
-    result[SECOND_TREND_ESTIMATE] = hma(result[FIRST_SEASADJ_ESTIMATE], h)
-    result[FOURTH_SEAS_ESTIMATE] = oper(result[EXTENDED], result[SECOND_TREND_ESTIMATE])
-
-    result = _smooth_seasonal_component(
-        result,
+    result[FINAL_SEASONAL] = _smooth_seasonal(
+        result[THIRD_SEAS_ESTIMATE],
         constant_seasonal=constant_seasonal,
-        seasonal_smoother=seasonal_smoother,
-        column_to_be_smoothed=FOURTH_SEAS_ESTIMATE,
-        new_column=FINAL_SEASONAL,
+        len_seasonal_smoother=len_seasonal_smoother,
+        n_periods=n_periods,
     )
 
-    result[FINAL_SEASADJ_ESTIMATE] = oper(result[ORIGINAL], result[FINAL_SEASONAL])
-    result[FINAL_TREND_ESTIMATE] = hma(result[FINAL_SEASADJ_ESTIMATE].dropna(), h)
-    result[FINAL_IRREGULAR] = oper(
-        result[FINAL_SEASADJ_ESTIMATE], result[FINAL_TREND_ESTIMATE]
-    )
+    result[FINAL_SEASADJ] = oper(result[ORIGINAL], result[FINAL_SEASONAL])
+    result[FINAL_TREND] = _get_trend(result[FINAL_SEASADJ], h, discontinuity_list)
+    result[FINAL_IRREGULAR] = oper(result[FINAL_SEASADJ], result[FINAL_TREND])
 
     return result
 
 
 #  === private methods below ===
-def _derive_initial_trend(
-    result: pd.DataFrame,
-    n_periods: int
-) -> pd.DataFrame:
-    """derive an initial estimate for the trend component."""
+def _get_trend(
+    s: pd.Series,
+    h: int,
+    discontinuity_list: Sequence[pd.Period],
+    methodology: str = "Henderson",
+    n_periods: int = 0,
+) -> pd.Series:
+    """Get trend data taking account of discontinuities."""
 
-    result[FIRST_TREND_ESTIMATE] = result[EXTENDED].rolling(
-        window=n_periods + 1, min_periods=n_periods + 1, center=True
-    ).mean()
-    # Note: rolling mean leaves NA values at the start/end of the trend estimate.
+    discontinuity_list = list(discontinuity_list) + [s.index[-1]]
+    remainder = s.dropna().copy()
+    returnable = pd.Series()
+    for d in discontinuity_list:
+        core = remainder[remainder.index <= d]
+        remainder = remainder[remainder.index > d]
+        if len(core) < h:
+            raise ValueError("Not enough data to trend")
+        result = (
+            hma(core, h)
+            if methodology == "Henderson"
+            else core.rolling(window=(n_periods + 1), center=True).mean()
+        )
+        returnable = result if len(returnable) == 0 else pd.concat([returnable, result])
+    return returnable
 
-    return result
 
-
-def _extend_series_by_arima(
-    s: pd.Series, h: int, arima_extend
-) -> pd.DataFrame:
+def _extend_series_by_arima(s: pd.Series, h: int, arima_extend) -> pd.DataFrame:
     """Use auto_arima() to extend the series in each direction.
     Returns tuple comprising (0) extended series, and (1) results dataframe/"""
 
@@ -199,7 +182,10 @@ def _calculate_henderson_length(n_periods: int) -> int:
     return h
 
 
-def _check_input_validity(s: pd.Series) -> int:
+def _check_input_validity(
+    s: pd.Series,
+    discontinuity_list: Sequence,
+) -> int:
     """Perform sanity checks. Return number of periods in PerdioIndex."""
 
     if not isinstance(s, pd.Series):
@@ -210,6 +196,12 @@ def _check_input_validity(s: pd.Series) -> int:
         raise ValueError("The index for the s parameter should be unique and sorted")
     if any(s.isnull()) or not all(np.isfinite(s)):
         raise ValueError("The s parameter contains NA or infinite values")
+
+    for d in discontinuity_list:
+        if not isinstance(d, pd.Period):
+            raise TypeError("The values in the discontinuity_list should be Periods")
+        if d not in s.index:
+            raise ValueError(f"The discontinuity {d} not in the index of s")
 
     acceptable = {"Q": 4, "M": 12}
     if s.index.freqstr[0] not in acceptable:
@@ -266,106 +258,79 @@ def _make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
     return returnable
 
 
-def _smooth_seasonal_component(
-    result: pd.DataFrame,
-    constant_seasonal,
-    seasonal_smoother,
-    column_to_be_smoothed: str,
-    new_column: str,
-):
-    # get the key smoothing constants
-    if not constant_seasonal:
-        n_smoothers = len(seasonal_smoother)
-        smoother_size = (n_smoothers * 2) - 1
-        central_smoother = seasonal_smoother[n_smoothers - 1]
+def _smooth_seasonal(
+    series: pd.Series,
+    constant_seasonal: bool,
+    len_seasonal_smoother: int,
+    n_periods: int,
+) -> pd.Series:
+    # preliminary
+    assert n_periods in (4, 12)
 
-    # establish an empty return column ...
-    result[new_column] = np.repeat(np.nan, len(result))
+    # put into a table with seasonal columns
+    frame = pd.DataFrame(series.copy())  # copy to avoid any harm
+    frame.columns = pd.Index(["value"])
+    frame["year"] = cast(pd.PeriodIndex, frame.index).year
+    attribute = "quarter" if n_periods == 4 else "month"
+    frame["period"] = getattr(frame.index, attribute)
+    ptable = frame.pivot(columns="period", index="year", values="value")
 
-    # populate the return column ...
-    for u in result[PERIOD].unique():
-        # get each of of the seasonals
-        this_season = result.loc[result[PERIOD] == u, column_to_be_smoothed]
-
-        # smooth to a constant seasonal value
-        if constant_seasonal:
-            this_season_smoothed = pd.Series(
-                np.repeat(this_season.mean(skipna=True), len(this_season)),
-                index=this_season.index,
-            )
-
-        # smooth to a slowly changing seasonal value
-        else:
-            # drop NA values which result from step 1 in the decomp process
-            this_season = this_season.dropna()
-
-            # apply the seasonal_smoother
-            this_season_smoothed = this_season.rolling(
-                window=smoother_size, min_periods=smoother_size, center=True
-            ).apply(func=lambda x: (x * central_smoother).sum())
-            # this_season_smoothed = pd.rolling_apply(this_season, window=smoother_size,
-            #    func=lambda x: (x * central_smoother).sum(), min_periods=smoother_size,
-            #    center=True)
-
-            # for short series this process results in no data, find a simple mean
-            if all(this_season_smoothed.isnull()):
-                # same treatment as constant seasonal value above
-                this_season_smoothed = pd.Series(
-                    np.repeat(this_season.mean(skipna=True), len(this_season)),
-                    index=this_season.index,
-                )
-
-            # handle the end-point problem ...
-            for i in range(n_smoothers - 1):
-                if np.isnan(this_season_smoothed.iat[i]):
-                    this_season_smoothed.iat[i] = (
-                        this_season.iloc[0 : (i + n_smoothers)]
-                        * (seasonal_smoother[i][::-1])
-                    ).sum()  # note: reversed order at start
-
-            for i in range(len(this_season) - 1, len(this_season) - n_smoothers, -1):
-                if np.isnan(this_season_smoothed.iat[i]):
-                    this_season_smoothed.iat[i] = (
-                        this_season.iloc[(i - (n_smoothers - 1)) : len(this_season)]
-                        * seasonal_smoother[len(this_season) - 1 - i]
-                    ).sum()
-
-        # package up season by season ...
-        result[new_column] = result[new_column].where(
-            result[new_column].notnull(), other=this_season_smoothed
+    # average seasonal effects
+    for col in ptable:
+        ptable[col] = (
+            ptable[col].mean(skipna=True)
+            if constant_seasonal or (len(ptable) < len_seasonal_smoother + 3)
+            else ptable[col].rolling(window=len_seasonal_smoother, center=True).mean()
         )
 
-    return result
+    # return to a series
+    returnable = cast(pd.Series, ptable.stack(dropna=False))
+    year = returnable.index.get_level_values(0).values
+    period = returnable.index.get_level_values(1).values
+    index = (
+        pd.PeriodIndex(year=year, month=period, freq="M")
+        if n_periods == 12
+        else pd.PeriodIndex(year=year, quarter=period,
+                            freq=cast(pd.PeriodIndex, series.index).freqstr)
+    )
+    returnable.index = index
+    if returnable.isna().any():
+        returnable = _extend_series(returnable, n_periods)
+
+    return returnable
 
 
-def _extend_series(result, periods, column_to_be_extended, new_column):
-    result[new_column] = result[column_to_be_extended].copy()
+def _extend_series(s: pd.Series, n_periods: int) -> pd.Series:
+    """Extend a seasonal series forward and back at the tails,
+    to fill in any NA values, using closest period in cycle
+    to select gap filler."""
 
-    def fillup(result, fill, start_point, end_point):
-        i = start_point
-        while True:
-            p = result.index[i]
-            result[new_column].iat[i] = fill[new_column].at[result[PERIOD].iat[i]]
-            if p >= end_point:
-                break
-            i += 1
+    if s.notna().all():
+        # nothing to do
+        return s
 
-    # back-cast
-    if np.isnan(result.iat[0, result.columns.get_loc(new_column)]):
-        fill = pd.DataFrame(result[new_column].dropna().iloc[0:periods])
-        fill[PERIOD] = result[PERIOD][fill.index[0] : fill.index[len(fill) - 1]]
-        end_point = fill.index[0] - 1
-        fill.index = fill[PERIOD]
-        fillup(result=result, fill=fill, start_point=0, end_point=end_point)
+    # preliminaries
+    s = s.copy()  # do no harm
+    half = int(len(s) / 2)
+    core = s[s.notna()]
+    attribute = "quarter" if n_periods == 4 else "month"
 
-    # forward-cast
-    if np.isnan(result.iat[len(result) - 1, result.columns.get_loc(new_column)]):
-        fill = result[new_column].dropna()
-        fill = pd.DataFrame(fill[(len(fill) - periods) : len(fill)])
-        fill[PERIOD] = result[PERIOD][fill.index[0] : fill.index[len(fill) - 1]]
-        start_point = result.index.get_loc(fill.index[len(fill) - 1] + 1)
-        fill.index = fill[PERIOD]
-        end_point = result.index[len(result) - 1]
-        fillup(result=result, fill=fill, start_point=start_point, end_point=end_point)
+    # a short copy procedure ...
+    def populate(destinations: pd.PeriodIndex, from_which_end: int):
+        for dest in destinations:
+            source = core[
+                getattr(core.index, attribute) == getattr(dest, attribute)
+            ].index[from_which_end]
+            s.at[dest] = core.at[source]
 
-    return result
+    # fix up front-end
+    head = s.iloc[:half]
+    head_fix = cast(pd.PeriodIndex, head[head.isna()].index)
+    populate(head_fix, 0)
+
+    # fix up back-end
+    tail = s.iloc[-half:]
+    tail_fix = cast(pd.PeriodIndex, tail[tail.isna()].index)
+    populate(tail_fix, -1)
+
+    return s
