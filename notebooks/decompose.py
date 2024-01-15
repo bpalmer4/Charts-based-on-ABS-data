@@ -84,14 +84,14 @@ def decompose(
     n_periods = _check_input_validity(s, discontinuity_list)
     h = _calculate_henderson_length(n_periods)
     oper = truediv if model == "multiplicative" else sub
-    result = _extend_series_by_arima(s, h, arima_extend)
+    result = _extend_series_by_arima(s, n_periods, h, arima_extend)
 
     # - decomposition
     result[FIRST_TREND] = _get_trend(
         result[EXTENDED],
         h,
         (),  # no discontinuities at this initial stage
-        "Other",  # first pass trend is a simple rolling average
+        "Other",  # first pass trend is a simpler rolling average
     )
     result[FIRST_SEAS] = oper(result[EXTENDED], result[FIRST_TREND])
     result[SECOND_SEAS] = _smooth_seasonal(
@@ -121,9 +121,14 @@ def _get_trend(
 ) -> pd.Series:
     """Get trend data taking account of discontinuities."""
 
+    if methodology != 'Henderson':
+        # construct a simple weighted smoother (ws) ...
+        ws = np.array([1] + [2] * max(1, h-2) + [1])
+        ws = ws / np.sum(ws)
+
     discontinuity_list = list(discontinuity_list) + [s.index[-1]]
     remainder = s.dropna().copy()
-    returnable = pd.Series()
+    trend = pd.Series()
     for d in discontinuity_list:
         core = remainder[remainder.index <= d]
         remainder = remainder[remainder.index > d]
@@ -132,20 +137,27 @@ def _get_trend(
         result = (
             hma(core, h)
             if methodology == "Henderson"
-            else core.rolling(window=h, center=True).mean()
+            else (
+                # use a simple weighted smoother ...
+                core
+                .rolling(window=len(ws), center=True)
+                .apply(func=lambda x: (x * ws).sum())
+            )
         )
-        returnable = result if len(returnable) == 0 else pd.concat([returnable, result])
-    return returnable
+        trend = result if len(trend) == 0 else pd.concat([trend, result])
+    return trend
 
 
-def _extend_series_by_arima(s: pd.Series, h: int, arima_extend) -> pd.DataFrame:
+def _extend_series_by_arima(
+    s: pd.Series, freq: int, h: int, arima_extend
+) -> pd.DataFrame:
     """Use auto_arima() to extend the series in each direction.
-    Returns tuple comprising (0) extended series, and (1) results dataframe/"""
+    Returns the results dataframe that will be subsequently populated."""
 
     if arima_extend:
-        freq = int(h / 2)
-        forward = _make_projection(s, freq=freq, direction=1)
-        back = _make_projection(s, freq=freq, direction=-1)
+        p_length = int(h / 2)
+        forward = _make_projection(s, freq=freq, p_length=p_length, direction=1)
+        back = _make_projection(s, freq=freq, p_length=p_length, direction=-1)
         combined = forward.combine_first(back)
     else:
         combined = s
@@ -161,14 +173,11 @@ def _extend_series_by_arima(s: pd.Series, h: int, arima_extend) -> pd.DataFrame:
 
 
 def _calculate_henderson_length(n_periods: int) -> int:
-    """Settle the length of the Henderson moving average
+    """Settle the length of the Henderson moving average (must be odd).
     Note: ABS uses 13-term HMA for monthly and 7-term for quarterly
-          Here we are using 13-term for monthly and 9-term for quarterly."""
+    Here we are using 13-term for monthly and 9-term for quarterly."""
 
-    h = max(n_periods, 9)
-    if h % 2 == 0:
-        h += 1  # we need an odd number
-    return h
+    return {12: 13, 4: 9}[n_periods]
 
 
 def _check_input_validity(
@@ -205,11 +214,11 @@ def _check_input_validity(
     return n_periods
 
 
-def _make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
+def _make_projection(s: pd.Series, freq: int, p_length: int, direction: int) -> pd.Series:
     """Use auto_arima to project a series into the future/past.
     Arguments
     s - Series to be projected.
-    freq - positive int - frequency of series - should be 4 or 12
+    freq - positive int - period frequency - 4 or 12
     direction - 1 or -1 - direction we are projecting towards.
     Returns - projected series."""
 
@@ -218,7 +227,7 @@ def _make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
         t = s[::-1]
         t = t.reset_index(drop=True)
 
-    arima = auto_arima(
+    model = auto_arima(
         t,
         m=freq,
         seasonal=True,
@@ -234,17 +243,17 @@ def _make_projection(s: pd.Series, freq: int, direction: int) -> pd.Series:
         suppress_warnings=True,
         stepwise=True,
     )
-    # print(arima.summary())
-    forward = int(freq / 2) if freq >= 12 else freq
-    fc = arima.predict(n_periods=int(forward), return_conf_int=False)
+    #print(model.summary())
+
+    projection = model.predict(n_periods=p_length, return_conf_int=False)
 
     if direction < 0:
-        fc.index = s.index[0] - pd.Series(range(1, forward + 1))
-        fc = fc.sort_index()
-        returnable = pd.concat([fc, s])
+        projection.index = s.index[0] - pd.Series(range(1, p_length + 1))
+        projection = projection.sort_index()
+        extended_series = pd.concat([projection, s])
     else:
-        returnable = pd.concat([s, fc])
-    return returnable
+        extended_series = pd.concat([s, projection])
+    return extended_series
 
 
 def _smooth_seasonal(
