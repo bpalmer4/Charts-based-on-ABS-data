@@ -414,7 +414,22 @@ def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], d
             "#CC6677",
             "#882255",
             "#AA4499",
-        ],  # Tol
+        ],
+        13: [
+            "#800000",  # Maroon
+            "#FF0000",  # Red
+            "#9A6324",  # Brown
+            "#f58231",  # Orange
+            "#808000",  # Olive
+            "#bfef45",  # Lime
+            "#3cb44b",  # Green
+            "#469990",  # Teal
+            "#42d4f4",  # Cyan
+            "#000075",  # Navy
+            "#4363d8",  # Blue
+            "#911eb4",  # Purple
+            "#f032e6",  # Magenta
+        ],
     }
     k = colours.keys()
     minimum: float | int = min(i for i in list(k) + [float("inf")] if i >= item_count)
