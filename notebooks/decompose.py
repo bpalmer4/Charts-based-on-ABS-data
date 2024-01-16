@@ -1,4 +1,4 @@
-"""Produce a simple time series decomposition."""
+"""Produce a naive time series decomposition."""
 
 from operator import sub, truediv
 from typing import cast, Final, Sequence
@@ -38,6 +38,7 @@ def decompose(
     constant_seasonal: bool = False,
     len_seasonal_smoother: int = 20,  # years
     discontinuity_list: Sequence[pd.Period] = (),
+    ignore_years: Sequence[int] = (),
 ) -> None | pd.DataFrame:
     """The simple decomposition of a pandas Series s into its trend, seasonal
     and irregular components. The default is a multiplicative model:
@@ -60,6 +61,9 @@ def decompose(
         dates immediately before a sequence discontinuity. Useful for
         reflecting abrupt movements in the data that can be pegged to
         a significant or meaningful event (eg the COVID pandemic)
+    -   ignore_years - Sequence[int] - allow for years to be removed from
+        constant_seasonal analysis - useful for removing COVID impacts in
+        2020 and 2021 from the seasonal weights.
 
     Returns a pandas DataFrame with columns for each step in the
     decomposition process (largely for debugging). The key result
@@ -86,7 +90,7 @@ def decompose(
     oper = truediv if model == "multiplicative" else sub
     result = _extend_series_by_arima(s, n_periods, h, arima_extend)
 
-    # - decomposition
+    # - intermediate decomposition
     result[FIRST_TREND] = _get_trend(
         result[EXTENDED],
         h,
@@ -95,16 +99,23 @@ def decompose(
     )
     result[FIRST_SEAS] = oper(result[EXTENDED], result[FIRST_TREND])
     result[SECOND_SEAS] = _smooth_seasonal(
-        result[FIRST_SEAS], constant_seasonal, len_seasonal_smoother, n_periods
+        result[FIRST_SEAS],
+        constant_seasonal,
+        len_seasonal_smoother,
+        n_periods,
+        ignore_years,
     )
     result[FIRST_SEASADJ] = oper(result[EXTENDED], result[SECOND_SEAS])
     result[SECOND_TREND] = _get_trend(result[FIRST_SEASADJ], h, discontinuity_list)
     result[THIRD_SEAS] = oper(result[EXTENDED], result[SECOND_TREND])
+
+    # - final decomposition results
     result[FINAL_SEASONAL] = _smooth_seasonal(
         result[THIRD_SEAS],
         constant_seasonal,
         len_seasonal_smoother,
         n_periods,
+        ignore_years,
     )
     result[FINAL_SEASADJ] = oper(result[ORIGINAL], result[FINAL_SEASONAL])
     result[FINAL_TREND] = _get_trend(result[FINAL_SEASADJ], h, discontinuity_list)
@@ -113,18 +124,20 @@ def decompose(
 
 
 #  === private methods below ===
+_HENDERSON = "Henderson"
 def _get_trend(
     s: pd.Series,
     h: int,
     discontinuity_list: Sequence[pd.Period],
-    methodology: str = "Henderson",
+    methodology: str = _HENDERSON,
 ) -> pd.Series:
     """Get trend data taking account of discontinuities."""
 
-    if methodology != 'Henderson':
-        # construct a simple weighted smoother (ws) ...
-        ws = np.array([1] + [2] * max(1, h-2) + [1])
-        ws = ws / np.sum(ws)
+    if methodology != _HENDERSON:
+        # construct a simple weighted smoother ...
+        weights = np.array([1] + [2] * max(1, h - 2) + [1])
+        weights = weights / np.sum(weights)  # weights sum to one
+        discontinuity_list = ()  # can only do this with HMA
 
     discontinuity_list = list(discontinuity_list) + [s.index[-1]]
     remainder = s.dropna().copy()
@@ -139,9 +152,9 @@ def _get_trend(
             if methodology == "Henderson"
             else (
                 # use a simple weighted smoother ...
-                core
-                .rolling(window=len(ws), center=True)
-                .apply(func=lambda x: (x * ws).sum())
+                core.rolling(window=len(weights), center=True).apply(
+                    func=lambda x: (x * weights).sum()
+                )
             )
         )
         trend = result if len(trend) == 0 else pd.concat([trend, result])
@@ -175,9 +188,10 @@ def _extend_series_by_arima(
 def _calculate_henderson_length(n_periods: int) -> int:
     """Settle the length of the Henderson moving average (must be odd).
     Note: ABS uses 13-term HMA for monthly and 7-term for quarterly
-    Here we are using 13-term for monthly and 9-term for quarterly."""
+    Here we are using 13-term for monthly and 9-term for quarterly.
+    Returns zero (error) if n_periods not in [4, 12]."""
 
-    return {12: 13, 4: 9}[n_periods]
+    return {12: 13, 4: 9}.get(n_periods, 0)
 
 
 def _check_input_validity(
@@ -214,7 +228,9 @@ def _check_input_validity(
     return n_periods
 
 
-def _make_projection(s: pd.Series, freq: int, p_length: int, direction: int) -> pd.Series:
+def _make_projection(
+    s: pd.Series, freq: int, p_length: int, direction: int
+) -> pd.Series:
     """Use auto_arima to project a series into the future/past.
     Arguments
     s - Series to be projected.
@@ -243,7 +259,7 @@ def _make_projection(s: pd.Series, freq: int, p_length: int, direction: int) -> 
         suppress_warnings=True,
         stepwise=True,
     )
-    #print(model.summary())
+    # print(model.summary())
 
     projection = model.predict(n_periods=p_length, return_conf_int=False)
 
@@ -259,8 +275,9 @@ def _make_projection(s: pd.Series, freq: int, p_length: int, direction: int) -> 
 def _smooth_seasonal(
     series: pd.Series,
     constant_seasonal: bool,
-    len_seasonal_smoother: int,
+    len_seasonal_smoother: int,  # in years
     n_periods: int,
+    ignore_years: Sequence[int],
 ) -> pd.Series:
     # preliminary
     assert n_periods in (4, 12)
@@ -275,11 +292,14 @@ def _smooth_seasonal(
 
     # average seasonal effects
     for col in ptable:
-        ptable[col] = (
-            ptable[col].mean(skipna=True)
-            if constant_seasonal or (len(ptable) < len_seasonal_smoother + 3)
-            else ptable[col].rolling(window=len_seasonal_smoother, center=True).mean()
-        )
+        if constant_seasonal and ignore_years:
+            # mypy chokes on this next line - but it is fine ...
+            ptable.loc[ptable.index.isin(ignore_years), col] = np.nan
+            #print(ptable[col].values)
+        if constant_seasonal or (len(ptable) < len_seasonal_smoother + 3):
+            ptable[col] = ptable[col].mean(skipna=True)
+        else:
+            ptable[col] = ptable[col].rolling(window=len_seasonal_smoother, center=True).mean()
 
     # return to a series
     returnable = cast(pd.Series, ptable.stack(dropna=False))
