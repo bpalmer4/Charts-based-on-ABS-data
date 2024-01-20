@@ -1,7 +1,7 @@
 """ Common data capture functions."""
 
 # --- imports
-from hashlib import md5 
+from hashlib import md5
 import re
 from datetime import datetime, timezone
 from os import utime
@@ -49,7 +49,7 @@ def retrieve_from_cache(file: Path) -> bytes:
     if not file.exists() or not file.is_file():
         raise CacheError("Cached file not available?")
     return file.read_bytes()
-    
+
 
 def get_file(url: str, cache_dir: Path) -> bytes:
     """Get file from URL or local file-system cache, depending on freshness."""
@@ -58,8 +58,8 @@ def get_file(url: str, cache_dir: Path) -> bytes:
         """Convert URL string into a cache file name,
         then return as a Path object."""
         bad_cache_pattern = r'[~"#%&*:<>?\\{|}]+'  # remove these chars from name
-        hash_name = md5(url.encode('utf-8')).hexdigest()
-        tail_name = url.split('/')[-1]
+        hash_name = md5(url.encode("utf-8")).hexdigest()
+        tail_name = url.split("/")[-1]
         file_name = re.sub(bad_cache_pattern, "", f"{hash_name}--{tail_name}")
         return Path(cache_dir / file_name)
 
@@ -70,7 +70,8 @@ def get_file(url: str, cache_dir: Path) -> bytes:
     # get URL modification time in UTC
     response = requests.head(url, allow_redirects=True, timeout=20)
     check_response(url, response)
-    source_mtime = pd.to_datetime(response.headers["Last-Modified"], utc=True)
+    source_time = response.headers.get("Last-Modified", None)
+    source_mtime = None if source_time is None else pd.to_datetime(source_time, utc=True)
 
     # get cache modification time in UTC
     target_mtime: datetime | None = None
@@ -81,20 +82,21 @@ def get_file(url: str, cache_dir: Path) -> bytes:
         )
 
     # get and save URL source data
-    if (
-        target_mtime is None  # cache is empty
-        or source_mtime > target_mtime  # URL is fresher than cache
+    if target_mtime is None or (  # cache is empty
+        source_mtime is not None
+        and source_mtime > target_mtime  # URL is fresher than cache
     ):
         print("About to download and cache the latest data.")
         url_bytes = request_get(url)  # will raise exception if it fails
         save_to_cache(file_path, url_bytes)
         # - change file mod time to reflect mtime at URL
-        unixtime = source_mtime.value / 1_000_000_000  # convert to seconds
-        utime(file_path, (unixtime, unixtime))
+        if source_mtime is not None:
+            unixtime = source_mtime.value / 1_000_000_000  # convert to seconds
+            utime(file_path, (unixtime, unixtime))
         return url_bytes
 
     # return the data that has been cached previously
-    print(f"Retrieving data from the cache file: {file_path}")
+    print(f"Retrieving data from cache: {file_path}")
     return retrieve_from_cache(file_path)
 
 
