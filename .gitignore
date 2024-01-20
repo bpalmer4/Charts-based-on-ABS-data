@@ -15,6 +15,7 @@ __pycache__/
 notebooks/ABS_CACHE/**
 notebooks/BIS_CACHE/**
 notebooks/RBA_CACHE/**
+notebooks/RBA_SOMP_CACHE/**
 notebooks/CHARTS/**
 notebooks/DATA/**
 notebooks/documents/**
