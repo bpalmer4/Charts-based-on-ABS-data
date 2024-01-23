@@ -302,16 +302,14 @@ def _smooth_seasonal(
             ptable[col] = ptable[col].rolling(window=len_seasonal_smoother, center=True).mean()
 
     # return to a series
-    returnable = cast(pd.Series, ptable.stack(dropna=False))
+    returnable = cast(pd.Series, ptable.stack(future_stack=True))
     year = returnable.index.get_level_values(0).values
     period = returnable.index.get_level_values(1).values
-    index = (
-        pd.PeriodIndex(year=year, month=period, freq="M")
-        if n_periods == 12
-        else pd.PeriodIndex(
-            year=year, quarter=period, freq=cast(pd.PeriodIndex, series.index).freqstr
-        )
-    )
+    freq = series.index.freqstr
+    if n_periods == 4:
+        index = pd.PeriodIndex.from_fields(year=year, quarter=period, freq=freq)
+    else:
+        index = pd.PeriodIndex.from_fields(year=year, month=period, freq=freq)
     returnable.index = index
     if returnable.isna().any():
         returnable = _extend_series(returnable, n_periods)
