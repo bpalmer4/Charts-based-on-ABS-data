@@ -1,9 +1,29 @@
-"""utility functions. Mostly for pandas DataFrames."""
+"""utility functions. Mostly for pandas DataFrames and Series."""
 from typing import TypeVar, cast
 from pandas import Series, DataFrame, PeriodIndex, DatetimeIndex
 
 # - define a useful typevar for working with both Series and DataFrames
 _DataT = TypeVar("_DataT", Series, DataFrame)
+
+
+def percent_change(data: _DataT, periods: int) -> _DataT:
+    """Calculate an n-periods percentage change."""
+
+    return (data / data.shift(periods) - 1) * 100
+
+
+def annualise_rates(data: _DataT, periods: int = 12) -> _DataT:
+    """Annualise a growth rate for a period.
+    Note: returns a percentage (and not a rate)!"""
+
+    return (((1 + data) ** periods) - 1) * 100
+
+
+def annualise_percentages(data: _DataT, periods: int = 12) -> _DataT:
+    """Annualise a growth rate (expressed as a percentage) for a period."""
+
+    rates = data / 100.0
+    return annualise_rates(rates, periods)
 
 
 def qtly_to_monthly(data: _DataT, interpolate: bool = True) -> _DataT:
@@ -23,6 +43,7 @@ def qtly_to_monthly(data: _DataT, interpolate: bool = True) -> _DataT:
     assert isinstance(data.index, PeriodIndex)
     assert data.index.freqstr[0] == "Q"
     assert data.index.is_unique
+    assert data.index.is_monotonic_increasing
 
     def set_axis_monthly_periods(x: _DataT) -> _DataT:
         """Convert a DatetimeIndex to a Monthly PeriodIndex."""
@@ -38,7 +59,7 @@ def qtly_to_monthly(data: _DataT, interpolate: bool = True) -> _DataT:
         )
         .resample(rule="ME")  # adds in every missing month
         .first(min_count=1)  # generates nans for new months
-                             # assumes only one value per quarter (ie. unique index)
+        # assumes only one value per quarter (ie. unique index)
         .pipe(set_axis_monthly_periods)
     )
 

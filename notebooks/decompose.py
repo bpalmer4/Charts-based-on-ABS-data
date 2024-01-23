@@ -125,6 +125,8 @@ def decompose(
 
 #  === private methods below ===
 _HENDERSON = "Henderson"
+
+
 def _get_trend(
     s: pd.Series,
     h: int,
@@ -295,11 +297,13 @@ def _smooth_seasonal(
         if constant_seasonal and ignore_years:
             # mypy chokes on this next line - but it is fine ...
             ptable.loc[ptable.index.isin(ignore_years), col] = np.nan
-            #print(ptable[col].values)
+            # print(ptable[col].values)
         if constant_seasonal or (len(ptable) < len_seasonal_smoother + 3):
             ptable[col] = ptable[col].mean(skipna=True)
         else:
-            ptable[col] = ptable[col].rolling(window=len_seasonal_smoother, center=True).mean()
+            ptable[col] = (
+                ptable[col].rolling(window=len_seasonal_smoother, center=True).mean()
+            )
 
     # return to a series
     returnable = cast(pd.Series, ptable.stack(future_stack=True))
