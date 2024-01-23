@@ -30,10 +30,11 @@ import re
 import zipfile
 from functools import cache
 from pathlib import Path
-from typing import Any, Callable, Final, cast
+from typing import Any, Callable, Final, TypeVar, cast
 
 # analytical imports
 import pandas as pd
+from pandas import Series, DataFrame
 from bs4 import BeautifulSoup
 
 # local imports
@@ -49,6 +50,8 @@ from plotting import (
 )
 
 # --- Some useful constants
+_DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
+
 SEAS_ADJ: Final[str] = "Seasonally Adjusted"
 TREND: Final[str] = "Trend"
 
@@ -230,7 +233,7 @@ def get_abs_catalogue_ids() -> dict[str, str]:
 
 # public
 def get_plot_constants(
-    meta: pd.DataFrame,
+    meta: DataFrame,
 ) -> tuple[pd.Timestamp, list[None | pd.Timestamp], tuple[str, str]]:
     """Get plotting constants from ABS meta data table
     - used in a loop to produce a plot of the full
@@ -435,12 +438,12 @@ def _get_meta(excel: pd.ExcelFile, tab_num: str, tab_desc: str) -> pd.DataFrame:
 
 # private
 def _get_data(
-    excel: pd.ExcelFile, meta: pd.DataFrame, freq: str, verbose: bool
-) -> pd.DataFrame:
+    excel: pd.ExcelFile, meta: DataFrame, freq: str, verbose: bool
+) -> DataFrame:
     """Take an ABS excel file and put all the Data sheets into a single
     pandas DataFrame and return that DataFrame."""
 
-    data = pd.DataFrame()
+    data = DataFrame()
     data_sheets = [x for x in excel.sheet_names if cast(str, x).startswith("Data")]
     for sheet_name in data_sheets:
         sheet_data = excel.parse(
@@ -486,7 +489,7 @@ def _get_data(
 
 
 # private
-def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, pd.DataFrame]:
+def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, DataFrame]:
     """Get a DataFrame for each table in the zip-file,
     plus an overall DataFrame for the metadata.
     Return these in a dictionary
@@ -502,8 +505,8 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, pd.DataFrame]:
     freq_dict = {"annual": "Y", "quarter": "Q", "month": "M"}
 
     print("Extracting DataFrames from the zip-file ...")
-    returnable: dict[str, pd.DataFrame] = {}
-    meta = pd.DataFrame()
+    returnable: dict[str, DataFrame] = {}
+    meta = DataFrame()
     with zipfile.ZipFile(io.BytesIO(zip_file)) as zipped:
         for element in zipped.infolist():
             # We get a new pandas DataFrame for every excel file.
@@ -555,7 +558,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, pd.DataFrame]:
 @cache
 def get_abs_meta_and_data(
     catalogue_id: str, table: int = 0, verbose: bool = False
-) -> dict[str, pd.DataFrame]:
+) -> dict[str, DataFrame]:
     """For the relevant catalogue-ID return a dictionary containing
     a meta-data Data-Frame and one or more DataFrames of actual
     data from the ABS.
@@ -581,12 +584,12 @@ def get_abs_meta_and_data(
 # --- identify the specific data series from the meta data DataFrame
 # public
 def find_rows(
-    meta: pd.DataFrame,
+    meta: DataFrame,
     search_terms: dict[str, str],
     exact: bool = False,
     regex: bool = False,
     verbose: bool = False,
-) -> pd.DataFrame:
+) -> DataFrame:
     """Extract from meta the rows that match the search_terms.
     Arguments:
      - meta - pandas DataFrame of metadata from the ABS
@@ -621,7 +624,7 @@ def find_rows(
 
 # public
 def find_id(
-    meta: pd.DataFrame,
+    meta: DataFrame,
     search_terms: dict[str, str],
     exact=False,
     verbose: bool = False,
@@ -650,7 +653,7 @@ def find_id(
 
 # public
 def get_identifier(
-    meta: pd.DataFrame,
+    meta: DataFrame,
     data_item_description: str,
     series_type: str,
     table: str,
@@ -711,7 +714,7 @@ def longest_common_prefex(strings: list[str]) -> str:
     return strings[0][:i]
 
 
-def _column_name_fix(r_frame: pd.DataFrame) -> tuple[pd.DataFrame, str, list[str]]:
+def _column_name_fix(r_frame: DataFrame) -> tuple[DataFrame, str, list[str]]:
     """Shorten column names."""
     columns = r_frame.columns.to_list()
     title = longest_common_prefex(columns)
@@ -724,7 +727,7 @@ def _column_name_fix(r_frame: pd.DataFrame) -> tuple[pd.DataFrame, str, list[str
 
 
 def plot_rows_collectively(
-    abs_dict: dict[str, pd.DataFrame],
+    abs_dict: dict[str, DataFrame],
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
@@ -733,13 +736,13 @@ def plot_rows_collectively(
     """Produce an collective/single chart covering each row
     selected from the meta data with selector.
     Agruments:
-    - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - abs_dict - dict[str, DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
     - regex - bool - used with selector in find_rows()
     - verbose - bool - used for feedback from find_rows()
     - **kwargs - arguments passed to plotting function."""
 
-    frame: pd.DataFrame | pd.Series = pd.DataFrame()  # hint is a mypy kludge
+    frame = DataFrame()
     for _, row in find_rows(
         abs_dict[_META_DATA], selector, regex=regex, verbose=verbose
     ).iterrows():
@@ -748,12 +751,10 @@ def plot_rows_collectively(
     if len(frame) == 0:
         return
 
-    frame, units = recalibrate(frame, units)
-    r_frame = cast(pd.DataFrame, frame)
+    r_frame, units = recalibrate(frame, units)
     r_frame, title, colours = _column_name_fix(r_frame)
 
     legend = {**LEGEND_SET, "ncols": 2, **(kwargs.pop("legend", {}))}
-
     line_plot(
         r_frame,
         title=title,
@@ -766,7 +767,7 @@ def plot_rows_collectively(
 
 
 def plot_rows_individually(
-    abs_dict: dict[str, pd.DataFrame],
+    abs_dict: dict[str, DataFrame],
     selector: dict[str, str],
     plot_function: Callable,
     regex=False,  # passed to find_rows()
@@ -776,7 +777,7 @@ def plot_rows_individually(
     """Produce an single chart for each row selected from
     the meta data with selector.
     Agruments:
-    - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - abs_dict - dict[str, DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
     - plot_function - callable - for plotting a series of dara
     - regex - bool - used with selector in find_rows()
@@ -798,7 +799,7 @@ def plot_rows_individually(
 
 
 def plot_rows_seas_trend(
-    abs_dict: dict[str, pd.DataFrame],
+    abs_dict: dict[str, DataFrame],
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
@@ -807,7 +808,7 @@ def plot_rows_seas_trend(
     """Produce an seasonal/Trend chart for the rows selected from
     the metadata with selector.
     Agruments:
-    - abs_dict - dict[str, pd.DataFrame] - dictionary of ABS dataframes
+    - abs_dict - dict[str, DataFrame] - dictionary of ABS dataframes
     - selector - dict - used with find_rows() to select rows from meta
       this needs to select both a Trend and Seasonally Adjusted row, and
       must exclude the "Series Type" column
@@ -852,9 +853,9 @@ def plot_rows_seas_trend(
 
         # put the data into a frame and plot
         # Note - assume SA and Trend units are the same, this is not checked.
-        frame, r_units = recalibrate(pd.DataFrame(frame_data), r_units)
+        frame, r_units = recalibrate(DataFrame(frame_data), r_units)
         seas_trend_plot(
-            cast(pd.DataFrame, frame),
+            frame,  # cast(DataFrame, frame),
             title=did.replace(" ;  ", ": ").replace(" ;", ""),
             ylabel=r_units,
             **kwargs,

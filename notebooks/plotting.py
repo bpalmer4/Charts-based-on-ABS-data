@@ -9,7 +9,7 @@ import re
 import sys
 from operator import mul, truediv
 from pathlib import Path
-from typing import Any, Final, cast
+from typing import Any, Final, cast, TypeVar
 
 # data science imports
 import matplotlib.dates as mdates
@@ -17,9 +17,12 @@ import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas import Series, DataFrame
 import statsmodels.formula.api as smf
 
 # --- constants - default settings
+_DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
+
 DEFAULT_FILE_TYPE: Final[str] = "png"
 DEFAULT_FIG_SIZE: Final[tuple[float, float]] = (9.0, 4.5)
 DEFAULT_DPI: Final[int] = 300
@@ -136,7 +139,7 @@ _annotation_kwargs = ("lfooter", "rfooter", "lheader", "rheader")
 
 _file_kwargs = ("pre_tag", "tag", "chart_dir", "file_type", "dpi")
 _fig_kwargs = ("figsize", "show")
-_oth_kwargs = ("zero_y", "y0", "x0",  "dont_save", "dont_close")
+_oth_kwargs = ("zero_y", "y0", "x0", "dont_save", "dont_close")
 _ACCEPTABLE_KWARGS = frozenset(
     _value_kwargs
     + _splat_kwargs
@@ -459,7 +462,7 @@ def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], d
 
 
 # public
-def line_plot(data: pd.Series | pd.DataFrame, **kwargs: Any) -> None:
+def line_plot(data: _DataT, **kwargs: Any) -> None:
     """Plot a series or a dataframe over multiple (starting_point) time horizons.
     The data must be a pandas Series or DataFrame with a PeriodIndex.
     Arguments:
@@ -478,23 +481,22 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs: Any) -> None:
       argument to finalise_plot cannot be used. Use tags instead.]"""
 
     # sanity checks
-    assert isinstance(data, (pd.Series, pd.DataFrame))
+    assert isinstance(data, (Series, DataFrame))
     assert isinstance(data.index, pd.PeriodIndex)
 
     # really we are only plotting DataFrames
-    if isinstance(data, pd.Series):
-        data = pd.DataFrame(data)
+    df = DataFrame(data)
 
     # get extra plotting parameters - not passed to finalise_plot()
-    item_count = len(data.columns)
+    item_count = len(df.columns)
     stags, kwargs = _get_multi_starts(**kwargs)  # time horizons
     swce, kwargs = _get_style_width_color_etc(item_count, **kwargs)  # lines
 
     # And plot
     for start, tag in zip(stags[STARTS], stags[TAGS]):
         if start and not isinstance(start, pd.Period):
-            start = pd.Period(start, freq=cast(pd.PeriodIndex, data.index).freq)
-        recent = data[data.index >= start] if start else data
+            start = pd.Period(start, freq=cast(pd.PeriodIndex, df.index).freq)
+        recent = df[df.index >= start] if start else df
         axes = None
         for i, column in enumerate(recent.columns):
             if recent[column].isna().all():
@@ -522,7 +524,7 @@ def line_plot(data: pd.Series | pd.DataFrame, **kwargs: Any) -> None:
             finalise_plot(axes, tag=tag, **kwargs)
 
 
-def seas_trend_plot(data: pd.DataFrame, **kwargs) -> None:
+def seas_trend_plot(data: DataFrame, **kwargs) -> None:
     """Plot a DataFrame, where the first column is seasonally
     adjusted data, and the second column is trend data."""
 
@@ -546,14 +548,14 @@ def seas_trend_plot(data: pd.DataFrame, **kwargs) -> None:
 # --- plot_covid_recovery()
 
 
-def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
+def get_projection(original: Series, to_period: pd.Period) -> Series:
     """Projection based on data from the start of a series
     to the to_period (inclusive). Returns projection over the whole
     period of the original series."""
 
     y_regress = original[original.index <= to_period]
     x_regress = np.arange(len(y_regress))
-    regress_data = pd.DataFrame(
+    regress_data = DataFrame(
         {
             "y": y_regress.values,
             "x": x_regress,
@@ -564,21 +566,21 @@ def get_projection(original: pd.Series, to_period: pd.Period) -> pd.Series:
     # print(model.params)
 
     x_complete = np.arange(len(original))
-    projection = pd.Series(
+    projection = Series(
         x_complete * model.params["x"] + model.params["Intercept"], index=original.index
     )
 
     return projection
 
 
-def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
+def plot_covid_recovery(series: Series, verbose=False, **kwargs) -> None:
     """Plots a series with a PeriodIndex.
     Arguments
      - series to be plotted
      - **kwargs - same as for finalise_plot()."""
 
     # sanity checks
-    if not isinstance(series, pd.Series):
+    if not isinstance(series, Series):
         raise TypeError("The series argument must be a pandas Series")
     if not isinstance(series.index, pd.PeriodIndex):
         raise TypeError("The series must have a pandas PeriodIndex")
@@ -614,7 +616,7 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
     recent = series[series.index >= start_regression]
     projection = get_projection(recent, end_regression)
     projection.name = "Pre-COVID projection"
-    data_set = pd.DataFrame([projection, recent]).T
+    data_set = DataFrame([projection, recent]).T
     kwargs["lfooter"] = (
         kwargs.get("lfooter", "")
         + f"Projection from {start_regression} to {end_regression}. "
@@ -636,21 +638,21 @@ def plot_covid_recovery(series: pd.Series, verbose=False, **kwargs) -> None:
 # --- plot_series_highlighted()
 
 
-def _identify_runs(series: pd.Series, threshold: float) -> tuple[pd.Series, pd.Series]:
+def _identify_runs(series: Series, threshold: float) -> tuple[Series, Series]:
     """Identify monotonic increasing runs."""
     diffed = series.diff()
     change_points = pd.concat(
         [diffed[diffed.gt(threshold)], diffed[diffed.lt(-threshold)]]
     ).sort_index()
     if series.index[0] not in change_points.index:
-        starting_point = pd.Series([0], index=[series.index[0]])
+        starting_point = Series([0], index=[series.index[0]])
         change_points = pd.concat([change_points, starting_point]).sort_index()
     rising = change_points > 0
     cycles = (rising & ~rising.shift().astype(bool)).cumsum()
     return cycles[rising], change_points
 
 
-def plot_series_highlighted(series: pd.Series, **kwargs) -> plt.Axes:
+def plot_series_highlighted(series: Series, **kwargs) -> plt.Axes:
     """Plot a series of percentage rates, highlighting the increasing runs.
     Arguments
      - series - ordered pandas Series of percentages, with PeriodIndex
@@ -698,8 +700,8 @@ def plot_series_highlighted(series: pd.Series, **kwargs) -> plt.Axes:
 
 
 def plot_growth(
-    annual: pd.Series,
-    periodic: pd.Series,
+    annual: Series,
+    periodic: Series,
     from_: str | pd.Timestamp | pd.Period | None = None,
     # Note: from_ is neither a list nor a tuple ...
 ) -> None | plt.Axes:
@@ -709,17 +711,13 @@ def plot_growth(
 
     # sanity checks
     for series in (annual, periodic):
-        assert isinstance(
-            series, pd.Series
-        ), "initial arguments should be pandas Series"
+        assert isinstance(series, Series), "initial arguments should be pandas Series"
         assert isinstance(
             series.index, pd.PeriodIndex
         ), "Series index should be a PeriodIndex"
 
     # put our two series into a datadrame
-    frame = pd.DataFrame(
-        [annual.copy(), periodic.copy()], index=["Annual", "Periodic"]
-    ).T
+    frame = DataFrame([annual.copy(), periodic.copy()], index=["Annual", "Periodic"]).T
 
     # CHECK next block - has been reworked - Dec 2023
     df_period = cast(pd.PeriodIndex, frame.index).freqstr[:1]
@@ -765,8 +763,8 @@ def plot_growth(
 
 
 def plot_growth_finalise(
-    annual: pd.Series,
-    periodic: pd.Series,
+    annual: Series,
+    periodic: Series,
     from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
     **kwargs,
 ) -> None:
@@ -792,9 +790,7 @@ def plot_growth_finalise(
             finalise_plot(axes, **kwargs)
 
 
-def calc_growth(
-    series: pd.Series, ppy: int | None = None
-) -> tuple[pd.Series, pd.Series]:
+def calc_growth(series: Series, ppy: int | None = None) -> tuple[Series, Series]:
     """Calculate annual and periodic growth for a pandas Series,
     with ppy periods per year."""
 
@@ -807,7 +803,7 @@ def calc_growth(
 
 
 def calc_and_plot_growth(
-    series: pd.Series,
+    series: Series,
     from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
     **kwargs,
 ) -> None:
@@ -895,10 +891,10 @@ def _do_recal(flat_data, units, step, operator):
 
 # public
 def recalibrate(
-    data: pd.Series | pd.DataFrame,
+    data: _DataT,
     units: str,
     verbose: bool = False,
-) -> tuple[pd.Series | pd.DataFrame, str]:
+) -> tuple[_DataT, str]:
     """Recalibrate a pandas Series or DataFrame."""
 
     flat_data = data.to_numpy().flatten()
@@ -929,7 +925,7 @@ def recalibrate(
     if money and "number" in units:
         units = units.replace("number", "").strip()
 
-    restore_pandas = pd.DataFrame if len(data.shape) == 2 else pd.Series
+    restore_pandas = DataFrame if len(data.shape) == 2 else Series
     result = restore_pandas(flat_data.reshape(data.shape))
     result.index = data.index
     if len(data.shape) == 2:
@@ -941,21 +937,21 @@ def recalibrate(
 
 # public
 def recalibrate_series(
-    input_series: pd.Series,
+    input_series: Series,
     units: str,
     verbose: bool = False,
-) -> tuple[pd.Series, str]:
+) -> tuple[Series, str]:
     """Retained for compatibility with earlier code.
     It calls recalibrate()."""
 
     recal_series, units = recalibrate(input_series, units, verbose)
-    return cast(pd.Series, recal_series), units
+    return recal_series, units
 
 
 # public
 def recalibrate_value(value: float, units: str) -> tuple[float, str]:
     """Recalibrate a floating point value."""
 
-    series = pd.Series([value])
+    series = Series([value])
     output, units = recalibrate(series, units)
     return output.values[0], units
