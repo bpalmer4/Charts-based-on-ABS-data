@@ -71,3 +71,18 @@ def qtly_to_monthly(data: _DataT, interpolate: bool = True) -> _DataT:
     )
 
     return data
+
+
+def monthly_to_qtly(data: _DataT, q_ending="DEC") -> _DataT:
+    """Convert monthly PeriodIndex data to quarterly PeriodIndex data."""
+
+    return (
+        data
+        .pipe(lambda x:
+            x.set_axis(labels=x.index.to_timestamp(how="end"), 
+                       axis="index", copy=True)
+             )
+        .resample(rule="QE")
+        .mean()
+        .pipe(lambda x: x.set_axis(labels=x.index.to_period(freq=f'Q-{q_ending}')))
+    )
