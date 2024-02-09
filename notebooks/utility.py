@@ -80,14 +80,17 @@ def monthly_to_qtly(data: _DataT, q_ending="DEC") -> _DataT:
     return (
         data.pipe(
             lambda x: x.set_axis(
-                labels=x.index.to_timestamp(how="end"), axis="index", copy=True
+                labels=cast(PeriodIndex, x.index).to_timestamp(how="end"),
+                axis="index",
+                copy=True,
             )
         )
         .resample(rule="QE")
         .mean()
         .pipe(
             lambda x: x.set_axis(
-                labels=x.index.to_period(freq=f"Q-{q_ending}"), axis="index"
+                labels=cast(DatetimeIndex, x.index).to_period(freq=f"Q-{q_ending}"),
+                axis="index",
             )
         )
     )
