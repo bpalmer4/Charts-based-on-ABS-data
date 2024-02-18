@@ -28,6 +28,7 @@ import calendar
 import io
 import re
 import zipfile
+from collections import namedtuple
 from functools import cache
 from pathlib import Path
 from typing import Any, Callable, Final, TypeVar, cast
@@ -50,10 +51,29 @@ from plotting import (
 )
 
 # --- Some useful constants
-_DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
 
+# typing information
+_DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
 SEAS_ADJ: Final[str] = "Seasonally Adjusted"
 TREND: Final[str] = "Trend"
+
+# columns in the meta data DataFrame
+Metacol = namedtuple("Metacol", ['did', 'stype', 'id', 'start', 'end', 'num', 'unit',
+                           'dtype', 'freq', 'cmonth', 'table', 'tdesc'])
+metacol = Metacol(
+    did = 'Data Item Description', 
+    stype = 'Series Type', 
+    id = 'Series ID', 
+    start = 'Series Start',
+    end = 'Series End', 
+    num = 'No. Obs.', 
+    unit = 'Unit', 
+    dtype  = 'Data Type', 
+    freq = 'Freq.',
+    cmonth = 'Collection Month', 
+    table = 'Table', 
+    tdesc = 'Table Description',
+)
 
 
 # --- ABS catalgue map - these are the possible downloads we know about
@@ -197,7 +217,6 @@ _META_DATA: Final[str] = "META_DATA"
 
 # --- utility functions
 
-
 # public
 def get_fs_constants(catalogue_id: str) -> tuple[str, str, str]:
     """Get file system constants for a catalogue ID."""
@@ -248,23 +267,6 @@ def get_plot_constants(
     plot_times = [None, recent]
     plot_tags = ("full", "recent")
     return recent, plot_times, plot_tags
-
-
-# public
-def get_meta_constants() -> tuple[str, str, str, str, str, str]:
-    """Key column names in the meta data."""
-
-    did_col_ = "Data Item Description"
-    id_col_ = "Series ID"
-    table_col_ = "Table"
-    type_col_ = "Series Type"
-    unit_col_ = "Unit"
-    tdesc_col_ = "Table Description"
-    return did_col_, id_col_, table_col_, type_col_, unit_col_, tdesc_col_
-
-
-# public - available for import
-did_col, id_col, table_col, type_col, unit_col, tdesc_col = get_meta_constants()
 
 
 # public
@@ -608,7 +610,7 @@ def find_rows(
             )
         pick_me = (
             (meta_select[column] == phrase)
-            if (exact or column == table_col)
+            if (exact or column == metacol.table)
             else meta_select[column].str.contains(phrase, regex=regex)
         )
         meta_select = meta_select[pick_me]
@@ -673,9 +675,9 @@ def get_identifier(
          - units - string - unit of measurement."""
 
     search = {
-        table: table_col,
-        series_type: type_col,
-        data_item_description: did_col,
+        table: metacol.table,
+        series_type: metacol.stype,
+        data_item_description: metacol.did,
     }
 
     return find_id(meta, search, exact=True, verbose=verbose)
@@ -686,7 +688,7 @@ def get_identifier(
 def iudts_from_row(row: pd.Series) -> tuple[str, str, str, str, str]:
     """Return a tuple comrising series_id, units, data_description,
     table_number, series_type."""
-    return (row[id_col], row[unit_col], row[did_col], row[table_col], row[type_col])
+    return (row[metacol.id], row[metacol.unit], row[metacol.did], row[metacol.table], row[metacol.stype])
 
 
 def longest_common_prefex(strings: list[str]) -> str:
@@ -817,16 +819,16 @@ def plot_rows_seas_trend(
     - **kwargs - arguments passed to plotting function."""
 
     # sanity checks - make sure seas/trend not in the selector
-    if type_col in selector.values():
-        print(f'Check: unexpected column "{type_col}" in the selector')
+    if metacol.stype in selector.values():
+        print(f'Check: unexpected column "{metacol.stype}" in the selector')
         return
 
     # identify the plot-sets using the selector ...
     st_data = {}
-    for data_type in SEAS_ADJ, TREND:
-        st_data[data_type] = find_rows(
+    for series_type in SEAS_ADJ, TREND:
+        st_data[series_type] = find_rows(
             abs_dict[_META_DATA],
-            {**selector, data_type: type_col},
+            {**selector, series_type: metacol.stype},
             regex=regex,
             verbose=verbose,
         )
@@ -836,18 +838,18 @@ def plot_rows_seas_trend(
         print("The number of Trend and Seasonally Adjusted rows do not match")
         return
     if (
-        not st_data[SEAS_ADJ][did_col].is_unique
-        or not st_data[TREND][did_col].is_unique
+        not st_data[SEAS_ADJ][metacol.did].is_unique
+        or not st_data[TREND][metacol.did].is_unique
     ):
         print("Data item descriptions are not unique")
         return
 
     # plot Seaspnal + Trend charts one-by-one
-    for did in st_data[TREND][did_col]:
+    for did in st_data[TREND][metacol.did]:
         # get data series
         frame_data = {}
         for row_type in SEAS_ADJ, TREND:
-            row = st_data[row_type][st_data[row_type][did_col] == did].iloc[0]
+            row = st_data[row_type][st_data[row_type][metacol.did] == did].iloc[0]
             r_id, r_units, _, r_table, _ = iudts_from_row(row)
             frame_data[row_type] = abs_dict[r_table][r_id]
 
