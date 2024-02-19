@@ -30,7 +30,7 @@ from collections import namedtuple
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import Any, Callable, Final, TypeVar, cast
+from typing import Any, Callable, Final, TypeVar, TypeAlias, cast
 
 # analytical imports
 import pandas as pd
@@ -48,6 +48,7 @@ from plotting import (
     state_abbr,
     LEGEND_SET,
 )
+from utility import qtly_to_monthly
 
 # --- Some useful constants
 
@@ -66,6 +67,7 @@ TREND: Final[str] = "Trend"
 @dataclass(frozen=True)
 class AbsLandingPage:
     """Class for selecting ABS data files to download."""
+
     theme: str
     parent_topic: str
     topic: str
@@ -767,3 +769,110 @@ def plot_rows_seas_trend(
             ylabel=r_units,
             **kwargs,
         )
+
+
+# --- Select multiple series from different ABS datasets
+
+
+# public - typing information
+@dataclass
+class AbsSelectInput:
+    """Data used to select muktiple ABS timeseries
+    from different sources within the ABS."""
+
+    landing_page: AbsLandingPage
+    table: str
+    orig_sa: str
+    search1: str
+    search2: str
+    abbr: str
+    calc_growth: bool
+
+
+@dataclass
+class AbsSelectOutput:
+    """For each series returned, include some useful metadata."""
+
+    series: pd.Series
+    cat_id: str
+    table: str
+    series_id: str
+    unit: str
+    orig_sa: str
+    abbr: str
+
+
+AbsSelectionDict: TypeAlias = dict[str, AbsSelectInput]
+AbsMultiSeries: TypeAlias = dict[str, AbsSelectOutput]
+
+
+# public - select an individual series
+def get_single_series(selector: AbsSelectInput) -> AbsSelectOutput:
+    """Return an ABS series for the specified selector."""
+
+    # get the ABS data
+    data_dict = get_abs_data(selector.landing_page)
+    _, _, cat_id, meta = get_fs_constants(data_dict, selector.landing_page)
+    data = data_dict[selector.table]
+
+    # get the specific series we want to plot
+    search_terms = {
+        selector.table: metacol.table,
+        {"SA": "Seasonally Adjusted", "Orig": "Original"}[
+            selector.orig_sa
+        ]: metacol.stype,
+        selector.search1: metacol.did,
+        selector.search2: metacol.did,
+    }
+
+    series_id, unit = find_id(meta, search_terms, verbose=False)
+    series = data[series_id]
+    if selector.calc_growth:
+        periods = 4 if cast(pd.PeriodIndex, series.index).freqstr[0] == "Q" else 12
+        series = (series / series.shift(periods) - 1) * 100.0
+
+    return AbsSelectOutput(
+        series=series,
+        cat_id=cat_id,
+        table=selector.table,
+        series_id=series_id,
+        unit=unit,
+        orig_sa=selector.orig_sa,
+        abbr=selector.abbr,
+    )
+
+
+# public - select multiple series
+def get_multi_series(selection_dict: AbsSelectionDict) -> AbsMultiSeries:
+    """Return a dictionary of Series data from the ABS,
+    One series for each item in the selection_dict dictionary."""
+
+    pool = {}
+    for name, selector in selection_dict.items():
+        # pool[f"{name} ({selector.orig_sa})"] = get_single_series(selector)
+        pool[name] = get_single_series(selector)
+    return pool
+
+
+# public - convert an AbsMultiSeries into a DataFrame
+def df_from_ams(ams: AbsMultiSeries) -> pd.DataFrame:
+    """Get a dataframe from the ABS Multi Series item."""
+
+    frame_dict = {key: val.series for key, val in ams.items()}
+    for name, series in frame_dict.items():
+        if cast(pd.PeriodIndex, series.index).freqstr[0] == "Q":
+            series_m = qtly_to_monthly(series, interpolate=False)
+            frame_dict[name] = series_m
+    return pd.DataFrame(frame_dict)
+
+
+# public
+def rename_cols_with_stype(df: pd.DataFrame, ams: AbsMultiSeries) -> pd.DataFrame:
+    """Add series type to the column names of a DataFrame."""
+
+    names = {}
+    for col in df.columns:
+        orig_sa = ams[col].orig_sa  # assume happy case only
+        orig_sa = f" ({orig_sa})" if orig_sa else orig_sa
+        names[col] = f"{col}{orig_sa}"
+    return df.rename(columns=names)

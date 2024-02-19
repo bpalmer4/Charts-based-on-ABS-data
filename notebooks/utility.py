@@ -1,6 +1,6 @@
 """utility functions. Mostly for pandas DataFrames and Series."""
 
-from typing import TypeVar, cast
+from typing import TypeVar, Optional, cast
 from pandas import Series, DataFrame, PeriodIndex, DatetimeIndex
 
 # - define a useful typevar for working with both Series and DataFrames
@@ -27,7 +27,11 @@ def annualise_percentages(data: _DataT, periods: int = 12) -> _DataT:
     return annualise_rates(rates, periods)
 
 
-def qtly_to_monthly(data: _DataT, interpolate: bool = True) -> _DataT:
+def qtly_to_monthly(
+    data: _DataT,
+    interpolate: bool = True,
+    limit: Optional[int] = 2,  # only if interpolate is True
+) -> _DataT:
     """Convert a pandas timeseries with a Quarterly PeriodIndex to an
     timeseries with a Monthly PeriodIndex.
     Arguments:
@@ -64,12 +68,8 @@ def qtly_to_monthly(data: _DataT, interpolate: bool = True) -> _DataT:
         .pipe(set_axis_monthly_periods)
     )
 
-    data = (
-        # interpolate or remove the added months.
-        data.interpolate(limit_area="inside", limit=2)
-        if interpolate
-        else data.dropna()
-    )
+    if interpolate:
+        data = data.interpolate(limit_area="inside", limit=limit)
 
     return data
 

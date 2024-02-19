@@ -71,7 +71,9 @@ def get_file(url: str, cache_dir: Path) -> bytes:
     response = requests.head(url, allow_redirects=True, timeout=20)
     check_response(url, response)
     source_time = response.headers.get("Last-Modified", None)
-    source_mtime = None if source_time is None else pd.to_datetime(source_time, utc=True)
+    source_mtime = (
+        None if source_time is None else pd.to_datetime(source_time, utc=True)
+    )
 
     # get cache modification time in UTC
     target_mtime: datetime | None = None
