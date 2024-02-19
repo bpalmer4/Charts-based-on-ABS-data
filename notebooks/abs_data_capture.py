@@ -2,8 +2,7 @@
 
 Our general approach here is to:
 
-1. Download the "latest-release" webpage from the ABS
-   for known ABS catalogue numbers.
+1. Download the "latest-release" webpage from the ABS.
 
 2. Parse that webpage to find the link to the download
    all-tables zip-file. We do this because the name of
@@ -22,13 +21,13 @@ Our general approach here is to:
    to a pandas DataFrame. Return all of the DataFrames
    in a dictionary."""
 
-
 # standard library imports
 import calendar
 import io
 import re
 import zipfile
 from collections import namedtuple
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any, Callable, Final, TypeVar, cast
@@ -53,180 +52,86 @@ from plotting import (
 # --- Some useful constants
 
 # typing information
+# public
+AbsDict = dict[str, pd.DataFrame]
+
+# private
 _DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
 SEAS_ADJ: Final[str] = "Seasonally Adjusted"
 TREND: Final[str] = "Trend"
 
+
+# to get to an ABS landing page ...
+# public
+@dataclass(frozen=True)
+class AbsLandingPage:
+    """Class for selecting ABS data files to download."""
+    theme: str
+    parent_topic: str
+    topic: str
+
+
 # columns in the meta data DataFrame
-Metacol = namedtuple("Metacol", ['did', 'stype', 'id', 'start', 'end', 'num', 'unit',
-                           'dtype', 'freq', 'cmonth', 'table', 'tdesc'])
-metacol = Metacol(
-    did = 'Data Item Description', 
-    stype = 'Series Type', 
-    id = 'Series ID', 
-    start = 'Series Start',
-    end = 'Series End', 
-    num = 'No. Obs.', 
-    unit = 'Unit', 
-    dtype  = 'Data Type', 
-    freq = 'Freq.',
-    cmonth = 'Collection Month', 
-    table = 'Table', 
-    tdesc = 'Table Description',
+# private
+_META_DATA: Final[str] = "META_DATA"
+Metacol = namedtuple(
+    "Metacol",
+    [
+        "did",
+        "stype",
+        "id",
+        "start",
+        "end",
+        "num",
+        "unit",
+        "dtype",
+        "freq",
+        "cmonth",
+        "table",
+        "tdesc",
+        "cat",
+    ],
 )
 
-
-# --- ABS catalgue map - these are the possible downloads we know about
-ABS_DATA_MAP: Final[dict[str, dict[str, str]]] = {
-    "3101": {
-        "Name": "National, State and Territory " "Estimated Resident Population",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "people/population/national-state-"
-        "and-territory-population/latest-release",
-    },
-    "5206": {
-        "Name": "Australian National Accounts: "
-        "National Income Expenditure and Product",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "economy/national-accounts/australian-national-accounts-"
-        "national-income-expenditure-and-product/latest-release",
-    },
-    "5232": {
-        "Name": "Australian National Accounts: Finance and Wealth",
-        "URL": "https://www.abs.gov.au/statistics/economy/"
-        "national-accounts/australian-national-accounts"
-        "-finance-and-wealth/latest-release",
-    },
-    "5368": {
-        "Name": "International Trade in Goods and Services, Australia",
-        "URL": "https://www.abs.gov.au/statistics/economy/"
-        "international-trade/international-trade-goods-and-services-australia"
-        "/latest-release",
-    },
-    "5601": {
-        "Name": "Lending indicators, Australia",
-        "URL": "https://www.abs.gov.au/statistics/economy/"
-        "finance/lending-indicators/latest-release",
-    },
-    "5676": {
-        "Name": "Business Indicators, Australia",
-        "URL": "https://www.abs.gov.au/statistics/economy/"
-        "business-indicators/business-indicators-australia/"
-        "latest-release",
-    },
-    "5682": {
-        "Name": "Monthly Household Spending Indicator",
-        "URL": "https://www.abs.gov.au/statistics/economy/"
-        "finance/monthly-household-spending-indicator/"
-        "latest-release",
-    },
-    "6150": {
-        "Name": "Labour Account, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "labour/labour-accounts/"
-        "labour-account-australia/latest-release",
-    },
-    "6202": {
-        "Name": "Labour Force, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "labour/employment-and-unemployment/"
-        "labour-force-australia/latest-release",
-    },
-    "6291": {
-        "Name": "Labour Force, Australia, Detailed",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "labour/employment-and-unemployment/"
-        "labour-force-australia-detailed/latest-release",
-    },
-    "6345": {
-        "Name": "Wage Price Index, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "economy/price-indexes-and-inflation/"
-        "wage-price-index-australia/latest-release",
-    },
-    "6354": {
-        "Name": "Job Vacancies, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "labour/employment-and-unemployment/"
-        "job-vacancies-australia/latest-release",
-    },
-    "6401": {
-        "Name": "Consumer Price Index, Australia",
-        "URL": "https://www.abs.gov.au/statistics/economy/"
-        "price-indexes-and-inflation/"
-        "consumer-price-index-australia/latest-release",
-    },
-    "6427": {
-        "Name": "Producer Price Indexes, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "economy/price-indexes-and-inflation/"
-        "producer-price-indexes-australia/latest-release",
-    },
-    "6467": {
-        "Name": "Selected Living Cost Indexes, Australiaa",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "economy/price-indexes-and-inflation/"
-        "selected-living-cost-indexes-australia/latest-release",
-    },
-    "6484": {
-        "Name": "Monthly CPI Indicator, Australia",
-        "URL": "https://www.abs.gov.au/statistics/"
-        "economy/price-indexes-and-inflation/"
-        "monthly-consumer-price-index-indicator/latest-release",
-    },
-    "8501": {
-        "Name": "Retail Trade, Australia",
-        "URL": "https://www.abs.gov.au/statistics/industry/"
-        "retail-and-wholesale-trade/retail-trade-australia/"
-        "latest-release",
-    },
-    "8731": {
-        "Name": "Building Approvals, Australia",
-        "URL": "https://www.abs.gov.au/statistics/industry/"
-        "building-and-construction/"
-        "building-approvals-australia/latest-release",
-    },
-    "8752": {
-        "Name": "Building Activity, Australia",
-        "URL": "https://www.abs.gov.au/statistics/industry/"
-        "building-and-construction/"
-        "building-activity-australia/latest-release",
-    },
-}
-
-
-# --- initialisation
-# private
-def _check_abs_data_map() -> None:
-    """Check the integrity of the ABS_DATA_MAP."""
-
-    for data in ABS_DATA_MAP.values():
-        assert "Name" in data
-        assert "URL" in data
-
-
-_check_abs_data_map()
+# public
+metacol = Metacol(
+    did="Data Item Description",
+    stype="Series Type",
+    id="Series ID",
+    start="Series Start",
+    end="Series End",
+    num="No. Obs.",
+    unit="Unit",
+    dtype="Data Type",
+    freq="Freq.",
+    cmonth="Collection Month",
+    table="Table",
+    tdesc="Table Description",
+    cat="Catalogue number",
+)
 
 
 # private = constants
 _CACHE_DIR: Final[str] = "./ABS_CACHE/"
 _CACHE_PATH: Final[Path] = Path(_CACHE_DIR)
 _CACHE_PATH.mkdir(parents=True, exist_ok=True)
-_META_DATA: Final[str] = "META_DATA"
 
 
 # --- utility functions
 
+
 # public
-def get_fs_constants(catalogue_id: str) -> tuple[str, str, str]:
+def get_fs_constants(
+    abs_dict: AbsDict,
+    landing_page: AbsLandingPage,
+) -> tuple[str, str, str, pd.DataFrame]:
     """Get file system constants for a catalogue ID."""
 
-    if catalogue_id not in ABS_DATA_MAP:
-        raise ValueError("Unknown ABS catalogue ID")
-    source = f"ABS {catalogue_id}"
-    chart_dir = f"./CHARTS/{catalogue_id} - {ABS_DATA_MAP[catalogue_id]['Name']}/"
+    cat_id = abs_dict[_META_DATA][metacol.cat].unique()[0]
+    source = f"ABS {cat_id}"
+    chart_dir = f"./CHARTS/{cat_id} - {landing_page.topic}/"
     Path(chart_dir).mkdir(parents=True, exist_ok=True)
-    return source, chart_dir, _META_DATA
+    return source, chart_dir, cat_id, abs_dict[_META_DATA]
 
 
 # public
@@ -238,16 +143,6 @@ def clear_cache() -> None:
         for fs_object in Path(_CACHE_DIR).glob(extension):
             if fs_object.is_file():
                 fs_object.unlink()
-
-
-# public
-def get_abs_catalogue_ids() -> dict[str, str]:
-    """Return a dictionary of known ABS catalogue identifiers."""
-
-    response = {}
-    for identifer, data in ABS_DATA_MAP.items():
-        response[identifer] = data["Name"]
-    return response
 
 
 # public
@@ -306,13 +201,12 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
 
 # --- Data fetch from the ABS
 # private
-def _get_abs_webpage(catalogue_id: str) -> bytes:
-    """Get the ABS web page for latest data in respect
-    of a specified ABS catalogue identifier."""
+def _get_abs_page(page: AbsLandingPage):
+    """Return the HTML for the ABS topic landing page."""
 
-    if catalogue_id not in ABS_DATA_MAP:
-        raise ValueError(f"Catalogue identifier not recognised: {catalogue_id}")
-    url = ABS_DATA_MAP[catalogue_id]["URL"]
+    head = "https://www.abs.gov.au/statistics/"
+    tail = "/latest-release"
+    url = f"{head}{page.theme}/{page.parent_topic}/{page.topic}{tail}"
     return common.request_get(url)
 
 
@@ -381,15 +275,15 @@ def _prefix_url(url: str) -> str:
 
 
 # private
-def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes:
+def _get_abs_zip_file(landing_page: AbsLandingPage, table: int, verbose: bool) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
     # get relevant web-page from ABS website
-    page = _get_abs_webpage(catalogue_id)
+    text_page = _get_abs_page(landing_page)
 
     # extract web address
-    url = _get_urls(page, table, verbose)
+    url = _get_urls(text_page, table, verbose)
 
     # get direct from ABS and cache for future use
     if isinstance(url, list):
@@ -414,7 +308,9 @@ def _get_abs_zip_file(catalogue_id: str, table: int, verbose: bool) -> bytes:
 
 
 # private
-def _get_meta(excel: pd.ExcelFile, tab_num: str, tab_desc: str) -> pd.DataFrame:
+def _get_meta(
+    excel: pd.ExcelFile, tab_num: str, tab_desc: str, cat_id: str
+) -> pd.DataFrame:
     """Capture the metadata from the Index sheet of an ABS excel file.
     Returns a DataFrame specific to the current excel file."""
 
@@ -433,8 +329,9 @@ def _get_meta(excel: pd.ExcelFile, tab_num: str, tab_desc: str) -> pd.DataFrame:
         .replace("000,000", "Millions")
         .replace("000", "Thousands")
     )
-    file_meta["Table"] = tab_num.strip()
-    file_meta["Table Description"] = tab_desc
+    file_meta[metacol.table] = tab_num.strip()
+    file_meta[metacol.tdesc] = tab_desc
+    file_meta[metacol.cat] = cat_id
     return file_meta
 
 
@@ -491,7 +388,7 @@ def _get_data(
 
 
 # private
-def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, DataFrame]:
+def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
     """Get a DataFrame for each table in the zip-file,
     plus an overall DataFrame for the metadata.
     Return these in a dictionary
@@ -524,13 +421,14 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, DataFrame]:
                 )
                 continue
             file_meta = excel.parse("Index", nrows=8)
+            cat_id = file_meta.iat[3, 1].split(" ")[0].strip()
             table = file_meta.iat[4, 1]
             splat = table.split(".")
             tab_num = splat[0].split(" ")[-1].strip()
             tab_desc = ".".join(splat[1:]).strip()
 
             # get the metadata
-            file_meta = _get_meta(excel, tab_num, tab_desc)
+            file_meta = _get_meta(excel, tab_num, tab_desc, cat_id)
 
             # establish freq - used for making the index a PeriodIndex
             freq = file_meta["Freq."].str.lower().unique().tolist()
@@ -558,22 +456,23 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> dict[str, DataFrame]:
 
 # public
 @cache
-def get_abs_meta_and_data(
-    catalogue_id: str, table: int = 0, verbose: bool = False
+def get_abs_data(
+    landing_page: AbsLandingPage, table: int = 0, verbose: bool = False
 ) -> dict[str, DataFrame]:
-    """For the relevant catalogue-ID return a dictionary containing
+    """For the relevant ABS page return a dictionary containing
     a meta-data Data-Frame and one or more DataFrames of actual
     data from the ABS.
     Arguments:
-     - catalogue_id - string - ABS catalogue number for the
-                      desired dataset.
+     - page - class ABS_topic_page - desired time_series page in
+              the format:
+              abs.gov.au/statistics/theme/parent-topic/topic/latest-release
      - table - select the zipfile to return in order as it
                appears on the ABS webpage - default=0
                (e.g. 6291 has four possible tables,
                but most ABS pages only have one).
      - verbose - display detailed web-scraping and caching information"""
 
-    zip_file = _get_abs_zip_file(catalogue_id, table, verbose)
+    zip_file = _get_abs_zip_file(landing_page, table, verbose)
     if not zip_file:
         raise TypeError("An unexpected empty zipfile.")
     dictionary = _get_dataframes(zip_file, verbose)
@@ -688,7 +587,13 @@ def get_identifier(
 def iudts_from_row(row: pd.Series) -> tuple[str, str, str, str, str]:
     """Return a tuple comrising series_id, units, data_description,
     table_number, series_type."""
-    return (row[metacol.id], row[metacol.unit], row[metacol.did], row[metacol.table], row[metacol.stype])
+    return (
+        row[metacol.id],
+        row[metacol.unit],
+        row[metacol.did],
+        row[metacol.table],
+        row[metacol.stype],
+    )
 
 
 def longest_common_prefex(strings: list[str]) -> str:
