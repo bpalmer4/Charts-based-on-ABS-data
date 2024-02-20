@@ -1,4 +1,3 @@
-"""utility functions. Mostly for pandas DataFrames and Series."""
 
 from typing import TypeVar, Optional, cast
 from pandas import Series, DataFrame, PeriodIndex, DatetimeIndex
@@ -30,15 +29,16 @@ def annualise_percentages(data: _DataT, periods: int = 12) -> _DataT:
 def qtly_to_monthly(
     data: _DataT,
     interpolate: bool = True,
-    limit: Optional[int] = 2,  # only if interpolate is True
+    limit: Optional[int] = 2,  # only used if interpolate is True
+    dropna: bool = True,
 ) -> _DataT:
     """Convert a pandas timeseries with a Quarterly PeriodIndex to an
     timeseries with a Monthly PeriodIndex.
     Arguments:
     ==========
     data - either a pandas Series or DataFrame - assumes the index is unique.
-    interpolate - whether to interpolate the missing monthly data, or
-                  delete the missing row.
+    interpolate - whether to interpolate the missing monthly data.
+    dropna - whether to drop NA data
     Notes:
     ======
     Necessitated by Pandas 2.2, which removed .resample()
@@ -70,6 +70,8 @@ def qtly_to_monthly(
 
     if interpolate:
         data = data.interpolate(limit_area="inside", limit=limit)
+    if dropna:
+        data = data.dropna()
 
     return data
 

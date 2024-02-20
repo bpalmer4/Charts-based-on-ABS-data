@@ -271,7 +271,7 @@ def _get_urls(page: bytes, table: int, verbose: bool) -> str | list[str]:
 # private
 def _prefix_url(url: str) -> str:
     """Apply ABS URL prefix to relative links."""
-    prefix = "http://www.abs.gov.au"
+    prefix = "https://www.abs.gov.au"
     url = url.replace(prefix, "")
     return f"{prefix}{url}"
 
