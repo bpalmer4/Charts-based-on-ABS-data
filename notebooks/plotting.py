@@ -258,15 +258,15 @@ def _save_to_file(fig, **kwargs) -> None:
             chart_dir = _chart_dir.get()
 
         title = "" if "title" not in kwargs else kwargs["title"]
-        pre_tag = "" if "pre_tag" not in kwargs else kwargs["pre_tag"]
-        tag = "" if "tag" not in kwargs else kwargs["tag"]
-        file_title = re.sub(_remove, "-", title).lower()
+        MAX_TITLE = 150  # avoid overly long file names
+        shorter = title if len(title) < MAX_TITLE else title[:MAX_TITLE]
+        pre_tag = kwargs.get("pre_tag", "")
+        tag = kwargs.get("tag", "")
+        file_title = re.sub(_remove, "-", shorter).lower()
         file_title = re.sub(_reduce, "-", file_title)
-        file_type = (
-            DEFAULT_FILE_TYPE if "file_type" not in kwargs else kwargs["file_type"]
-        )
-        dpi = DEFAULT_DPI if "dpi" not in kwargs else kwargs["dpi"]
-        fig.savefig(f"{chart_dir}/{pre_tag}{file_title}-{tag}.{file_type}", dpi=dpi)
+        file_type = kwargs.get("file_type", DEFAULT_FILE_TYPE)
+        dpi = kwargs.get("dpi", DEFAULT_DPI)
+        fig.savefig(f"{chart_dir}{pre_tag}{file_title}-{tag}.{file_type}", dpi=dpi)
 
 
 # - public functions for finalise_plot()

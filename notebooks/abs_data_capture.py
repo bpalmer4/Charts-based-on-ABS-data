@@ -266,8 +266,8 @@ def _prefix_url(url: str) -> str:
     return f"{prefix}{url}"
 
 
-# public
-def get_data_links(
+# private
+def _get_data_links(
     landing_page: str,
     verbose: bool = False,
 ) -> dict[str, list[str]]:
@@ -316,7 +316,7 @@ def _get_abs_zip_file(
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
-    link_dict = get_data_links(landing_page, verbose)
+    link_dict = _get_data_links(landing_page, verbose)
 
     # happy case - found a .zip URL on the ABS page
     if ('.zip' in link_dict and zip_table >= 0 
@@ -353,8 +353,8 @@ def _get_meta(
     )
     file_meta = file_meta.iloc[1:-2]  # drop first and last 2
     file_meta = file_meta.dropna(axis="columns", how="all")
-    file_meta["Unit"] = (
-        file_meta["Unit"]
+    file_meta[metacol.unit] = (
+        file_meta[metacol.unit]
         .str.replace("000 Hours", "Thousand Hours")
         .replace("000,000", "Millions")
         .replace("000", "Thousands")
