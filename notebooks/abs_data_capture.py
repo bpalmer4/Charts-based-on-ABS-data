@@ -21,6 +21,19 @@ Our general approach here is to:
    to a pandas DataFrame. Return all of the DataFrames
    in a dictionary."""
 
+
+"""
+Useful information from the ABS website ...
+
+ABS Catalog numbers:
+https://www.abs.gov.au/about/data-services/help/abs-time-series-directory
+
+ABS Landing Pages:
+https://www.abs.gov.au/welcome-new-abs-website#navigating-our-web-address-structure
+"""
+
+
+# --- imports
 # standard library imports
 import calendar
 import io
@@ -50,32 +63,10 @@ from plotting import (
 )
 from utility import qtly_to_monthly
 
-# --- Some useful constants
 
-# typing information
+# --- typing information
 # public
-AbsDict = dict[str, pd.DataFrame]
-
-# private
-_DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
-SEAS_ADJ: Final[str] = "Seasonally Adjusted"
-TREND: Final[str] = "Trend"
-
-
-# to get to an ABS landing page ...
-# public
-@dataclass(frozen=True)
-class AbsLandingPage:
-    """Class for selecting ABS data files to download."""
-
-    theme: str
-    parent_topic: str
-    topic: str
-
-
-# columns in the meta data DataFrame
-# private
-_META_DATA: Final[str] = "META_DATA"
+# abbreviations for columns in the metadata DataFrame
 Metacol = namedtuple(
     "Metacol",
     [
@@ -95,6 +86,59 @@ Metacol = namedtuple(
     ],
 )
 
+
+# data returned from a landing page.
+AbsDict = dict[str, pd.DataFrame]
+
+
+# keywords to navigate to an ABS landing page
+@dataclass(frozen=True)
+class AbsLandingPage:
+    """Class for selecting ABS data files to download."""
+    theme: str
+    parent_topic: str
+    topic: str
+
+
+@dataclass
+class AbsSelectInput:
+    """Data used to select muktiple ABS timeseries
+    from different sources within the ABS."""
+    landing_page: AbsLandingPage
+    table: str
+    orig_sa: str
+    search1: str
+    search2: str
+    abbr: str
+    calc_growth: bool
+
+
+@dataclass
+class AbsSelectOutput:
+    """For each series returned, include some useful metadata."""
+    series: pd.Series
+    cat_id: str
+    table: str
+    series_id: str
+    unit: str
+    orig_sa: str
+    abbr: str
+
+
+AbsSelectionDict: TypeAlias = dict[str, AbsSelectInput]
+AbsMultiSeries: TypeAlias = dict[str, AbsSelectOutput]
+
+
+# private
+_DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
+
+
+# --- Some useful constants
+SEAS_ADJ: Final[str] = "Seasonally Adjusted"
+TREND: Final[str] = "Trend"
+
+# private
+_META_DATA: Final[str] = "META_DATA"
 # public
 metacol = Metacol(
     did="Data Item Description",
@@ -120,8 +164,6 @@ _CACHE_PATH.mkdir(parents=True, exist_ok=True)
 
 
 # --- utility functions
-
-
 # public
 def get_fs_constants(
     abs_dict: AbsDict,
@@ -213,100 +255,86 @@ def _get_abs_page(page: AbsLandingPage):
 
 
 # private
-def _get_url_iteration(soup: BeautifulSoup, search_terms: list[str]) -> list[str]:
-    """Search through webpage (in BS4 format) for search terms
-    within hyperlimk-anchors.  Return a list of matching link URLs."""
-
-    url_list: list[str] = []
-    for term in search_terms:
-        text = re.compile(term, re.IGNORECASE)
-        found = soup.findAll("a", text=text)
-        if not found or len(found) == 0:
-            continue
-        for element in found:
-            result = re.search(r'href="([^ ]+)"', str(element.prettify))
-            if result is not None:
-                url = result.group(1)
-                url_list.append(url)
-    return url_list
+def _prefix_url(url: str) -> str:
+    """Apply ABS URL prefix to relative links."""
+    
+    prefix = "https://www.abs.gov.au"
+    # remove a prefix if it already exists (just to be sure)
+    url = url.replace(prefix, "")
+    url = url.replace(prefix.replace("https://", "http://"), "")
+    # add the prefix (back) ...
+    return f"{prefix}{url}"
 
 
-# private
-def _get_urls(page: bytes, table: int, verbose: bool) -> str | list[str]:
-    """Scrape a webpage for the ZIP file from the ABS page.
-    If the ZIP file cannot be located, scrape a list of
-    URLs for the individual excel files."""
+# public
+def get_data_links(
+    landing_page: str,
+    verbose: bool = False,
+) -> dict[str, list[str]]:
+    """Scan the ABS landing page for links to ZIP files and for
+       links to Microsoft Excel files. Return the links in
+       a dictionary of lists by file type ending. Ensure relative 
+       links are fully expanded."""
 
-    # remove those pesky span tags
+    # get relevant web-page from ABS website
+    page = _get_abs_page(landing_page)
+
+    # remove those pesky span tags - probably not necessary
     page = re.sub(b"<span[^>]*>", b" ", page)
     page = re.sub(b"</span>", b" ", page)
     page = re.sub(b"\\s+", b" ", page)  # tidy up white space
 
-    # get a single all-table URL from the web page
+    # capture all links (of a particular type)
+    link_types = ('.xlsx', '.zip', '.xls')  # lower case
     soup = BeautifulSoup(page, features="lxml")
-    search_terms = ["Download All", "Download ZIP"]
-    url_list = _get_url_iteration(soup, search_terms)
+    link_dict = {}
+    for link in soup.findAll('a'):
+        url = link.get('href')
+        if url is None or url == "":
+            # ignore silly cases
+            continue
+        for link_type in link_types:
+            if url.lower().endswith(link_type):
+                if link_type not in link_dict:
+                    link_dict[link_type] = []
+                link_dict[link_type].append(_prefix_url(url))
+                break
+
     if verbose:
-        print("Length of URL list: ", len(url_list))
-        print(f"Selecting {table} from list: {url_list}")
-    if isinstance(url_list, list) and len(url_list) > table:
-        print("Found URL for a ZIP file on ABS web page")
-        url = url_list[table]
-        if verbose:
-            print(f"-1--> {url}")
-        return url  # of type str
+        for link_type, link_list in link_dict.items():
+            print(f"Found: {len(link_list)} items of type {link_type}")
 
-    # get a list of individual table URLs
-    print("Did not find the URL for a ZIP file")
-    search_terms = ["download.xlsx"]
-    url_list = _get_url_iteration(soup, search_terms)
-    if not url_list or not isinstance(url_list, list):
-        print("Could not fimd individual urls")
-        raise common.HttpError("No URLs found on web-page for downloading data")
-
-    print("URL list of excel files identified")
-    return url_list  # of type list
+    return link_dict
 
 
 # private
-def _prefix_url(url: str) -> str:
-    """Apply ABS URL prefix to relative links."""
-    prefix = "https://www.abs.gov.au"
-    url = url.replace(prefix, "")
-    return f"{prefix}{url}"
-
-
-# private
-def _get_abs_zip_file(landing_page: AbsLandingPage, table: int, verbose: bool) -> bytes:
+def _get_abs_zip_file(
+    landing_page: AbsLandingPage,
+    zip_table: int, 
+    verbose: bool
+) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
-    # get relevant web-page from ABS website
-    text_page = _get_abs_page(landing_page)
+    link_dict = get_data_links(landing_page, verbose)
 
-    # extract web address
-    url = _get_urls(text_page, table, verbose)
-
-    # get direct from ABS and cache for future use
-    if isinstance(url, list):
-        # url is a list of individual spreedsheets
-        # We need to fake up a zip file from these spreadsheets ...
-        print("The ABS is being difficult, we need to fake up a zip file")
-        zip_buf = io.BytesIO()
-        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for u in url:
-                u = _prefix_url(u)
-                file_bytes = common.get_file(u, _CACHE_PATH)
-                name = Path(u).name
-                zip_file.writestr(f"/{name}", file_bytes)
-        zip_buf.seek(0)
-        returnable = zip_buf.read()
-    else:
-        # url is for a single zip file ...
-        url = _prefix_url(url)
-        returnable = common.get_file(url, _CACHE_PATH)
-
-    return returnable
+    # happy case - found a .zip URL on the ABS page
+    if ('.zip' in link_dict and zip_table >= 0 
+        and zip_table < len(link_dict['.zip'])):
+        url = link_dict['.zip'][zip_table]
+        return common.get_file(url, _CACHE_PATH)
+        
+    # sad case - need to fake up a zip file
+    print("A little unexpected: We need to fake up a zip file")
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for u in link_dict['.xlsx']:
+            u = _prefix_url(u)
+            file_bytes = common.get_file(u, _CACHE_PATH)
+            name = Path(u).name
+            zip_file.writestr(f"/{name}", file_bytes)
+    zip_buf.seek(0)
+    return zip_buf.read()
 
 
 # private
@@ -405,7 +433,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
 
     freq_dict = {"annual": "Y", "quarter": "Q", "month": "M"}
 
-    print("Extracting DataFrames from the zip-file ...")
+    print("Extracting DataFrames from the zip-file.")
     returnable: dict[str, DataFrame] = {}
     meta = DataFrame()
     with zipfile.ZipFile(io.BytesIO(zip_file)) as zipped:
@@ -459,22 +487,25 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
 # public
 @cache
 def get_abs_data(
-    landing_page: AbsLandingPage, table: int = 0, verbose: bool = False
+    landing_page: AbsLandingPage, zip_table: int = 0, verbose: bool = False
 ) -> dict[str, DataFrame]:
     """For the relevant ABS page return a dictionary containing
     a meta-data Data-Frame and one or more DataFrames of actual
     data from the ABS.
     Arguments:
      - page - class ABS_topic_page - desired time_series page in
-              the format:
-              abs.gov.au/statistics/theme/parent-topic/topic/latest-release
-     - table - select the zipfile to return in order as it
-               appears on the ABS webpage - default=0
-               (e.g. 6291 has four possible tables,
-               but most ABS pages only have one).
-     - verbose - display detailed web-scraping and caching information"""
+            the format:
+            abs.gov.au/statistics/theme/parent-topic/topic/latest-release
+     - zip_table - select the zipfile to return in order as it
+            appears on the ABS webpage - default=0
+            (e.g. 6291 has four possible tables,
+            but most ABS pages only have one). 
+            Note: a negative zip_file number will cause the
+            zip_file not to be recovered and for individual
+            excel files to be recovered from the ABS
+     - verbose - display additional web-scraping and caching information"""
 
-    zip_file = _get_abs_zip_file(landing_page, table, verbose)
+    zip_file = _get_abs_zip_file(landing_page, zip_table, verbose)
     if not zip_file:
         raise TypeError("An unexpected empty zipfile.")
     dictionary = _get_dataframes(zip_file, verbose)
@@ -772,40 +803,6 @@ def plot_rows_seas_trend(
 
 
 # --- Select multiple series from different ABS datasets
-
-
-# public - typing information
-@dataclass
-class AbsSelectInput:
-    """Data used to select muktiple ABS timeseries
-    from different sources within the ABS."""
-
-    landing_page: AbsLandingPage
-    table: str
-    orig_sa: str
-    search1: str
-    search2: str
-    abbr: str
-    calc_growth: bool
-
-
-@dataclass
-class AbsSelectOutput:
-    """For each series returned, include some useful metadata."""
-
-    series: pd.Series
-    cat_id: str
-    table: str
-    series_id: str
-    unit: str
-    orig_sa: str
-    abbr: str
-
-
-AbsSelectionDict: TypeAlias = dict[str, AbsSelectInput]
-AbsMultiSeries: TypeAlias = dict[str, AbsSelectOutput]
-
-
 # public - select an individual series
 def get_single_series(selector: AbsSelectInput) -> AbsSelectOutput:
     """Return an ABS series for the specified selector."""
