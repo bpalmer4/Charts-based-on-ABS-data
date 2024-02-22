@@ -33,7 +33,7 @@ COLOR_BLUE: Final[str] = "mediumblue"
 COLOR_RED: Final[str] = "#dd0000"
 COLOR_GREEN: Final[str] = "mediumseagreen"
 
-NARROW_WIDTH: Final[float] = 1.0
+NARROW_WIDTH: Final[float] = 0.75
 WIDE_WIDTH: Final[float] = 2.0
 LEGEND_FONTSIZE: Final[str] = "x-small"
 LEGEND_SET: Final[dict[str, Any]] = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
@@ -400,7 +400,7 @@ def _get_multi_starts(**kwargs) -> tuple[dict[str, list], dict]:
     return stags, kwargs
 
 
-def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], dict]:
+def _get_style_width_color_etc(item_count, num_data_points, **kwargs) -> tuple[dict[str, list], dict]:
     """Get the plot-line attributes arguemnts."""
 
     colours: dict[int, str | list[str]] = {
@@ -437,9 +437,10 @@ def _get_style_width_color_etc(item_count, **kwargs) -> tuple[dict[str, list], d
     k = colours.keys()
     minimum: float | int = min(i for i in list(k) + [float("inf")] if i >= item_count)
     n_colours = int(minimum if minimum is not float("inf") else max(k))
+    data_point_thresh = 24
     defaults: dict[str, Any] = {
         STYLE: "-",
-        WIDTH: WIDE_WIDTH,
+        WIDTH: NARROW_WIDTH if num_data_points > data_point_thresh else wide_WIDTH,
         COLOR: colours[n_colours],
         ALPHA: 1.0,
         DRAWSTYLE: None,
@@ -489,8 +490,9 @@ def line_plot(data: _DataT, **kwargs: Any) -> None:
 
     # get extra plotting parameters - not passed to finalise_plot()
     item_count = len(df.columns)
+    num_data_points = len(df)
     stags, kwargs = _get_multi_starts(**kwargs)  # time horizons
-    swce, kwargs = _get_style_width_color_etc(item_count, **kwargs)  # lines
+    swce, kwargs = _get_style_width_color_etc(item_count, num_data_points, **kwargs)  # lines
 
     # And plot
     for start, tag in zip(stags[STARTS], stags[TAGS]):
@@ -864,6 +866,12 @@ def _can_recalibrate(flat_data: np.ndarray, units: str, verbose: bool = False) -
     if not np.issubdtype(flat_data.dtype, np.number):
         print("recalibrate(): Non numeric input data")
         return False
+    if np.isnan(flat_data).all():
+        print("recalibrate(): All NaN data.")
+        return False
+    if (~np.isfinite(flat_data)).any():
+        print("recalibrate(): Includes non-finite data.")
+        return False
     if _find_calibration(units) is None:
         if verbose:
             print("recalibrate(): Units not appropriately " f"calibrated: {units}")
@@ -871,6 +879,9 @@ def _can_recalibrate(flat_data: np.ndarray, units: str, verbose: bool = False) -
     if flat_data.max() <= 1000 and flat_data.max() >= 1:
         if verbose:
             print("recalibrate(): No adjustments needed")
+        return False
+    if np.nanmax(np.abs(flat_data)) == 0: 
+        print("recalibrate(): All zero data")
         return False
     return True
 

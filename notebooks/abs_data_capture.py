@@ -168,12 +168,13 @@ _CACHE_PATH.mkdir(parents=True, exist_ok=True)
 def get_fs_constants(
     abs_dict: AbsDict,
     landing_page: AbsLandingPage,
+    chart_dir_suffix: str = "",
 ) -> tuple[str, str, str, pd.DataFrame]:
     """Get file system constants for a catalogue ID."""
 
     cat_id = abs_dict[_META_DATA][metacol.cat].unique()[0]
     source = f"ABS {cat_id}"
-    chart_dir = f"./CHARTS/{cat_id} - {landing_page.topic}/"
+    chart_dir = f"./CHARTS/{cat_id} - {landing_page.topic}{chart_dir_suffix}/"
     Path(chart_dir).mkdir(parents=True, exist_ok=True)
     return source, chart_dir, cat_id, abs_dict[_META_DATA]
 
@@ -356,6 +357,8 @@ def _get_meta(
     file_meta[metacol.unit] = (
         file_meta[metacol.unit]
         .str.replace("000 Hours", "Thousand Hours")
+        .replace("$'000,000", "$ Million")
+        .replace("$'000", " $Thousand")
         .replace("000,000", "Millions")
         .replace("000", "Thousands")
     )
@@ -796,7 +799,7 @@ def plot_rows_seas_trend(
         frame, r_units = recalibrate(DataFrame(frame_data), r_units)
         seas_trend_plot(
             frame,  # cast(DataFrame, frame),
-            title=did.replace(" ;  ", ": ").replace(" ;", ""),
+            title=did.replace(" ;  ", ": ").replace(" ;", ""),  # NEEDS THINKING
             ylabel=r_units,
             **kwargs,
         )
