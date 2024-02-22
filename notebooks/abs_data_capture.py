@@ -21,7 +21,6 @@ Our general approach here is to:
    to a pandas DataFrame. Return all of the DataFrames
    in a dictionary."""
 
-
 """
 Useful information from the ABS website ...
 
@@ -87,7 +86,8 @@ Metacol = namedtuple(
 )
 
 
-# data returned from a landing page.
+# data returned from scanning the landing page.
+# and then collecting the data ...
 AbsDict = dict[str, pd.DataFrame]
 
 
@@ -95,6 +95,7 @@ AbsDict = dict[str, pd.DataFrame]
 @dataclass(frozen=True)
 class AbsLandingPage:
     """Class for selecting ABS data files to download."""
+
     theme: str
     parent_topic: str
     topic: str
@@ -104,6 +105,7 @@ class AbsLandingPage:
 class AbsSelectInput:
     """Data used to select muktiple ABS timeseries
     from different sources within the ABS."""
+
     landing_page: AbsLandingPage
     table: str
     orig_sa: str
@@ -116,6 +118,7 @@ class AbsSelectInput:
 @dataclass
 class AbsSelectOutput:
     """For each series returned, include some useful metadata."""
+
     series: pd.Series
     cat_id: str
     table: str
@@ -258,7 +261,7 @@ def _get_abs_page(page: AbsLandingPage):
 # private
 def _prefix_url(url: str) -> str:
     """Apply ABS URL prefix to relative links."""
-    
+
     prefix = "https://www.abs.gov.au"
     # remove a prefix if it already exists (just to be sure)
     url = url.replace(prefix, "")
@@ -269,13 +272,13 @@ def _prefix_url(url: str) -> str:
 
 # private
 def _get_data_links(
-    landing_page: str,
+    landing_page: AbsLandingPage,
     verbose: bool = False,
 ) -> dict[str, list[str]]:
     """Scan the ABS landing page for links to ZIP files and for
-       links to Microsoft Excel files. Return the links in
-       a dictionary of lists by file type ending. Ensure relative 
-       links are fully expanded."""
+    links to Microsoft Excel files. Return the links in
+    a dictionary of lists by file type ending. Ensure relative
+    links are fully expanded."""
 
     # get relevant web-page from ABS website
     page = _get_abs_page(landing_page)
@@ -286,11 +289,11 @@ def _get_data_links(
     page = re.sub(b"\\s+", b" ", page)  # tidy up white space
 
     # capture all links (of a particular type)
-    link_types = ('.xlsx', '.zip', '.xls')  # lower case
+    link_types = (".xlsx", ".zip", ".xls")  # lower case
     soup = BeautifulSoup(page, features="lxml")
-    link_dict = {}
-    for link in soup.findAll('a'):
-        url = link.get('href')
+    link_dict: dict[str, list[str]] = {}
+    for link in soup.findAll("a"):
+        url = link.get("href")
         if url is None or url == "":
             # ignore silly cases
             continue
@@ -310,9 +313,7 @@ def _get_data_links(
 
 # private
 def _get_abs_zip_file(
-    landing_page: AbsLandingPage,
-    zip_table: int, 
-    verbose: bool
+    landing_page: AbsLandingPage, zip_table: int, verbose: bool
 ) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
@@ -320,16 +321,15 @@ def _get_abs_zip_file(
     link_dict = _get_data_links(landing_page, verbose)
 
     # happy case - found a .zip URL on the ABS page
-    if ('.zip' in link_dict and zip_table >= 0 
-        and zip_table < len(link_dict['.zip'])):
-        url = link_dict['.zip'][zip_table]
+    if ".zip" in link_dict and zip_table >= 0 and zip_table < len(link_dict[".zip"]):
+        url = link_dict[".zip"][zip_table]
         return common.get_file(url, _CACHE_PATH)
-        
+
     # sad case - need to fake up a zip file
     print("A little unexpected: We need to fake up a zip file")
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for u in link_dict['.xlsx']:
+        for u in link_dict[".xlsx"]:
             u = _prefix_url(u)
             file_bytes = common.get_file(u, _CACHE_PATH)
             name = Path(u).name
@@ -491,7 +491,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
 @cache
 def get_abs_data(
     landing_page: AbsLandingPage, zip_table: int = 0, verbose: bool = False
-) -> dict[str, DataFrame]:
+) -> AbsDict:
     """For the relevant ABS page return a dictionary containing
     a meta-data Data-Frame and one or more DataFrames of actual
     data from the ABS.
@@ -502,7 +502,7 @@ def get_abs_data(
      - zip_table - select the zipfile to return in order as it
             appears on the ABS webpage - default=0
             (e.g. 6291 has four possible tables,
-            but most ABS pages only have one). 
+            but most ABS pages only have one).
             Note: a negative zip_file number will cause the
             zip_file not to be recovered and for individual
             excel files to be recovered from the ABS
@@ -670,7 +670,7 @@ def _column_name_fix(r_frame: DataFrame) -> tuple[DataFrame, str, list[str]]:
 
 
 def plot_rows_collectively(
-    abs_dict: dict[str, DataFrame],
+    abs_dict: AbsDict,
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()
@@ -710,7 +710,7 @@ def plot_rows_collectively(
 
 
 def plot_rows_individually(
-    abs_dict: dict[str, DataFrame],
+    abs_dict: AbsDict,
     selector: dict[str, str],
     plot_function: Callable,
     regex=False,  # passed to find_rows()
@@ -742,7 +742,7 @@ def plot_rows_individually(
 
 
 def plot_rows_seas_trend(
-    abs_dict: dict[str, DataFrame],
+    abs_dict: AbsDict,
     selector: dict[str, str],
     regex=False,  # passed to find_rows()
     verbose: bool = False,  # passed to find_rows()

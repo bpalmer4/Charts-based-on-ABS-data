@@ -400,7 +400,9 @@ def _get_multi_starts(**kwargs) -> tuple[dict[str, list], dict]:
     return stags, kwargs
 
 
-def _get_style_width_color_etc(item_count, num_data_points, **kwargs) -> tuple[dict[str, list], dict]:
+def _get_style_width_color_etc(
+    item_count, num_data_points, **kwargs
+) -> tuple[dict[str, list], dict]:
     """Get the plot-line attributes arguemnts."""
 
     colours: dict[int, str | list[str]] = {
@@ -440,7 +442,7 @@ def _get_style_width_color_etc(item_count, num_data_points, **kwargs) -> tuple[d
     data_point_thresh = 24
     defaults: dict[str, Any] = {
         STYLE: "-",
-        WIDTH: NARROW_WIDTH if num_data_points > data_point_thresh else wide_WIDTH,
+        WIDTH: NARROW_WIDTH if num_data_points > data_point_thresh else WIDE_WIDTH,
         COLOR: colours[n_colours],
         ALPHA: 1.0,
         DRAWSTYLE: None,
@@ -492,7 +494,9 @@ def line_plot(data: _DataT, **kwargs: Any) -> None:
     item_count = len(df.columns)
     num_data_points = len(df)
     stags, kwargs = _get_multi_starts(**kwargs)  # time horizons
-    swce, kwargs = _get_style_width_color_etc(item_count, num_data_points, **kwargs)  # lines
+    swce, kwargs = _get_style_width_color_etc(
+        item_count, num_data_points, **kwargs
+    )  # lines
 
     # And plot
     for start, tag in zip(stags[STARTS], stags[TAGS]):
@@ -880,7 +884,7 @@ def _can_recalibrate(flat_data: np.ndarray, units: str, verbose: bool = False) -
         if verbose:
             print("recalibrate(): No adjustments needed")
         return False
-    if np.nanmax(np.abs(flat_data)) == 0: 
+    if np.nanmax(np.abs(flat_data)) == 0:
         print("recalibrate(): All zero data")
         return False
     return True

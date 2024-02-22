@@ -1,4 +1,3 @@
-
 from typing import TypeVar, Optional, cast
 from pandas import Series, DataFrame, PeriodIndex, DatetimeIndex
 
