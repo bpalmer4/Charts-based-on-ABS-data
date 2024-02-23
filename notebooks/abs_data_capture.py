@@ -270,8 +270,9 @@ def _prefix_url(url: str) -> str:
     return f"{prefix}{url}"
 
 
-# private
-def _get_data_links(
+# public
+@cache
+def get_data_links(
     landing_page: AbsLandingPage,
     verbose: bool = False,
 ) -> dict[str, list[str]]:
@@ -318,7 +319,7 @@ def _get_abs_zip_file(
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
-    link_dict = _get_data_links(landing_page, verbose)
+    link_dict = get_data_links(landing_page, verbose)
 
     # happy case - found a .zip URL on the ABS page
     if ".zip" in link_dict and zip_table >= 0 and zip_table < len(link_dict[".zip"]):

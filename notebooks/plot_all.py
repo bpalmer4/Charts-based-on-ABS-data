@@ -7,22 +7,28 @@ To allow for scanning a large volume of data."""
 # system imports
 import sys
 from dataclasses import dataclass
+import time
+from typing import cast
 
 # analytic imports
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.dates as mdates
+from matplotlib import ticker
 from bs4 import BeautifulSoup
 
 # local imports
 from plotting import (
     clear_chart_dir,
     line_plot,
-    recalibrate_series,
+    recalibrate,
     set_chart_dir,
     seas_trend_plot,
+    finalise_plot,
 )
 from abs_data_capture import (
+    get_data_links,
     get_abs_data,
     AbsLandingPage,
     get_fs_constants,
@@ -43,11 +49,15 @@ PLOT_TIMES = (None, RECENT)
 
 # --- Identify available ABS time-series datasets
 def build_links_dict() -> dict[str, tuple[str, AbsLandingPage]]:
-    """Build a catalogue list using data from the ABS web page."""
+    """Build a catalogue list using data from the ABS web page.
+    Note:
+        5655.0: does not have a zip file download facility.
+        8165.0: Does not have time-series data."""
 
     url = "https://www.abs.gov.au/about/data-services/help/abs-time-series-directory"
     html = common.request_get(url)
     table = BeautifulSoup(html, features="lxml").select("table")[-1]
+    odd = {"5655.0", "8165.0"}
 
     link_dict = {}
     for row_num, row in enumerate(table.findAll("tr")):
@@ -55,11 +65,14 @@ def build_links_dict() -> dict[str, tuple[str, AbsLandingPage]]:
             continue
         for i, cell in enumerate(row.findAll("td")):
             if i == 0:
-                cat_id = cell.text
+                cat_id = cell.text.strip()
+                if cat_id in odd:
+                    break
             if i == 1:
-                lp = AbsLandingPage(*cell.find("a").get("href").rsplit("/", 4)[-4:-1])
-                link_dict[cat_id] = (cell.text, lp)
-
+                landing_page = AbsLandingPage(
+                    *cell.find("a").get("href").rsplit("/", 4)[-4:-1]
+                )
+                link_dict[cat_id] = (cell.text, landing_page)
     return link_dict
 
 
@@ -96,7 +109,7 @@ class Tudds:
     source: str
 
 
-def plotall(cat_id: str) -> None:
+def plot_all_in_zip(cat_id: str, zip_table: int) -> None:
     """For a cat_id, obtain the ABS data, and then methodically work
     through the metadata and plot every series therein."""
 
@@ -104,10 +117,8 @@ def plotall(cat_id: str) -> None:
         print(f"Cannot find the ABS catalogue identifier: {cat_id}.")
         return
 
-    # TO DO - think about how to get ABS pages that have multiple zip files.
-
     _, landing_page = LINK_DICT[cat_id]
-    abs_dict = get_abs_data(landing_page)
+    abs_dict = get_abs_data(landing_page, zip_table)
     source, chart_dir, _, meta = get_fs_constants(abs_dict, landing_page, " - ALL")
     set_chart_dir(chart_dir)
     clear_chart_dir(chart_dir)
@@ -129,8 +140,17 @@ def plot_subset(subset: pd.DataFrame, tudds: Tudds) -> None:
 
     for did in subset[metacol.did].unique():
         selected = subset[subset[metacol.did] == did]
+        lower_did = did.lower()
         if len(selected) == 1:
-            x_line_plot(selected, tudds)
+            if (
+                "change" in lower_did
+                and "percent" in lower_did
+                and "year" not in lower_did
+                and "annual" not in lower_did
+            ):
+                x_bar_plot(selected, tudds)
+            else:
+                x_line_plot(selected, tudds)
         elif (
             SEAS_ADJ in selected[metacol.stype].unique()
             and TREND in selected[metacol.stype].unique()
@@ -178,8 +198,10 @@ def build_title(tdesc: str, did: str) -> str:
 
 
 def series_fix(series: pd.Series) -> pd.Series:
-    """Remove leading and trailing NaNs from a series."""
+    """Remove leading and trailing NaNs from a series.
+    Also ensure the series is numeric."""
 
+    series = series.astype(float)  # not sure this is needed.
     first = series.first_valid_index()
     last = series.last_valid_index()
     if first is not None and last is not None:
@@ -205,8 +227,8 @@ def s_seastrend_plot(selected: pd.DataFrame, tudds: Tudds):
     s_data = tudds.data[tudds.table][s_row[metacol.id]]
     t_data = tudds.data[tudds.table][t_row[metacol.id]]
     data = pd.DataFrame({SEAS_ADJ: s_data, TREND: t_data})
-    data = data.dropna(how="all")
-    data, unit = recalibrate_series(data, tudds.unit)
+    data = data.dropna(how="all").astype(float)
+    data, unit = recalibrate(data, tudds.unit)
 
     topic = s_row[metacol.tdesc]
     title = build_title(topic, s_row[metacol.did])
@@ -223,8 +245,48 @@ def s_seastrend_plot(selected: pd.DataFrame, tudds: Tudds):
     )
 
 
+def x_bar_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
+    """Produce a single-series bar chart."""
+
+    assert len(selected) == 1
+    row = selected.index[0]
+    series_id = selected.at[row, metacol.id]
+    series_type = selected.at[row, metacol.stype]
+    data = series_fix(tudds.data[tudds.table][series_id]).copy()
+    move = -15 if cast(pd.PeriodIndex, data.index).freqstr[0] == "M" else -45
+    width = -1.5 * move
+    data.index = cast(pd.PeriodIndex, data.index).to_timestamp(
+        how="end"
+    ) + pd.Timedelta(move, unit="d")
+    unit = tudds.unit
+
+    data, unit = recalibrate(data, unit)
+
+    if len(data) == 0:
+        return
+
+    title = build_title(selected.at[row, metacol.tdesc], selected.at[row, metacol.did])
+
+    for start in PLOT_TIMES:
+        plot_data = data if start is None else data[data.index >= start]
+        if plot_data.notna().sum() == 0:
+            continue  # noting here to plot ...
+
+        _, ax = plt.subplots()
+        ax.bar(plot_data.index, plot_data.values, width=width)
+        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(ticker.AutoLocator))
+        finalise_plot(
+            ax,
+            title=title,
+            ylabel=unit,
+            rfooter=f"{tudds.source}-{tudds.table}-{series_id}",
+            lfooter=f"{series_type} series.",
+            tag=f"{start}-{series_id}",
+        )
+
+
 def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
-    """Produce a single line plot."""
+    """Produce a single-series line plot."""
 
     assert len(selected) == 1
     row = selected.index[0]
@@ -233,7 +295,7 @@ def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
     data = series_fix(tudds.data[tudds.table][series_id])
     unit = tudds.unit
 
-    data, unit = recalibrate_series(data, unit)
+    data, unit = recalibrate(data, unit)
 
     if len(data) == 0:
         return
@@ -254,22 +316,120 @@ def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
     )
 
 
+def plotall(
+    cat_id,
+    verbose=False,
+    test_mode=False,
+) -> None:
+    """Find all of the appropriate zip files and plot them."""
+
+    zip_suffix = ".zip"
+    if cat_id not in LINK_DICT:
+        print(f"Cannot find the ABS catalogue identifier: {cat_id}.")
+        return
+
+    _, landing_page = LINK_DICT[cat_id]
+    topic = landing_page.topic.replace("-", " ").title()
+    links = get_data_links(landing_page)  # net get_data_links is cached
+    if zip_suffix not in links:
+        print(
+            f"Odd: no zip list for {cat_id}, on topic:",
+            f'{landing_page.topic.replace("-", " ").title()}',
+        )
+        return
+    zip_links = links[zip_suffix]
+    zip_list = [
+        i
+        for i, link in enumerate(zip_links)
+        # manage some of the oddities at ABS ...
+        if ("cube" not in link.lower() or cat_id in ("3401.0"))  # exclude data cubes
+        and "pivot_table" not in link.lower()  # exclude pivot tables
+        # --- following all relate to 8731.0 - building approvals
+        and "statistical%20area" not in link.lower()  # small area data cubes
+        and "local%20government" not in link.lower()  # small area data cubes
+        and "_lga_" not in link.lower()  # small area data cubes
+        and "_sa2_" not in link.lower()  # small area data cubes
+        and "geopackage" not in link.lower()  # small area data cubes
+    ]
+    if not zip_list:
+        print(f"Odd: no relevant zip file for {cat_id}, on topic: {topic}")
+        return
+
+    if verbose:
+        print("===================")
+        print(f"About to plot: {cat_id} on {topic}")
+        print("Zip files on ABS wesite captured as follows ...")
+        for i, a in enumerate(zip_links):
+            print(a, i in zip_list)
+
+    if test_mode:
+        print("No plots --- in test mode")
+    else:
+        for zip_table in zip_list:
+            if verbose:
+                print(f"{zip_table}: Working on zip-file: {zip_links[zip_table]}")
+            plot_all_in_zip(cat_id, zip_table)
+
+    if verbose:
+        print("===================")
+
+
 # --- And run ...
+def check_flags(argv: list[str]) -> tuple[bool, bool, bool]:
+    """Let's first scan for any run-time flags."""
+
+    verbose = False
+    test_mode = False
+    all = False
+    assisted = False
+
+    for arg in argv:
+
+        if arg[0] != "-":
+            continue
+
+        if arg in ("--help", "-h"):
+            if not assisted:
+                give_assistance()
+            assisted = True
+            continue
+
+        if arg in ("--verbose", "-v"):
+            verbose = True
+            continue
+
+        if arg in ("--test", "-t"):
+            test_mode = True
+            continue
+
+        if arg in ("--all", "-a"):
+            all = True
+            continue
+
+        print(f"Unknown run-time flag: {arg}")
+
+    return verbose, test_mode, all
+
+
 def main(argv: list[str]) -> None:
     """Main function: Execution starts here."""
 
     if len(argv) == 1:
         give_assistance()
+        return
 
-    for i, arg in enumerate(argv):
-        if i == 0:
+    verbose, test_mode, all = check_flags(argv)
+
+    if all:
+        for cat_id in LINK_DICT:
+            plotall(cat_id, verbose=verbose, test_mode=test_mode)
+        return
+
+    for arg in argv[1:]:
+        if arg[0] == "-":
             continue
-
-        if arg in ("--help", "-h"):
-            give_assistance()
-            break
-
-        plotall(arg)
+        plotall(arg, verbose=verbose, test_mode=test_mode)
+        time.sleep(1)  # just to give the web site a breather.
 
 
 if __name__ == "__main__":

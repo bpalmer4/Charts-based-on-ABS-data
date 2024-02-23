@@ -873,19 +873,19 @@ def _can_recalibrate(flat_data: np.ndarray, units: str, verbose: bool = False) -
     if np.isnan(flat_data).all():
         print("recalibrate(): All NaN data.")
         return False
-    if (~np.isfinite(flat_data)).any():
+    if (np.isinf(flat_data)).any():
         print("recalibrate(): Includes non-finite data.")
         return False
     if _find_calibration(units) is None:
         if verbose:
             print("recalibrate(): Units not appropriately " f"calibrated: {units}")
         return False
+    if np.nanmax(np.abs(flat_data)) == 0:
+        print("recalibrate(): All zero data")
+        return False
     if flat_data.max() <= 1000 and flat_data.max() >= 1:
         if verbose:
             print("recalibrate(): No adjustments needed")
-        return False
-    if np.nanmax(np.abs(flat_data)) == 0:
-        print("recalibrate(): All zero data")
         return False
     return True
 
