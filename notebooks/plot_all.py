@@ -380,7 +380,7 @@ def check_flags(argv: list[str]) -> tuple[bool, bool, bool]:
 
     verbose = False
     test_mode = False
-    all = False
+    all_cat_ids = False
     assisted = False
 
     for arg in argv:
@@ -403,12 +403,12 @@ def check_flags(argv: list[str]) -> tuple[bool, bool, bool]:
             continue
 
         if arg in ("--all", "-a"):
-            all = True
+            all_cat_ids = True
             continue
 
         print(f"Unknown run-time flag: {arg}")
 
-    return verbose, test_mode, all
+    return verbose, test_mode, all_cat_ids
 
 
 def main(argv: list[str]) -> None:
@@ -418,9 +418,9 @@ def main(argv: list[str]) -> None:
         give_assistance()
         return
 
-    verbose, test_mode, all = check_flags(argv)
+    verbose, test_mode, all_cat_ids = check_flags(argv)
 
-    if all:
+    if all_cat_ids:
         for cat_id in LINK_DICT:
             plotall(cat_id, verbose=verbose, test_mode=test_mode)
         return
