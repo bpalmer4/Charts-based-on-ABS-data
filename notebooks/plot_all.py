@@ -91,8 +91,11 @@ def print_known_cat_ids() -> None:
 def give_assistance() -> None:
     """Provide some help text"""
 
-    print("To generate plots: plot_all.py cat#")
-    print("Where cat# is an ABS catalogue number.\n")
+    print("To generate plots: plot_all.py [-v -t -a] cat#")
+    print("Where:\n\tcat# is an ABS catalog number")
+    print("\t-v is a flag for verbose feedback")
+    print("\t-v is a flag for testing without actually plotting")
+    print("\t-a is a flag for all catalog numbers.\n")
     print_known_cat_ids()
     print("\nFor this assistance: plot_all.py --help")
 

@@ -19,17 +19,15 @@ Our general approach here is to:
 5. Open the zip-file, and save each table to a pandas
    DataFrame with a PeriodIndex. And save the metadata
    to a pandas DataFrame. Return all of the DataFrames
-   in a dictionary."""
+   in a dictionary.
 
-"""
 Useful information from the ABS website ...
 
 ABS Catalog numbers:
 https://www.abs.gov.au/about/data-services/help/abs-time-series-directory
 
 ABS Landing Pages:
-https://www.abs.gov.au/welcome-new-abs-website#navigating-our-web-address-structure
-"""
+https://www.abs.gov.au/welcome-new-abs-website#navigating-our-web-address-structure."""
 
 
 # --- imports
