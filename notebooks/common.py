@@ -98,7 +98,7 @@ def get_file(url: str, cache_dir: Path) -> bytes:
         return url_bytes
 
     # return the data that has been cached previously
-    print(f"Retrieving data from cache.")
+    print("Retrieving data from cache.")
     return retrieve_from_cache(file_path)
 
 

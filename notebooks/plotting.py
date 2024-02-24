@@ -913,12 +913,16 @@ def recalibrate(
     """Recalibrate a pandas Series or DataFrame."""
 
     flat_data = data.to_numpy().flatten()
-    money = False
-    if units.strip() == "$":
-        if verbose:
-            print("recalibrate() is wrking with money.")
-        money = True
-        units = "number $"
+
+    # manage the names for some gnarly units
+    possible_units = ("$", "Tonnes")  # there may be more possible units
+    found = False
+    for pu in possible_units:
+        if pu.lower() in units.lower():
+            found = True
+            units = units.replace(pu, "").strip().replace("  ", " ")
+            units = f"number {pu}"
+            break
 
     if _can_recalibrate(flat_data, units, verbose):
         while True:
@@ -937,7 +941,7 @@ def recalibrate(
                 continue
             break
 
-    if money and "number" in units:
+    if found and "number" in units:
         units = units.replace("number", "").strip()
 
     restore_pandas = DataFrame if len(data.shape) == 2 else Series

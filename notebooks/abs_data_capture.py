@@ -29,7 +29,6 @@ https://www.abs.gov.au/about/data-services/help/abs-time-series-directory
 ABS Landing Pages:
 https://www.abs.gov.au/welcome-new-abs-website#navigating-our-web-address-structure."""
 
-
 # --- imports
 # standard library imports
 import calendar
@@ -63,6 +62,11 @@ from utility import qtly_to_monthly
 
 # --- typing information
 # public
+# an unexpected error when capturing ABS data ...
+class AbsCaptureError(Exception):
+    """Raised when the data capture process goes awry."""
+
+
 # abbreviations for columns in the metadata DataFrame
 Metacol = namedtuple(
     "Metacol",
@@ -353,16 +357,25 @@ def _get_meta(
     )
     file_meta = file_meta.iloc[1:-2]  # drop first and last 2
     file_meta = file_meta.dropna(axis="columns", how="all")
+    for col in (metacol.did, metacol.id, metacol.stype, metacol.unit):
+        if col not in file_meta.columns:
+            raise AbsCaptureError(
+                f"{cat_id}-{tab_num}"
+                f"Columns ({col}) not found in the proposed meta data. "
+                f"Available columns are: {file_meta.columns}."
+            )
+        # make damn sure there are no rogue white spaces
+        file_meta[col] = file_meta[col].str.strip()  # make sure no unsual spaces
     file_meta[metacol.unit] = (
         file_meta[metacol.unit]
         .str.replace("000 Hours", "Thousand Hours")
         .replace("$'000,000", "$ Million")
-        .replace("$'000", " $Thousand")
+        .replace("$'000", " $ Thousand")
         .replace("000,000", "Millions")
         .replace("000", "Thousands")
     )
     file_meta[metacol.table] = tab_num.strip()
-    file_meta[metacol.tdesc] = tab_desc
+    file_meta[metacol.tdesc] = tab_desc.strip()
     file_meta[metacol.cat] = cat_id
     return file_meta
 
@@ -439,7 +452,7 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
     returnable: dict[str, DataFrame] = {}
     meta = DataFrame()
     with zipfile.ZipFile(io.BytesIO(zip_file)) as zipped:
-        for element in zipped.infolist():
+        for count, element in enumerate(zipped.infolist()):
             # We get a new pandas DataFrame for every excel file.
 
             # get the zipfile into pandas
@@ -470,10 +483,13 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
             if freq is None:
                 print(f"Unrecognised data frequency for {table}")
 
-            # fix tabulation when ABS uses the same table numbers for Qrtly and Mthly data
-            # which it does, for example, in the experimental household spending indicator
+            # fix tabulation when ABS uses the same table numbers for data
+            # This happens occasionally
             if tab_num in returnable:
-                tab_num += freq
+                tmp = f"{tab_num}-{count}"
+                if verbose:
+                    print(f"Changing duplicate table name from {tab_num} to {tmp}.")
+                tab_num = tmp
                 file_meta["Table"] = tab_num
 
             # aggregate the meta data
@@ -509,11 +525,11 @@ def get_abs_data(
 
     zip_file = _get_abs_zip_file(landing_page, zip_table, verbose)
     if not zip_file:
-        raise TypeError("An unexpected empty zipfile.")
+        raise AbsCaptureError("An unexpected empty zipfile.")
     dictionary = _get_dataframes(zip_file, verbose)
     if len(dictionary) <= 1:
         # dictionary should contain meta_data, plus one or more other dataframes
-        raise TypeError("Could not extract dataframes from zipfile")
+        raise AbsCaptureError("Could not extract dataframes from zipfile")
     return dictionary
 
 

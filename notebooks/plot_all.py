@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """plot_all.py:
-This is a CLI-tool to plot all charts for a specific ABS catalog number.
-To allow for scanning a large volume of data."""
+This is a CLI-tool to plot all charts for a specific ABS catalog number."""
 
 # --- imports
 # system imports
 import sys
 from dataclasses import dataclass
 import time
-from typing import cast
+from typing import cast, TypeVar
 
 # analytic imports
 import pandas as pd
@@ -28,6 +27,8 @@ from plotting import (
     finalise_plot,
 )
 from abs_data_capture import (
+    AbsCaptureError,
+    AbsDict,
     get_data_links,
     get_abs_data,
     AbsLandingPage,
@@ -46,6 +47,8 @@ TODAY = pd.Timestamp("today")
 RECENT = TODAY - pd.DateOffset(years=RECENT_YEARS, months=EXTRA_MONTHS)
 PLOT_TIMES = (None, RECENT)
 
+_DataT = TypeVar("_DataT", pd.Series, pd.DataFrame)  # python 3.11+
+
 
 # --- Identify available ABS time-series datasets
 def build_links_dict() -> dict[str, tuple[str, AbsLandingPage]]:
@@ -57,8 +60,8 @@ def build_links_dict() -> dict[str, tuple[str, AbsLandingPage]]:
     url = "https://www.abs.gov.au/about/data-services/help/abs-time-series-directory"
     html = common.request_get(url)
     table = BeautifulSoup(html, features="lxml").select("table")[-1]
-    odd = {"5655.0", "8165.0"}
 
+    odd = {"5655.0", "8165.0"}
     link_dict = {}
     for row_num, row in enumerate(table.findAll("tr")):
         if "Ceased" in row.text or row_num < 2:
@@ -73,6 +76,7 @@ def build_links_dict() -> dict[str, tuple[str, AbsLandingPage]]:
                     *cell.find("a").get("href").rsplit("/", 4)[-4:-1]
                 )
                 link_dict[cat_id] = (cell.text, landing_page)
+
     return link_dict
 
 
@@ -91,8 +95,9 @@ def print_known_cat_ids() -> None:
 def give_assistance() -> None:
     """Provide some help text"""
 
-    print("To generate plots: plot_all.py [-v -t -a] cat#")
-    print("Where:\n\tcat# is an ABS catalog number")
+    print("To generate plots: plot_all.py [-v -t -a] cat# [cat# ...]")
+    print("Where:")
+    print("\tcat# is an ABS catalog number")
     print("\t-v is a flag for verbose feedback")
     print("\t-v is a flag for testing without actually plotting")
     print("\t-a is a flag for all catalog numbers.\n")
@@ -108,25 +113,45 @@ class Tudds:
     table: str
     unit: str
     dtype: str
-    data: dict[str, pd.DataFrame]
+    data: AbsDict
     source: str
+    zip_table: int
 
 
-def plot_all_in_zip(cat_id: str, zip_table: int) -> None:
+def plot_all_in_zip(
+    cat_id: str,
+    zip_table: int,
+    verbose: bool,
+    test_mode: bool,
+) -> None:
     """For a cat_id, obtain the ABS data, and then methodically work
     through the metadata and plot every series therein."""
 
     if cat_id not in LINK_DICT:
         print(f"Cannot find the ABS catalogue identifier: {cat_id}.")
         return
-
     _, landing_page = LINK_DICT[cat_id]
-    abs_dict = get_abs_data(landing_page, zip_table)
+
+    try:
+        abs_dict = get_abs_data(landing_page, zip_table, verbose)
+    except AbsCaptureError as error:
+        print(
+            "Something went wrong when getting zip number "
+            f"{zip_table} from {cat_id}: {error}"
+        )
+        return
+
     source, chart_dir, _, meta = get_fs_constants(abs_dict, landing_page, " - ALL")
     set_chart_dir(chart_dir)
     clear_chart_dir(chart_dir)
     plt.style.use("fivethirtyeight")
     mpl.rcParams["font.size"] = 10
+
+    if verbose:
+        print(
+            f"About to plot series from: catalogue: {cat_id}, zip number: {zip_table}"
+        )
+        print(f"Tables in zip_file: {meta[metacol.table].unique()}")
 
     # lets group up similar data for plotting ...
     for table in meta[metacol.table].unique():
@@ -135,7 +160,10 @@ def plot_all_in_zip(cat_id: str, zip_table: int) -> None:
             sub_set2 = sub_set1[sub_set1[metacol.unit] == unit]
             for dtype in sub_set2[metacol.dtype].unique():
                 sub_set3 = sub_set2[sub_set2[metacol.dtype] == dtype]
-                plot_subset(sub_set3, Tudds(table, unit, dtype, abs_dict, source))
+                if not test_mode:
+                    plot_subset(
+                        sub_set3, Tudds(table, unit, dtype, abs_dict, source, zip_table)
+                    )
 
 
 def plot_subset(subset: pd.DataFrame, tudds: Tudds) -> None:
@@ -162,42 +190,47 @@ def plot_subset(subset: pd.DataFrame, tudds: Tudds) -> None:
         else:
             for i in range(len(selected.index)):
                 x_line_plot(selected.iloc[[i]], tudds)
-        # TO DO - yhink about percentage change charts
+        # TO DO - think about annual-v-per-period percentage change charts
 
 
-def title_fix(title: str) -> str:
-    """Split unusually long titles,
-    roughly in equal parts."""
+def title_fix(title: str, max_line_length: int = 80) -> str:
+    """Split unusually long titles, into roughly in equal parts,
+    having regard to the max_line_length in characters.
+    Splits occur around white spaces."""
 
-    # Cruncg down where the ABS often adds extra padding ...
+    # Crunch down where the ABS often adds extra padding ...
+    single_space = " "
     title = title.strip().replace(" ;", ";")
-    title = title.replace("  ", " ")
-    title = title.replace("  ", " ")
+    title = single_space.join(title.split())  # removes all multi-white-spaces
 
     # split lines roughly in equal parts around spaces.
-    do_something_over = 80  # characters
-    n_folds = ((length := len(title)) // do_something_over) + 1
+    n_folds = ((length := len(title)) // max_line_length) + 1
     if n_folds > 1:
         for fold in range(1, n_folds):
-            positions = [pos for pos, char in enumerate(title) if char == " "]
-            breaks = {
+            spaces = [pos for pos, char in enumerate(title) if char == single_space]
+            optima = {  # how close is a space to the perfect fold
                 abs(int(length * fold / n_folds) - p): i
-                for i, p in enumerate(positions)
+                for i, p in reversed(list(enumerate(spaces)))
             }
-            break_point = positions[breaks[min(breaks.keys())]] + 1
+            break_point = spaces[optima[min(optima.keys())]]
             left, right = title[:break_point], title[break_point:]
             title = f"{left.strip()}\n{right.strip()}"
 
     return title
 
 
-def build_title(tdesc: str, did: str) -> str:
+def build_title(meta: _DataT) -> str:
     """Titles comprise table description and data item descrption."""
 
-    tdesc_fix = title_fix(tdesc)
-    did_fix = title_fix(did)
-    title = f"{tdesc_fix}\n{did_fix}"
-    return title
+    if isinstance(meta, pd.Series):
+        tdesc = meta[metacol.tdesc]
+        did = meta[metacol.did]
+    else:
+        row_zero = meta.index[0]
+        tdesc = meta.at[row_zero, metacol.tdesc]
+        did = meta.at[row_zero, metacol.did]
+
+    return f"{title_fix(tdesc)}\n{title_fix(did)}"
 
 
 def series_fix(series: pd.Series) -> pd.Series:
@@ -233,10 +266,8 @@ def s_seastrend_plot(selected: pd.DataFrame, tudds: Tudds):
     data = data.dropna(how="all").astype(float)
     data, unit = recalibrate(data, tudds.unit)
 
-    topic = s_row[metacol.tdesc]
-    title = build_title(topic, s_row[metacol.did])
+    title = build_title(s_row)
     series_id = f"{s_row[metacol.id]}-{t_row[metacol.id]}"
-
     seas_trend_plot(
         data=data,
         starts=PLOT_TIMES,
@@ -268,8 +299,7 @@ def x_bar_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
     if len(data) == 0:
         return
 
-    title = build_title(selected.at[row, metacol.tdesc], selected.at[row, metacol.did])
-
+    title = build_title(selected)
     for start in PLOT_TIMES:
         plot_data = data if start is None else data[data.index >= start]
         if plot_data.notna().sum() == 0:
@@ -293,8 +323,15 @@ def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
 
     assert len(selected) == 1
     row = selected.index[0]
-    series_id = selected.at[row, metacol.id]
-    series_type = selected.at[row, metacol.stype]
+    series_id = selected.at[row, metacol.id].strip()
+    series_type = selected.at[row, metacol.stype].strip()
+    source = f"{tudds.source}-{tudds.table}-{series_id}"
+
+    if series_id not in tudds.data[tudds.table]:
+        # This should never happen ...
+        print(f"Check: {source}, which was not found in DataFrame.")
+        return
+
     data = series_fix(tudds.data[tudds.table][series_id])
     unit = tudds.unit
 
@@ -303,16 +340,13 @@ def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
     if len(data) == 0:
         return
 
-    topic = selected.at[row, metacol.tdesc]
-    did = selected.at[row, metacol.did]
-    title = build_title(topic, did)
-
+    title = build_title(selected)
     line_plot(
         data=data,
         starts=PLOT_TIMES,
         title=title,
         ylabel=unit,
-        rfooter=f"{tudds.source}-{tudds.table}-{series_id}",
+        rfooter=source,
         lfooter=f"{series_type} series.",
         tags=series_id,
         y0=True,
@@ -347,6 +381,8 @@ def plotall(
         # manage some of the oddities at ABS ...
         if ("cube" not in link.lower() or cat_id in ("3401.0"))  # exclude data cubes
         and "pivot_table" not in link.lower()  # exclude pivot tables
+        # --- following relates to 8701.0
+        and "estimated%20dwelling%20stock" not in link.lower()
         # --- following all relate to 8731.0 - building approvals
         and "statistical%20area" not in link.lower()  # small area data cubes
         and "local%20government" not in link.lower()  # small area data cubes
@@ -365,53 +401,44 @@ def plotall(
         for i, a in enumerate(zip_links):
             print(a, i in zip_list)
 
-    if test_mode:
-        print("No plots --- in test mode")
-    else:
-        for zip_table in zip_list:
-            if verbose:
-                print(f"{zip_table}: Working on zip-file: {zip_links[zip_table]}")
-            plot_all_in_zip(cat_id, zip_table)
+    for zip_table in zip_list:
+        if verbose:
+            print(f"{zip_table}: Working on zip-file: {zip_links[zip_table]}")
+        plot_all_in_zip(cat_id, zip_table, verbose, test_mode)
 
     if verbose:
         print("===================")
 
 
 # --- And run ...
-def check_flags(argv: list[str]) -> tuple[bool, bool, bool]:
-    """Let's first scan for any run-time flags."""
+def check_flags(argv: list[str]) -> dict[bool]:
+    """Let's first scan CLI arguments for any run-time flags."""
 
-    verbose = False
-    test_mode = False
-    all_cat_ids = False
-    assisted = False
+    flags = {"h": False, "a": False, "t": False, "v": False}
+
+    def check(arg: str, against: tuple, f: str) -> bool:
+        if arg in against:
+            flags[f] = True
+            return True
+        return False
 
     for arg in argv:
-
         if arg[0] != "-":
             continue
 
-        if arg in ("--help", "-h"):
-            if not assisted:
-                give_assistance()
-            assisted = True
+        if check(arg, ("--verbose", "-v"), "v"):
             continue
-
-        if arg in ("--verbose", "-v"):
-            verbose = True
+        if check(arg, ("--test", "-t"), "t"):
             continue
-
-        if arg in ("--test", "-t"):
-            test_mode = True
+        if check(arg, ("--all", "-a"), "a"):
             continue
-
-        if arg in ("--all", "-a"):
-            all_cat_ids = True
+        if check(arg, ("--help", "-h"), "h"):
             continue
 
         print(f"Unknown run-time flag: {arg}")
+        flags["h"] = True
 
-    return verbose, test_mode, all_cat_ids
+    return flags
 
 
 def main(argv: list[str]) -> None:
@@ -421,18 +448,27 @@ def main(argv: list[str]) -> None:
         give_assistance()
         return
 
-    verbose, test_mode, all_cat_ids = check_flags(argv)
+    flags = check_flags(argv)
 
-    if all_cat_ids:
+    if flags["h"]:
+        give_assistance()
+        return
+
+    if flags["t"]:
+        print(
+            "In test mode: ABS data will be downloaded, but no charts will be generated."
+        )
+
+    if flags["a"]:
         for cat_id in LINK_DICT:
-            plotall(cat_id, verbose=verbose, test_mode=test_mode)
+            plotall(cat_id, verbose=flags["v"], test_mode=flags["t"])
         return
 
     for arg in argv[1:]:
         if arg[0] == "-":
             continue
-        plotall(arg, verbose=verbose, test_mode=test_mode)
-        time.sleep(1)  # just to give the web site a breather.
+        plotall(arg, verbose=flags["v"], test_mode=flags["t"])
+        time.sleep(2)  # just to give the web site a breather.
 
 
 if __name__ == "__main__":
