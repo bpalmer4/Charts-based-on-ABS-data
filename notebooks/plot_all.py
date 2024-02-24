@@ -99,7 +99,7 @@ def give_assistance() -> None:
     print("Where:")
     print("\tcat# is an ABS catalog number")
     print("\t-v is a flag for verbose feedback")
-    print("\t-v is a flag for testing without actually plotting")
+    print("\t-t is a flag for testing without actually plotting")
     print("\t-a is a flag for all catalog numbers.\n")
     print_known_cat_ids()
     print("\nFor this assistance: plot_all.py --help")
@@ -115,7 +115,6 @@ class Tudds:
     dtype: str
     data: AbsDict
     source: str
-    zip_table: int
 
 
 def plot_all_in_zip(
@@ -127,9 +126,32 @@ def plot_all_in_zip(
     """For a cat_id, obtain the ABS data, and then methodically work
     through the metadata and plot every series therein."""
 
+    try:
+        data = get_plot_data(cat_id, zip_table, verbose)
+    except AbsCaptureError:
+        return
+
+    if verbose:
+        print(
+            f"About to plot series from: catalogue: {cat_id}, zip number: {zip_table}"
+        )
+
+    if not test_mode:
+        group_and_plot(*data)
+
+
+def get_plot_data(
+    cat_id: str,
+    zip_table: int,
+    verbose: bool,
+) -> tuple[AbsDict, pd.DataFrame, str]:
+    """Data acquisition and plot initialisation.
+    Raises AbsCaptureError if data was not obtained."""
+
+    # --- data acquisition
     if cat_id not in LINK_DICT:
         print(f"Cannot find the ABS catalogue identifier: {cat_id}.")
-        return
+        raise AbsCaptureError
     _, landing_page = LINK_DICT[cat_id]
 
     try:
@@ -139,35 +161,37 @@ def plot_all_in_zip(
             "Something went wrong when getting zip number "
             f"{zip_table} from {cat_id}: {error}"
         )
-        return
+        raise error
 
     source, chart_dir, _, meta = get_fs_constants(abs_dict, landing_page, " - ALL")
+
+    # --- plot initialisation
     set_chart_dir(chart_dir)
     clear_chart_dir(chart_dir)
     plt.style.use("fivethirtyeight")
     mpl.rcParams["font.size"] = 10
 
-    if verbose:
-        print(
-            f"About to plot series from: catalogue: {cat_id}, zip number: {zip_table}"
-        )
-        print(f"Tables in zip_file: {meta[metacol.table].unique()}")
+    return abs_dict, meta, source
 
-    # lets group up similar data for plotting ...
+
+def group_and_plot(
+    abs_dict: AbsDict,
+    meta: pd.DataFrame,
+    source: str,
+) -> None:
+    """Group like data and dispatch for plotting."""
+
     for table in meta[metacol.table].unique():
         sub_set1 = meta[meta[metacol.table] == table]
         for unit in sub_set1[metacol.unit].unique():
             sub_set2 = sub_set1[sub_set1[metacol.unit] == unit]
             for dtype in sub_set2[metacol.dtype].unique():
                 sub_set3 = sub_set2[sub_set2[metacol.dtype] == dtype]
-                if not test_mode:
-                    plot_subset(
-                        sub_set3, Tudds(table, unit, dtype, abs_dict, source, zip_table)
-                    )
+                plot_subset(sub_set3, Tudds(table, unit, dtype, abs_dict, source))
 
 
 def plot_subset(subset: pd.DataFrame, tudds: Tudds) -> None:
-    """Determine how subsets should be plotted."""
+    """Determine how subsets should be plotted and dispatch"""
 
     for did in subset[metacol.did].unique():
         selected = subset[subset[metacol.did] == did]
@@ -194,23 +218,26 @@ def plot_subset(subset: pd.DataFrame, tudds: Tudds) -> None:
 
 
 def title_fix(title: str, max_line_length: int = 80) -> str:
-    """Split unusually long titles, into roughly in equal parts,
+    """Split unusually long titles, into roughly equal parts,
     having regard to the max_line_length in characters.
     Splits occur around white spaces."""
 
     # Crunch down where the ABS often adds extra padding ...
-    single_space = " "
     title = title.strip().replace(" ;", ";")
+    single_space = " "
     title = single_space.join(title.split())  # removes all multi-white-spaces
 
     # split lines roughly in equal parts around spaces.
     n_folds = ((length := len(title)) // max_line_length) + 1
     if n_folds > 1:
         for fold in range(1, n_folds):
-            spaces = [pos for pos, char in enumerate(title) if char == single_space]
+            spaces = [
+                pos
+                for (pos, char) in enumerate(title)
+                if char == single_space and pos < fold * max_line_length
+            ]
             optima = {  # how close is a space to the perfect fold
-                abs(int(length * fold / n_folds) - p): i
-                for i, p in reversed(list(enumerate(spaces)))
+                abs(int(length * fold / n_folds) - p): i for i, p in enumerate(spaces)
             }
             break_point = spaces[optima[min(optima.keys())]]
             left, right = title[:break_point], title[break_point:]
@@ -411,32 +438,32 @@ def plotall(
 
 
 # --- And run ...
-def check_flags(argv: list[str]) -> dict[bool]:
+def check_flags(argv: list[str]) -> dict[str, bool]:
     """Let's first scan CLI arguments for any run-time flags."""
 
-    flags = {"h": False, "a": False, "t": False, "v": False}
+    flag_set = {
+        "h": "help",
+        "v": "verbose",
+        "t": "test",
+        "a": "all",
+    }
 
-    def check(arg: str, against: tuple, f: str) -> bool:
-        if arg in against:
-            flags[f] = True
-            return True
-        return False
+    flags: dict[str, bool] = {}
+    good: dict[str, str] = {}
+    for flag, alternate in flag_set.items():
+        flags[flag] = False
+        good[f"-{flag}"] = flag
+        good[f"-{alternate}"] = flag
+        good[f"--{alternate}"] = flag
 
-    for arg in argv:
+    for arg in argv[1:]:
         if arg[0] != "-":
             continue
-
-        if check(arg, ("--verbose", "-v"), "v"):
-            continue
-        if check(arg, ("--test", "-t"), "t"):
-            continue
-        if check(arg, ("--all", "-a"), "a"):
-            continue
-        if check(arg, ("--help", "-h"), "h"):
-            continue
-
-        print(f"Unknown run-time flag: {arg}")
-        flags["h"] = True
+        if arg in good:
+            flags[good[arg]] = True
+        else:
+            print(f"Unknown run-time flag: {arg}")
+            flags["h"] = True
 
     return flags
 
@@ -468,7 +495,7 @@ def main(argv: list[str]) -> None:
         if arg[0] == "-":
             continue
         plotall(arg, verbose=flags["v"], test_mode=flags["t"])
-        time.sleep(2)  # just to give the web site a breather.
+        time.sleep(2)  # just to give the ABS web site a breather.
 
 
 if __name__ == "__main__":
