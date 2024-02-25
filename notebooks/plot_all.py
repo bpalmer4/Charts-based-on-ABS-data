@@ -47,7 +47,7 @@ TODAY = pd.Timestamp("today")
 RECENT = TODAY - pd.DateOffset(years=RECENT_YEARS, months=EXTRA_MONTHS)
 PLOT_TIMES = (None, RECENT)
 
-_DataT = TypeVar("_DataT", pd.Series, pd.DataFrame)  # python 3.11+
+DataT = TypeVar("DataT", pd.Series, pd.DataFrame)  # python 3.11+
 
 
 # --- Identify available ABS time-series datasets
@@ -251,7 +251,7 @@ def title_fix(title: str, max_line_length: int = 80) -> str:
     return title.strip()
 
 
-def build_title(meta: _DataT) -> str:
+def build_title(meta: DataT) -> str:
     """Titles comprise table description and data item descrption."""
 
     if isinstance(meta, pd.Series):
