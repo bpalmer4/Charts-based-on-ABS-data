@@ -258,8 +258,8 @@ def _save_to_file(fig, **kwargs) -> None:
             chart_dir = _chart_dir.get()
 
         title = "" if "title" not in kwargs else kwargs["title"]
-        MAX_TITLE = 150  # avoid overly long file names
-        shorter = title if len(title) < MAX_TITLE else title[:MAX_TITLE]
+        max_title_len = 150  # avoid overly long file names
+        shorter = title if len(title) < max_title_len else title[:max_title_len]
         pre_tag = kwargs.get("pre_tag", "")
         tag = kwargs.get("tag", "")
         file_title = re.sub(_remove, "-", shorter).lower()
@@ -920,8 +920,9 @@ def recalibrate(
     for pu in possible_units:
         if pu.lower() in units.lower():
             found = True
-            units = units.replace(pu, "").strip().replace("  ", " ")
-            units = f"number {pu}"
+            units = units.lower().replace(pu.lower(), "").strip()
+            if units == "":
+                units = "number"
             break
 
     if _can_recalibrate(flat_data, units, verbose):
@@ -941,8 +942,13 @@ def recalibrate(
                 continue
             break
 
-    if found and "number" in units:
-        units = units.replace("number", "").strip()
+    if found:
+        units = f"{units} {pu}"
+        for n in "numbers", "number":
+            if n in units:
+                units = units.replace(n, "").strip()
+                break
+    units = units.title()
 
     restore_pandas = DataFrame if len(data.shape) == 2 else Series
     result = restore_pandas(flat_data.reshape(data.shape))
