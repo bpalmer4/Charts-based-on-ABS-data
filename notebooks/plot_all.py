@@ -117,32 +117,34 @@ class Tudds:
     source: str
 
 
-def plot_all_in_zip(
+def plot_one_zip_file(
     cat_id: str,
-    zip_table: int,
+    zip_table_num: int,
     verbose: bool,
     test_mode: bool,
 ) -> None:
-    """For a cat_id, obtain the ABS data, and then methodically work
-    through the metadata and plot every series therein."""
+    """For a spcific cat_id and zip_table_num on the relevant ABS
+    landing page call get_plot_data() to obtain the excel tables.
+    Then call group_and_plot() to methodically work through the
+    excel tables in the zipfile and plot every series therein."""
 
     try:
-        data = get_plot_data(cat_id, zip_table, verbose)
+        data_tuple = get_plot_data(cat_id, zip_table_num, verbose)
     except AbsCaptureError:
         return
 
     if verbose:
         print(
-            f"About to plot series from: catalogue: {cat_id}, zip number: {zip_table}"
+            f"About to plot series from: catalogue: {cat_id}, zip number: {zip_table_num}"
         )
 
     if not test_mode:
-        group_and_plot(*data)
+        group_and_plot(*data_tuple)
 
 
 def get_plot_data(
     cat_id: str,
-    zip_table: int,
+    zip_table_num: int,
     verbose: bool,
 ) -> tuple[AbsDict, pd.DataFrame, str]:
     """Data acquisition and plot initialisation.
@@ -155,11 +157,11 @@ def get_plot_data(
     _, landing_page = LINK_DICT[cat_id]
 
     try:
-        abs_dict = get_abs_data(landing_page, zip_table, verbose)
+        abs_dict = get_abs_data(landing_page, zip_table_num, verbose)
     except AbsCaptureError as error:
         print(
             "Something went wrong when getting zip number "
-            f"{zip_table} from {cat_id}: {error}"
+            f"{zip_table_num} from {cat_id}: {error}"
         )
         raise error
 
@@ -225,16 +227,19 @@ def title_fix(title: str, max_line_length: int = 80) -> str:
     # Crunch down where the ABS often adds extra padding ...
     title = title.strip().replace(" ;", ";")
     single_space = " "
-    title = single_space.join(title.split())  # removes all multi-white-spaces
+    title = f"{single_space.join(title.split())} "  # removes all multi-white-spaces
 
     # split lines roughly in equal parts around spaces.
+    flexibility = 5  # chars - some line length flexibility
+    max_line_length -= flexibility
     n_folds = ((length := len(title)) // max_line_length) + 1
     if n_folds > 1:
         for fold in range(1, n_folds):
             spaces = [
                 pos
                 for (pos, char) in enumerate(title)
-                if char == single_space and pos < fold * max_line_length
+                if char == single_space
+                and pos < fold * (max_line_length + flexibility)
             ]
             optima = {  # how close is a space to the perfect fold
                 abs(int(length * fold / n_folds) - p): i for i, p in enumerate(spaces)
@@ -243,7 +248,7 @@ def title_fix(title: str, max_line_length: int = 80) -> str:
             left, right = title[:break_point], title[break_point:]
             title = f"{left.strip()}\n{right.strip()}"
 
-    return title
+    return title.strip()
 
 
 def build_title(meta: _DataT) -> str:
@@ -380,12 +385,14 @@ def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
     )
 
 
-def plotall(
+def plot_all_zip_files(
     cat_id,
     verbose=False,
     test_mode=False,
 ) -> None:
-    """Find all of the appropriate zip files and plot them."""
+    """Find all of the appropriate zip files on the ABS landing
+    page for a specific catalog identifier, and then for each
+    zip file call plot_one_zip_file() to get plot th."""
 
     zip_suffix = ".zip"
     if cat_id not in LINK_DICT:
@@ -394,11 +401,10 @@ def plotall(
 
     _, landing_page = LINK_DICT[cat_id]
     topic = landing_page.topic.replace("-", " ").title()
-    links = get_data_links(landing_page)  # net get_data_links is cached
+    links = get_data_links(landing_page)  # get_data_links is cached
     if zip_suffix not in links:
         print(
-            f"Odd: no zip list for {cat_id}, on topic:",
-            f'{landing_page.topic.replace("-", " ").title()}',
+            f"Odd: cannot find s zip list for {cat_id}, on topic: {topic}",
         )
         return
     zip_links = links[zip_suffix]
@@ -428,10 +434,10 @@ def plotall(
         for i, a in enumerate(zip_links):
             print(a, i in zip_list)
 
-    for zip_table in zip_list:
+    for zip_table_num in zip_list:
         if verbose:
-            print(f"{zip_table}: Working on zip-file: {zip_links[zip_table]}")
-        plot_all_in_zip(cat_id, zip_table, verbose, test_mode)
+            print(f"{zip_table_num}: Working on zip-file: {zip_links[zip_table_num]}")
+        plot_one_zip_file(cat_id, zip_table_num, verbose, test_mode)
 
     if verbose:
         print("===================")
@@ -488,13 +494,13 @@ def main(argv: list[str]) -> None:
 
     if flags["a"]:
         for cat_id in LINK_DICT:
-            plotall(cat_id, verbose=flags["v"], test_mode=flags["t"])
+            plot_all_zip_files(cat_id, verbose=flags["v"], test_mode=flags["t"])
         return
 
     for arg in argv[1:]:
         if arg[0] == "-":
             continue
-        plotall(arg, verbose=flags["v"], test_mode=flags["t"])
+        plot_all_zip_files(arg, verbose=flags["v"], test_mode=flags["t"])
         time.sleep(2)  # just to give the ABS web site a breather.
 
 
