@@ -324,7 +324,7 @@ def _get_abs_zip_file(
     link_dict = get_data_links(landing_page, verbose)
 
     # happy case - found a .zip URL on the ABS page
-    if ".zip" in link_dict and zip_table >= 0 and zip_table < len(link_dict[".zip"]):
+    if r".zip" in link_dict and zip_table < len(link_dict[".zip"]):
         url = link_dict[".zip"][zip_table]
         return common.get_file(url, _CACHE_PATH)
 
@@ -432,6 +432,53 @@ def _get_data(
     return data
 
 
+# regex patterns for the next function
+PATTERN_SUBSUB = re.compile(r"_([0-9]+[a-zA-Z]?)_")
+PATTERN_NUM_ALPHA = re.compile(r"^([0-9]+[a-z]?)_[a-zA-z_]+$")
+PATTERN_FOUND = re.compile(r"^[0-9]+[a-z]?$")
+
+
+def determine_tab_name(z_name: str, e_name: str):
+    """Try and get a consistent and unique naming system for the tables
+    found in each zip-file. This is a bit fraught because the ABS does
+    this differently for various catalog identifiers.
+    Arguments:
+    z_name - the file name from zip-file.
+    e_name - the self reported table name from the excel spreadsheet."""
+
+    # first - lets look at table number from the zip-file name
+    z_name = (
+        z_name.split(".")[0][4:]
+        .replace("55003DO0", "")
+        .replace("55024", "")
+        .replace("55001Table", "")
+        .replace("_Table_", "")
+        .replace("55001_", "")
+        .lstrip("0")
+    )
+
+    if result := re.search(PATTERN_SUBSUB, z_name):
+        # search looks anywhere in the string
+        z_name = result.group(1)
+    if result := re.match(PATTERN_NUM_ALPHA, z_name):
+        # match looks from the beginning
+        z_name = result.group(1)
+
+    # second - lets see if we can get a table name from the excel meta data.
+    splat = e_name.replace("-", " ").replace("_", " ").split(".")
+    e_name = splat[0].split(" ")[-1].strip().lstrip("0")
+
+    # lets - pick the best one
+    if e_name == z_name:
+        # we agree
+        return e_name
+
+    if re.match(PATTERN_FOUND, z_name):
+        return z_name
+
+    return e_name
+
+
 # private
 def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
     """Get a DataFrame for each table in the zip-file,
@@ -446,15 +493,14 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
        plus a DataFrame called 'META' for the metadata.
     """
 
-    freq_dict = {"annual": "Y", "quarter": "Q", "month": "M"}
+    freq_dict = {"annual": "Y", "biannual": "Q", "quarter": "Q", "month": "M"}
 
     print("Extracting DataFrames from the zip-file.")
     returnable: dict[str, DataFrame] = {}
     meta = DataFrame()
+
     with zipfile.ZipFile(io.BytesIO(zip_file)) as zipped:
         for count, element in enumerate(zipped.infolist()):
-            # We get a new pandas DataFrame for every excel file.
-
             # get the zipfile into pandas
             excel = pd.ExcelFile(io.BytesIO(zipped.read(element.filename)))
 
@@ -465,15 +511,18 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
                     f"sheet in {element.filename}"
                 )
                 continue
+
             file_meta = excel.parse("Index", nrows=8)
             cat_id = file_meta.iat[3, 1].split(" ")[0].strip()
-            table = file_meta.iat[4, 1]
-            splat = table.split(".")
-            tab_num = splat[0].split(" ")[-1].strip()
-            tab_desc = ".".join(splat[1:]).strip()
+
+            table_num = determine_tab_name(
+                z_name=element.filename, e_name=file_meta.iat[4, 1]
+            )
+
+            tab_desc = file_meta.iat[4, 1].split(".", 1)[-1].strip()
 
             # get the metadata
-            file_meta = _get_meta(excel, tab_num, tab_desc, cat_id)
+            file_meta = _get_meta(excel, table_num, tab_desc, cat_id)
 
             # establish freq - used for making the index a PeriodIndex
             freq = file_meta["Freq."].str.lower().unique().tolist()
@@ -481,22 +530,23 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
                 freq_dict[freq[0]] if len(freq) == 1 and freq[0] in freq_dict else None
             )
             if freq is None:
-                print(f"Unrecognised data frequency for {table}")
+                print(f"Unrecognised data frequency for {tab_desc}")
+                continue
 
             # fix tabulation when ABS uses the same table numbers for data
             # This happens occasionally
-            if tab_num in returnable:
-                tmp = f"{tab_num}-{count}"
+            if table_num in returnable:
+                tmp = f"{table_num}-{count}"
                 if verbose:
-                    print(f"Changing duplicate table name from {tab_num} to {tmp}.")
-                tab_num = tmp
-                file_meta["Table"] = tab_num
+                    print(f"Changing duplicate table name from {table_num} to {tmp}.")
+                table_num = tmp
+                file_meta[metacol.table] = table_num
 
             # aggregate the meta data
             meta = pd.concat([meta, file_meta])
 
             # add the table to the returnable dictionary
-            returnable[tab_num] = _get_data(excel, file_meta, freq, verbose)
+            returnable[table_num] = _get_data(excel, file_meta, freq, verbose)
 
     returnable[_META_DATA] = meta
     return returnable

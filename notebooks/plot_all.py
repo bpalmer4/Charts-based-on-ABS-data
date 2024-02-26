@@ -238,8 +238,7 @@ def title_fix(title: str, max_line_length: int = 80) -> str:
             spaces = [
                 pos
                 for (pos, char) in enumerate(title)
-                if char == single_space
-                and pos < fold * (max_line_length + flexibility)
+                if char == single_space and pos < fold * (max_line_length + flexibility)
             ]
             optima = {  # how close is a space to the perfect fold
                 abs(int(length * fold / n_folds) - p): i for i, p in enumerate(spaces)
@@ -401,6 +400,7 @@ def plot_all_zip_files(
 
     _, landing_page = LINK_DICT[cat_id]
     topic = landing_page.topic.replace("-", " ").title()
+
     links = get_data_links(landing_page)  # get_data_links is cached
     if zip_suffix not in links:
         print(

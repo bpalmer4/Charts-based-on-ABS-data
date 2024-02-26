@@ -912,6 +912,10 @@ def recalibrate(
 ) -> tuple[_DataT, str]:
     """Recalibrate a pandas Series or DataFrame."""
 
+    if "/" in units or " per " in units:
+        print("recalibrate(): Units look like a rate or a ratio.")
+        return data, units
+
     flat_data = data.to_numpy().flatten()
 
     # manage the names for some gnarly units
@@ -919,10 +923,10 @@ def recalibrate(
     found = False
     for pu in possible_units:
         if pu.lower() in units.lower():
-            found = True
             units = units.lower().replace(pu.lower(), "").strip()
             if units == "":
                 units = "number"
+            found = True
             break
 
     if _can_recalibrate(flat_data, units, verbose):
