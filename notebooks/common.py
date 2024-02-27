@@ -51,7 +51,7 @@ def retrieve_from_cache(file: Path) -> bytes:
     return file.read_bytes()
 
 
-def get_file(url: str, cache_dir: Path) -> bytes:
+def get_file(url: str, cache_dir: Path, simple="none") -> bytes:
     """Get file from URL or local file-system cache, depending on freshness."""
 
     def get_fpath() -> Path:
@@ -60,7 +60,7 @@ def get_file(url: str, cache_dir: Path) -> bytes:
         bad_cache_pattern = r'[~"#%&*:<>?\\{|}]+'  # remove these chars from name
         hash_name = md5(url.encode("utf-8")).hexdigest()
         tail_name = url.split("/")[-1]
-        file_name = re.sub(bad_cache_pattern, "", f"{hash_name}--{tail_name}")
+        file_name = re.sub(bad_cache_pattern, "", f"{simple}--{hash_name}--{tail_name}")
         return Path(cache_dir / file_name)
 
     # sanity checks

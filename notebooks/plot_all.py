@@ -384,6 +384,8 @@ def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
     )
 
 
+
+
 def plot_all_zip_files(
     cat_id,
     verbose=False,
@@ -393,9 +395,15 @@ def plot_all_zip_files(
     page for a specific catalog identifier, and then for each
     zip file call plot_one_zip_file() to get plot th."""
 
+    def rule_if(verbose: bool, on: bool = False):
+        if verbose:
+            print(f"{'vvv' if on else '^^^'}==================== {cat_id if on else ''}")
+    rule_if(verbose, on=True)
+
     zip_suffix = ".zip"
     if cat_id not in LINK_DICT:
         print(f"Cannot find the ABS catalogue identifier: {cat_id}.")
+        rule_if(verbose)
         return
 
     _, landing_page = LINK_DICT[cat_id]
@@ -404,9 +412,11 @@ def plot_all_zip_files(
     links = get_data_links(landing_page)  # get_data_links is cached
     if zip_suffix not in links:
         print(
-            f"Odd: cannot find s zip list for {cat_id}, on topic: {topic}",
+            f"Odd: cannot find a zip list for {cat_id}, on topic: {topic}",
         )
+        rule_if(verbose)
         return
+
     zip_links = links[zip_suffix]
     zip_list = [
         i
@@ -423,14 +433,15 @@ def plot_all_zip_files(
         and "_sa2_" not in link.lower()  # small area data cubes
         and "geopackage" not in link.lower()  # small area data cubes
     ]
+
     if not zip_list:
         print(f"Odd: no relevant zip file for {cat_id}, on topic: {topic}")
+        rule_if(verbose)
         return
 
     if verbose:
-        print("===================")
         print(f"About to plot: {cat_id} on {topic}")
-        print("Zip files on ABS wesite captured as follows ...")
+        print("Zip files on ABS wesbite to be captured as follows ...")
         for i, a in enumerate(zip_links):
             print(a, i in zip_list)
 
@@ -439,8 +450,7 @@ def plot_all_zip_files(
             print(f"{zip_table_num}: Working on zip-file: {zip_links[zip_table_num]}")
         plot_one_zip_file(cat_id, zip_table_num, verbose, test_mode)
 
-    if verbose:
-        print("===================")
+    rule_if(verbose)
 
 
 # --- And run ...

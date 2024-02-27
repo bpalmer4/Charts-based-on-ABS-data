@@ -7,14 +7,14 @@ Our general approach here is to:
 2. Parse that webpage to find the link to the download
    all-tables zip-file. We do this because the name of
    the file location on the ABS server changes from
-   month to month.
+   month to month, and varies beyween ABS webpages.
 
 3. Get the URL headers for this file, amd compare freshness
    with the version in the cache directory (if any).
 
 4. Use either the zip-file from the cache, or download
-   the zip-file from the ABS andsave it to the cache,
-   and use that.
+   a zip-file from the ABS, save it to the cache,
+   and use that file.
 
 5. Open the zip-file, and save each table to a pandas
    DataFrame with a PeriodIndex. And save the metadata
@@ -28,6 +28,7 @@ https://www.abs.gov.au/about/data-services/help/abs-time-series-directory
 
 ABS Landing Pages:
 https://www.abs.gov.au/welcome-new-abs-website#navigating-our-web-address-structure."""
+
 
 # --- imports
 # standard library imports
@@ -96,7 +97,8 @@ AbsDict = dict[str, pd.DataFrame]
 # keywords to navigate to an ABS landing page
 @dataclass(frozen=True)
 class AbsLandingPage:
-    """Class for selecting ABS data files to download."""
+    """Class for identifying ABS landing pages by theme,
+    parent-topic and topic."""
 
     theme: str
     parent_topic: str
@@ -141,6 +143,7 @@ _DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
 # --- Some useful constants
 SEAS_ADJ: Final[str] = "Seasonally Adjusted"
 TREND: Final[str] = "Trend"
+ORIG: Final[str] = "Original"
 
 # private
 _META_DATA: Final[str] = "META_DATA"
@@ -316,7 +319,8 @@ def get_data_links(
 
 # private
 def _get_abs_zip_file(
-    landing_page: AbsLandingPage, zip_table: int, verbose: bool
+    landing_page: AbsLandingPage, 
+    zip_table: int, verbose: bool
 ) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
@@ -326,7 +330,7 @@ def _get_abs_zip_file(
     # happy case - found a .zip URL on the ABS page
     if r".zip" in link_dict and zip_table < len(link_dict[".zip"]):
         url = link_dict[".zip"][zip_table]
-        return common.get_file(url, _CACHE_PATH)
+        return common.get_file(url, _CACHE_PATH, simple=landing_page.topic)
 
     # sad case - need to fake up a zip file
     print("A little unexpected: We need to fake up a zip file")
@@ -334,7 +338,7 @@ def _get_abs_zip_file(
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for u in link_dict[".xlsx"]:
             u = _prefix_url(u)
-            file_bytes = common.get_file(u, _CACHE_PATH)
+            file_bytes = common.get_file(u, _CACHE_PATH, simple=landing.topic)
             name = Path(u).name
             zip_file.writestr(f"/{name}", file_bytes)
     zip_buf.seek(0)
@@ -381,7 +385,7 @@ def _get_meta(
 
 
 # private
-def _get_data(
+def _unpack_zip_into_df(
     excel: pd.ExcelFile, meta: DataFrame, freq: str, verbose: bool
 ) -> DataFrame:
     """Take an ABS excel file and put all the Data sheets into a single
@@ -408,7 +412,8 @@ def _get_data(
                 problematic = meta.loc[meta["Series ID"] == i][
                     ["Table", "Data Item Description", "Series Type"]
                 ]
-                print(f"Warning: no data for {i}\n{problematic}\n\n")
+                print(f"Warning, this data series is all NA: {i} (details below)")
+                print(f"{problematic}\n\n")
 
         # merge data into a large dataframe
         if len(data) == 0:
@@ -434,11 +439,12 @@ def _get_data(
 
 # regex patterns for the next function
 PATTERN_SUBSUB = re.compile(r"_([0-9]+[a-zA-Z]?)_")
-PATTERN_NUM_ALPHA = re.compile(r"^([0-9]+[a-z]?)_[a-zA-z_]+$")
-PATTERN_FOUND = re.compile(r"^[0-9]+[a-z]?$")
+PATTERN_NUM_ALPHA = re.compile(r"^([0-9]+[a-zA-Z]?)_[a-zA-z_]+$")
+PATTERN_FOUND = re.compile(r"^[0-9]+[a-zA-Z]?$")
 
 
-def determine_tab_name(z_name: str, e_name: str):
+# private
+def _get_table_name(z_name: str, e_name: str, verbose: bool):
     """Try and get a consistent and unique naming system for the tables
     found in each zip-file. This is a bit fraught because the ABS does
     this differently for various catalog identifiers.
@@ -457,7 +463,7 @@ def determine_tab_name(z_name: str, e_name: str):
         .lstrip("0")
     )
 
-    if result := re.search(PATTERN_SUBSUB, z_name):
+    if (result := re.search(PATTERN_SUBSUB, z_name)):
         # search looks anywhere in the string
         z_name = result.group(1)
     if result := re.match(PATTERN_NUM_ALPHA, z_name):
@@ -471,26 +477,29 @@ def determine_tab_name(z_name: str, e_name: str):
     # lets - pick the best one
     if e_name == z_name:
         # we agree
-        return e_name
-
-    if re.match(PATTERN_FOUND, z_name):
-        return z_name
-
-    return e_name
+        r_value = e_name
+    elif re.match(PATTERN_FOUND, e_name):
+        r_value = e_name
+    else:
+        r_value = z_name
+    
+    if verbose:
+        print(f"table names: {z_name=} {e_name=} --> {r_value=}")
+    return r_value
 
 
 # private
-def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
+def _get_all_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
     """Get a DataFrame for each table in the zip-file,
     plus an overall DataFrame for the metadata.
     Return these in a dictionary
     Arguments:
-     - zip_file - bytes array of ABS zip file of excel spreadsheets
+     - zip_file - ABS zipfile as a bytes array - contains excel spreadsheets
      - verbose - provide additional feedback on this step.
     Returns:
      - either an empty dictionary (failure) or a dictionary containing
        a separate DataFrame for each table in the zip-file,
-       plus a DataFrame called 'META' for the metadata.
+       plus a DataFrame called _META_DATA for the metadata.
     """
 
     freq_dict = {"annual": "Y", "biannual": "Q", "quarter": "Q", "month": "M"}
@@ -508,21 +517,23 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
             if "Index" not in excel.sheet_names:
                 print(
                     'Caution: Could not find the "Index" '
-                    f"sheet in {element.filename}"
+                    f"sheet in {element.filename}. File not uploaded"
                 )
                 continue
 
             file_meta = excel.parse("Index", nrows=8)
             cat_id = file_meta.iat[3, 1].split(" ")[0].strip()
 
-            table_num = determine_tab_name(
-                z_name=element.filename, e_name=file_meta.iat[4, 1]
+            table_name = _get_table_name(
+                z_name=element.filename, 
+                e_name=file_meta.iat[4, 1],
+                verbose=verbose,
             )
 
             tab_desc = file_meta.iat[4, 1].split(".", 1)[-1].strip()
 
             # get the metadata
-            file_meta = _get_meta(excel, table_num, tab_desc, cat_id)
+            file_meta = _get_meta(excel, table_name, tab_desc, cat_id)
 
             # establish freq - used for making the index a PeriodIndex
             freq = file_meta["Freq."].str.lower().unique().tolist()
@@ -535,18 +546,18 @@ def _get_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
 
             # fix tabulation when ABS uses the same table numbers for data
             # This happens occasionally
-            if table_num in returnable:
-                tmp = f"{table_num}-{count}"
+            if table_name in returnable:
+                tmp = f"{table_name}-{count}"
                 if verbose:
-                    print(f"Changing duplicate table name from {table_num} to {tmp}.")
-                table_num = tmp
-                file_meta[metacol.table] = table_num
+                    print(f"Changing duplicate table name from {table_name} to {tmp}.")
+                table_name = tmp
+                file_meta[metacol.table] = table_name
 
             # aggregate the meta data
             meta = pd.concat([meta, file_meta])
 
             # add the table to the returnable dictionary
-            returnable[table_num] = _get_data(excel, file_meta, freq, verbose)
+            returnable[table_name] = _unpack_zip_into_df(excel, file_meta, freq, verbose)
 
     returnable[_META_DATA] = meta
     return returnable
@@ -573,10 +584,14 @@ def get_abs_data(
             excel files to be recovered from the ABS
      - verbose - display additional web-scraping and caching information"""
 
+    if verbose:
+        print("In get_abs_data() {zip_table=} {verbose=}")
+        print(f"About to get data on: {landing_page.topic.replace('-', ' ').title()} "
+              f"in zip file number: {zip_table}")
     zip_file = _get_abs_zip_file(landing_page, zip_table, verbose)
     if not zip_file:
         raise AbsCaptureError("An unexpected empty zipfile.")
-    dictionary = _get_dataframes(zip_file, verbose)
+    dictionary = _get_all_dataframes(zip_file, verbose=verbose)
     if len(dictionary) <= 1:
         # dictionary should contain meta_data, plus one or more other dataframes
         raise AbsCaptureError("Could not extract dataframes from zipfile")
@@ -602,21 +617,26 @@ def find_rows(
     Returns a pandas DataFrame (subseted from meta):"""
 
     meta_select = meta.copy()
+    if verbose:
+        print(f'In find_rows() {exact=} {regex=} {verbose=}')
+        print(f"In find_rows() starting with {len(meta_select)} rows in the meta_data.")
 
     for phrase, column in search_terms.items():
         if verbose:
-            print(
-                f"Searching {len(meta_select)}: " f"term: {phrase} in-column: {column}"
-            )
+            print(f"Searching {len(meta_select)}: term: {phrase} in-column: {column}")
+
+
         pick_me = (
             (meta_select[column] == phrase)
             if (exact or column == metacol.table)
             else meta_select[column].str.contains(phrase, regex=regex)
         )
         meta_select = meta_select[pick_me]
+        if verbose:
+            print(f"In find_rows() have found {len(meta_select)}")
 
     if verbose:
-        print(len(meta_select))
+        print(f"Final selection is {len(meta_select)} rows.")
 
     if len(meta_select) == 0:
         print("Nothing selected?")
@@ -645,7 +665,10 @@ def find_id(
      - the ABS Series Identifier - str - which ws found using the search terms
      - units - str - unit of measurement."""
 
-    meta_select = find_rows(meta, search_terms, exact, verbose)
+    if verbose:
+        print(f'In find_id() {exact=} {verbose=} {validate_unique=}')
+
+    meta_select = find_rows(meta, search_terms, exact=exact, verbose=verbose)
     if verbose and len(meta_select) != 1:
         print(meta_select)
     if validate_unique:
@@ -680,7 +703,7 @@ def get_identifier(
         data_item_description: metacol.did,
     }
 
-    return find_id(meta, search, exact=True, verbose=verbose)
+    return find_id(meta, search, exact=False, verbose=verbose)
 
 
 # --- simplified plotting of ABS data ...
@@ -872,25 +895,33 @@ def plot_rows_seas_trend(
 
 # --- Select multiple series from different ABS datasets
 # public - select an individual series
-def get_single_series(selector: AbsSelectInput) -> AbsSelectOutput:
+def get_single_series(
+        selector: AbsSelectInput,
+        verbose: bool = False
+) -> AbsSelectOutput:
     """Return an ABS series for the specified selector."""
 
+    if verbose:
+        print(f"seeking: {selector.landing_page.topic}")
+
     # get the ABS data
-    data_dict = get_abs_data(selector.landing_page)
+    data_dict = get_abs_data(selector.landing_page, verbose=verbose)
     _, _, cat_id, meta = get_fs_constants(data_dict, selector.landing_page)
     data = data_dict[selector.table]
 
     # get the specific series we want to plot
     search_terms = {
         selector.table: metacol.table,
-        {"SA": "Seasonally Adjusted", "Orig": "Original"}[
+        {"SA": SEAS_ADJ, "Orig": ORIG}[
             selector.orig_sa
         ]: metacol.stype,
         selector.search1: metacol.did,
         selector.search2: metacol.did,
     }
+    if verbose:
+        print(f"Search terms:\n{search_terms}")
 
-    series_id, unit = find_id(meta, search_terms, verbose=False)
+    series_id, unit = find_id(meta, search_terms, verbose=verbose)
     series = data[series_id]
     if selector.calc_growth:
         periods = 4 if cast(pd.PeriodIndex, series.index).freqstr[0] == "Q" else 12
@@ -908,14 +939,15 @@ def get_single_series(selector: AbsSelectInput) -> AbsSelectOutput:
 
 
 # public - select multiple series
-def get_multi_series(selection_dict: AbsSelectionDict) -> AbsMultiSeries:
+def get_multi_series(selection_dict: AbsSelectionDict, verbose: bool = False) -> AbsMultiSeries:
     """Return a dictionary of Series data from the ABS,
     One series for each item in the selection_dict dictionary."""
 
     pool = {}
     for name, selector in selection_dict.items():
-        # pool[f"{name} ({selector.orig_sa})"] = get_single_series(selector)
-        pool[name] = get_single_series(selector)
+        if verbose:
+            print('-----------------')
+        pool[name] = get_single_series(selector, verbose)
     return pool
 
 
