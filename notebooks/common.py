@@ -51,7 +51,7 @@ def retrieve_from_cache(file: Path) -> bytes:
     return file.read_bytes()
 
 
-def get_file(url: str, cache_dir: Path, simple="none") -> bytes:
+def get_file(url: str, cache_dir: Path, simple: str = "cache") -> bytes:
     """Get file from URL or local file-system cache, depending on freshness."""
 
     def get_fpath() -> Path:

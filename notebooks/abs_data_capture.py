@@ -29,7 +29,6 @@ https://www.abs.gov.au/about/data-services/help/abs-time-series-directory
 ABS Landing Pages:
 https://www.abs.gov.au/welcome-new-abs-website#navigating-our-web-address-structure."""
 
-
 # --- imports
 # standard library imports
 import calendar
@@ -319,8 +318,7 @@ def get_data_links(
 
 # private
 def _get_abs_zip_file(
-    landing_page: AbsLandingPage, 
-    zip_table: int, verbose: bool
+    landing_page: AbsLandingPage, zip_table: int, verbose: bool
 ) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
@@ -338,7 +336,7 @@ def _get_abs_zip_file(
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for u in link_dict[".xlsx"]:
             u = _prefix_url(u)
-            file_bytes = common.get_file(u, _CACHE_PATH, simple=landing.topic)
+            file_bytes = common.get_file(u, _CACHE_PATH, simple=landing_page.topic)
             name = Path(u).name
             zip_file.writestr(f"/{name}", file_bytes)
     zip_buf.seek(0)
@@ -463,7 +461,7 @@ def _get_table_name(z_name: str, e_name: str, verbose: bool):
         .lstrip("0")
     )
 
-    if (result := re.search(PATTERN_SUBSUB, z_name)):
+    if result := re.search(PATTERN_SUBSUB, z_name):
         # search looks anywhere in the string
         z_name = result.group(1)
     if result := re.match(PATTERN_NUM_ALPHA, z_name):
@@ -482,7 +480,7 @@ def _get_table_name(z_name: str, e_name: str, verbose: bool):
         r_value = e_name
     else:
         r_value = z_name
-    
+
     if verbose:
         print(f"table names: {z_name=} {e_name=} --> {r_value=}")
     return r_value
@@ -525,7 +523,7 @@ def _get_all_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
             cat_id = file_meta.iat[3, 1].split(" ")[0].strip()
 
             table_name = _get_table_name(
-                z_name=element.filename, 
+                z_name=element.filename,
                 e_name=file_meta.iat[4, 1],
                 verbose=verbose,
             )
@@ -557,7 +555,9 @@ def _get_all_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
             meta = pd.concat([meta, file_meta])
 
             # add the table to the returnable dictionary
-            returnable[table_name] = _unpack_zip_into_df(excel, file_meta, freq, verbose)
+            returnable[table_name] = _unpack_zip_into_df(
+                excel, file_meta, freq, verbose
+            )
 
     returnable[_META_DATA] = meta
     return returnable
@@ -586,8 +586,10 @@ def get_abs_data(
 
     if verbose:
         print("In get_abs_data() {zip_table=} {verbose=}")
-        print(f"About to get data on: {landing_page.topic.replace('-', ' ').title()} "
-              f"in zip file number: {zip_table}")
+        print(
+            f"About to get data on: {landing_page.topic.replace('-', ' ').title()} "
+            f"in zip file number: {zip_table}"
+        )
     zip_file = _get_abs_zip_file(landing_page, zip_table, verbose)
     if not zip_file:
         raise AbsCaptureError("An unexpected empty zipfile.")
@@ -618,13 +620,12 @@ def find_rows(
 
     meta_select = meta.copy()
     if verbose:
-        print(f'In find_rows() {exact=} {regex=} {verbose=}')
+        print(f"In find_rows() {exact=} {regex=} {verbose=}")
         print(f"In find_rows() starting with {len(meta_select)} rows in the meta_data.")
 
     for phrase, column in search_terms.items():
         if verbose:
             print(f"Searching {len(meta_select)}: term: {phrase} in-column: {column}")
-
 
         pick_me = (
             (meta_select[column] == phrase)
@@ -666,7 +667,7 @@ def find_id(
      - units - str - unit of measurement."""
 
     if verbose:
-        print(f'In find_id() {exact=} {verbose=} {validate_unique=}')
+        print(f"In find_id() {exact=} {verbose=} {validate_unique=}")
 
     meta_select = find_rows(meta, search_terms, exact=exact, verbose=verbose)
     if verbose and len(meta_select) != 1:
@@ -896,8 +897,7 @@ def plot_rows_seas_trend(
 # --- Select multiple series from different ABS datasets
 # public - select an individual series
 def get_single_series(
-        selector: AbsSelectInput,
-        verbose: bool = False
+    selector: AbsSelectInput, verbose: bool = False
 ) -> AbsSelectOutput:
     """Return an ABS series for the specified selector."""
 
@@ -912,9 +912,7 @@ def get_single_series(
     # get the specific series we want to plot
     search_terms = {
         selector.table: metacol.table,
-        {"SA": SEAS_ADJ, "Orig": ORIG}[
-            selector.orig_sa
-        ]: metacol.stype,
+        {"SA": SEAS_ADJ, "Orig": ORIG}[selector.orig_sa]: metacol.stype,
         selector.search1: metacol.did,
         selector.search2: metacol.did,
     }
@@ -939,14 +937,16 @@ def get_single_series(
 
 
 # public - select multiple series
-def get_multi_series(selection_dict: AbsSelectionDict, verbose: bool = False) -> AbsMultiSeries:
+def get_multi_series(
+    selection_dict: AbsSelectionDict, verbose: bool = False
+) -> AbsMultiSeries:
     """Return a dictionary of Series data from the ABS,
     One series for each item in the selection_dict dictionary."""
 
     pool = {}
     for name, selector in selection_dict.items():
         if verbose:
-            print('-----------------')
+            print("-----------------")
         pool[name] = get_single_series(selector, verbose)
     return pool
 
