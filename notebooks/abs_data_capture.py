@@ -1,32 +1,35 @@
-"""Get data from the Australian Bureau of Statistics (ABS).
+"""This module does three things:
+A. It obtains the freshest time-series data from the 
+   Australian Bureau of Statistics (ABS).
+B. It allows that data to be searched for a specific series.
+C. It provides a short-hand way to plot the ABS data.
 
-Our general approach here is to:
-
+In respect of getting data from the ABS, the general 
+approach is to:
 1. Download the "latest-release" webpage from the ABS.
 
-2. Parse that webpage to find the link to the download
+2. Scan that webpage to find the link(s) to the download
    all-tables zip-file. We do this because the name of
    the file location on the ABS server changes from
    month to month, and varies beyween ABS webpages.
 
 3. Get the URL headers for this file, amd compare freshness
-   with the version in the cache directory (if any).
+   with the version in the local cache directory (if any).
 
 4. Use either the zip-file from the cache, or download
    a zip-file from the ABS, save it to the cache,
    and use that file.
 
-5. Open the zip-file, and save each table to a pandas
+5. Open the zip-file, and extract each table to a pandas
    DataFrame with a PeriodIndex. And save the metadata
-   to a pandas DataFrame. Return all of the DataFrames
+   to a pandas DataFrame. Return all of these DataFrames
    in a dictionary.
 
 Useful information from the ABS website ...
-
-ABS Catalog numbers:
+i.   ABS Catalog numbers:
 https://www.abs.gov.au/about/data-services/help/abs-time-series-directory
 
-ABS Landing Pages:
+ii.  ABS Landing Pages:
 https://www.abs.gov.au/welcome-new-abs-website#navigating-our-web-address-structure."""
 
 # === imports
