@@ -1,4 +1,5 @@
-""" Common data capture functions."""
+"""Common data capture functions.
+Data capture over the intrwebs with a cache facility."""
 
 # --- imports
 from hashlib import md5
@@ -12,11 +13,11 @@ import requests
 
 
 class HttpError(Exception):
-    """Indicate we had a problem retrieving data from HTTP."""
+    """We have a problem retrieving data from HTTP."""
 
 
 class CacheError(Exception):
-    """Indicate we had a problem retrieving data from the cache."""
+    """We have a problem retrieving data from the cache."""
 
 
 def check_response(url: str, response: requests.Response) -> None:
@@ -34,38 +35,50 @@ def request_get(url: str) -> bytes:
     return contents
 
 
-def save_to_cache(file: Path, contents: bytes) -> None:
+def save_to_cache(file: Path, contents: bytes, verbose: bool) -> None:
     """Save bytes to the file-system."""
     if file.exists():
-        print("Removing old cache file.")
+        if verbose:
+            print("Removing old cache file.")
         file.unlink()
+    if verbose:
+        print(f"Saving to cache: {file}")
     file.open(mode="w", buffering=-1, encoding=None, errors=None, newline=None)
-    print(f"Saving to cache: {file}")
     file.write_bytes(contents)
 
 
 def retrieve_from_cache(file: Path) -> bytes:
     """Retrieve bytes from file-system."""
     if not file.exists() or not file.is_file():
-        raise CacheError("Cached file not available?")
+        raise CacheError(f"Cached file not available: {file.name}")
     return file.read_bytes()
 
 
-def get_file(url: str, cache_dir: Path, simple: str = "cache") -> bytes:
-    """Get file from URL or local file-system cache, depending on freshness."""
+def get_file(
+    url: str,
+    cache_dir: Path,
+    cache_name_prefix: str = "cache",
+    verbose: bool = False,
+) -> bytes:
+    """Get file from URL or local file-system cache, depending on freshness.
+    Note: we create the cache_dir if it does not exist.
+    Returns: the contents of the file as bytes."""
 
     def get_fpath() -> Path:
         """Convert URL string into a cache file name,
         then return as a Path object."""
-        bad_cache_pattern = r'[~"#%&*:<>?\\{|}]+'  # remove these chars from name
+        bad_cache_pattern = r'[~"#%&*:<>?\\{|}]+'  # chars to remove from name
         hash_name = md5(url.encode("utf-8")).hexdigest()
-        tail_name = url.split("/")[-1]
-        file_name = re.sub(bad_cache_pattern, "", f"{simple}--{hash_name}--{tail_name}")
+        tail_name = url.split("/")[-1].split("?")[0]
+        file_name = re.sub(
+            bad_cache_pattern, "", f"{cache_name_prefix}--{hash_name}--{tail_name}"
+        )
         return Path(cache_dir / file_name)
 
-    # sanity checks
+    # create and check cache_dir is a directory
+    cache_dir.mkdir(parents=True, exist_ok=True)
     if not cache_dir.is_dir():
-        raise ValueError("Cache path is not a directory")
+        raise CacheError(f"Cache path is not a directory: {cache_dir.name}")
 
     # get URL modification time in UTC
     response = requests.head(url, allow_redirects=True, timeout=20)
@@ -84,13 +97,14 @@ def get_file(url: str, cache_dir: Path, simple: str = "cache") -> bytes:
         )
 
     # get and save URL source data
-    if target_mtime is None or (  # cache is empty
+    if target_mtime is None or (  # cache is empty, or
         source_mtime is not None
         and source_mtime > target_mtime  # URL is fresher than cache
     ):
-        print("About to download and cache the latest data.")
+        if verbose:
+            print("About to download and cache the latest data.")
         url_bytes = request_get(url)  # will raise exception if it fails
-        save_to_cache(file_path, url_bytes)
+        save_to_cache(file_path, url_bytes, verbose)
         # - change file mod time to reflect mtime at URL
         if source_mtime is not None:
             unixtime = source_mtime.value / 1_000_000_000  # convert to seconds
@@ -98,7 +112,8 @@ def get_file(url: str, cache_dir: Path, simple: str = "cache") -> bytes:
         return url_bytes
 
     # return the data that has been cached previously
-    print("Retrieving data from cache.")
+    if verbose:
+        print("Retrieving data from cache.")
     return retrieve_from_cache(file_path)
 
 
@@ -114,9 +129,8 @@ if __name__ == "__main__" and DO_TEST:
     URL2 = "https://www.rba.gov.au/statistics/tables/xls/a02hist.xls"  # RBA
     TEST_CACHE_DIR = "./TEST_CACHE/"
     path = Path(TEST_CACHE_DIR)
-    path.mkdir(parents=True, exist_ok=True)
-
+    
     # do the testing
     for url_ in (URL1, URL2):
-        content = get_file(url_, path)
+        content = get_file(url_, path, verbose=True)
         print(len(content))
