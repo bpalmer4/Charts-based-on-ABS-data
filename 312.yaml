@@ -1,6 +1,6 @@
 # micromamba env create -f 312.yaml
-# Note: in conda-forge, pytensor 2.18 requires python 3.12
-# Note: pmdarima alsox requires python 3.12
+# Note: in conda-forge, pytensor 2.18 requires python 3.11
+# Note: pmdarima alsox requires python 3.11
 name: 312
 channels:
   - conda-forge
