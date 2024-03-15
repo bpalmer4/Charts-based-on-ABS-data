@@ -326,7 +326,9 @@ def _get_abs_zip_file(
     # happy case - found a .zip URL on the ABS page
     if r".zip" in link_dict and zip_table < len(link_dict[".zip"]):
         url = link_dict[".zip"][zip_table]
-        return common.get_file(url, _CACHE_PATH, simple=landing_page.topic)
+        return common.get_file(
+            url, _CACHE_PATH, cache_name_prefix=landing_page.topic, verbose=verbose
+        )
 
     # sad case - need to fake up a zip file
     print("A little unexpected: We need to fake up a zip file")
@@ -334,7 +336,9 @@ def _get_abs_zip_file(
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for u in link_dict[".xlsx"]:
             u = _prefix_url(u)
-            file_bytes = common.get_file(u, _CACHE_PATH, simple=landing_page.topic)
+            file_bytes = common.get_file(
+                u, _CACHE_PATH, cache_name_prefix=landing_page.topic, verbose=verbose
+            )
             name = Path(u).name
             zip_file.writestr(f"/{name}", file_bytes)
     zip_buf.seek(0)
@@ -346,26 +350,38 @@ def _get_meta_from_excel(
     excel: pd.ExcelFile, tab_num: str, tab_desc: str, cat_id: str
 ) -> pd.DataFrame:
     """Capture the metadata from the Index sheet of an ABS excel file.
-    Returns a DataFrame specific to the current excel file."""
+    Returns a DataFrame specific to the current excel file.
+    Returning an empty DataFrame, mneans that the meatadata could not
+    be identified."""
 
-    file_meta = excel.parse(
-        "Index",
-        header=9,
-        parse_dates=True,
-        infer_datetime_format=True,
-        converters={"Unit": str},
-    )
-    file_meta = file_meta.iloc[1:-2]  # drop first and last 2
-    file_meta = file_meta.dropna(axis="columns", how="all")
-    for col in (metacol.did, metacol.id, metacol.stype, metacol.unit):
-        if col not in file_meta.columns:
-            raise AbsCaptureError(
-                f"{cat_id}-{tab_num}"
-                f"Columns ({col}) not found in the proposed meta data. "
-                f"Available columns are: {file_meta.columns}."
-            )
-        # make damn sure there are no rogue white spaces
-        file_meta[col] = file_meta[col].str.strip()  # make sure no unsual spaces
+    # Unfortunately, the header for some of the 3401.0
+    #                spreadsheets starts on row 10
+    starting_rows = 9, 10
+    required = metacol.did, metacol.id, metacol.stype, metacol.unit
+    required_set = set(required)
+    for header_row in starting_rows:
+        file_meta = excel.parse(
+            "Index",
+            header=header_row,
+            parse_dates=True,
+            infer_datetime_format=True,
+            converters={"Unit": str},
+        )
+        file_meta = file_meta.iloc[1:-2]  # drop first and last 2
+        file_meta = file_meta.dropna(axis="columns", how="all")
+
+        if required_set.issubset(set(file_meta.columns)):
+            break
+
+        if header_row == starting_rows[-1]:
+            print(f"Could not find metadata for {cat_id}-{tab_num}")
+            return pd.DataFrame()
+
+    # make damn sure there are no rogue white spaces
+    for col in required:
+        file_meta[col] = file_meta[col].str.strip()
+
+    # standarise some units
     file_meta[metacol.unit] = (
         file_meta[metacol.unit]
         .str.replace("000 Hours", "Thousand Hours")
@@ -376,7 +392,7 @@ def _get_meta_from_excel(
     )
     file_meta[metacol.table] = tab_num.strip()
     file_meta[metacol.tdesc] = tab_desc.strip()
-    file_meta[metacol.cat] = cat_id
+    file_meta[metacol.cat] = cat_id.strip()
     return file_meta
 
 
@@ -394,9 +410,8 @@ def _unpack_excel_into_df(
             sheet_name,
             header=9,
             index_col=0,
-            parse_dates=True,
-            infer_datetime_format=True,
-        )
+        ).dropna(how="all", axis="index")
+        data.index = pd.to_datetime(data.index)
 
         for i in sheet_data.columns:
             if i in data.columns:
@@ -426,10 +441,11 @@ def _unpack_excel_into_df(
     if freq:
         if freq in ("Q", "A"):
             month = calendar.month_abbr[
-                cast(pd.DatetimeIndex, data.index).month.max()
-            ].upper()
+                cast(pd.PeriodIndex, data.index).month.max()].upper()
             freq = f"{freq}-{month}"
-        data = data.to_period(freq=freq)
+        if isinstance(data.index, pd.DatetimeIndex):
+            data = data.to_period(freq=freq)
+
     return data
 
 
@@ -497,7 +513,8 @@ def _get_all_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
        plus a DataFrame called META_DATA for the metadata.
     """
 
-    print("Extracting DataFrames from the zip-file.")
+    if verbose:
+        print("Extracting DataFrames from the zip-file.")
     freq_dict = {"annual": "Y", "biannual": "Q", "quarter": "Q", "month": "M"}
     returnable: dict[str, DataFrame] = {}
     meta = DataFrame()
@@ -515,17 +532,20 @@ def _get_all_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
                 )
                 continue
 
-            file_meta = excel.parse("Index", nrows=8)
-            cat_id = file_meta.iat[3, 1].split(" ")[0].strip()
+            # get table header information
+            header = excel.parse("Index", nrows=8)  # ???
+            cat_id = header.iat[3, 1].split(" ")[0].strip()
             table_name = _get_table_name(
                 z_name=element.filename,
-                e_name=file_meta.iat[4, 1],
+                e_name=header.iat[4, 1],
                 verbose=verbose,
             )
-            tab_desc = file_meta.iat[4, 1].split(".", 1)[-1].strip()
+            tab_desc = header.iat[4, 1].split(".", 1)[-1].strip()
 
-            # get the metadata
+            # get the metadata rows
             file_meta = _get_meta_from_excel(excel, table_name, tab_desc, cat_id)
+            if len(file_meta) == 0:
+                continue
 
             # establish freq - used for making the index a PeriodIndex
             freqlist = file_meta["Freq."].str.lower().unique()
@@ -577,11 +597,8 @@ def get_abs_data(
      - verbose - display additional web-scraping and caching information"""
 
     if verbose:
-        print("In get_abs_data() {zip_table=} {verbose=}")
-        print(
-            f"About to get data on: {landing_page.topic.replace('-', ' ').title()} "
-            f"in zip file number: {zip_table}"
-        )
+        print(f"In get_abs_data() {zip_table=} {verbose=}")
+        print(f"About to get data on: {landing_page.topic.replace('-', ' ').title()} ")
     zip_file = _get_abs_zip_file(landing_page, zip_table, verbose)
     if not zip_file:
         raise AbsCaptureError("An unexpected empty zipfile.")
