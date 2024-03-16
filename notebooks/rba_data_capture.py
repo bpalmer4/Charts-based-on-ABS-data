@@ -109,7 +109,8 @@ def get_data_file(label: str) -> bytes:
 
 
 def get_data(label: str) -> tuple[pd.DataFrame, pd.DataFrame] | None:
-    """Get the data."""
+    """Get the data. Returns two DataFrames. First is the metadata.
+    Second is the table."""
 
     # convert label to an updated-cache file name
     data_bytes = io.BytesIO(get_data_file(label))
