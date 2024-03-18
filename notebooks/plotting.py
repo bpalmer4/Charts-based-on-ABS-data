@@ -949,7 +949,7 @@ def recalibrate(
             break
 
     if found:
-        units = f"{units} {pu}"
+        units = f"{pu} {units}"
         for n in "numbers", "number":
             if n in units:
                 units = units.replace(n, "").strip()
