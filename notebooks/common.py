@@ -24,7 +24,7 @@ def check_response(url: str, response: requests.Response) -> None:
     """Raise an Exception if we could not retrieve URL."""
     code = response.status_code
     if code != 200 or response.headers is None:
-        raise HttpError(f"Problem accessing: {url}.")
+        raise HttpError(f"Problem {code} accessing: {url}.")
 
 
 def request_get(url: str) -> bytes:
