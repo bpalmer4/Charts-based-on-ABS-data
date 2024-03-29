@@ -203,8 +203,8 @@ def get_plot_constants(
     - used in a loop to produce a plot of the full
       series, and a plot of the recent period."""
 
-    recency_period = 6  # years
-    recency_extra = 3  # months
+    recency_period = 5  # years
+    recency_extra = 6  # months
     today = pd.Timestamp("today")
     date_series = meta["Series End"][meta["Series End"] <= today]
     reasonable_end = date_series.max() if len(date_series) > 0 else today

@@ -2,23 +2,23 @@ from typing import TypeVar, Optional, cast
 from pandas import Series, DataFrame, PeriodIndex, DatetimeIndex
 
 # - define a useful typevar for working with both Series and DataFrames
-_DataT = TypeVar("_DataT", Series, DataFrame)
+DataT = TypeVar("DataT", Series, DataFrame)
 
 
-def percent_change(data: _DataT, periods: int) -> _DataT:
+def percent_change(data: DataT, periods: int) -> DataT:
     """Calculate an n-periods percentage change."""
 
     return (data / data.shift(periods) - 1) * 100
 
 
-def annualise_rates(data: _DataT, periods: int = 12) -> _DataT:
+def annualise_rates(data: DataT, periods: int|float = 12) -> DataT:
     """Annualise a growth rate for a period.
     Note: returns a percentage (and not a rate)!"""
 
     return (((1 + data) ** periods) - 1) * 100
 
 
-def annualise_percentages(data: _DataT, periods: int = 12) -> _DataT:
+def annualise_percentages(data: DataT, periods: int|float = 12) -> DataT:
     """Annualise a growth rate (expressed as a percentage) for a period."""
 
     rates = data / 100.0
@@ -26,11 +26,11 @@ def annualise_percentages(data: _DataT, periods: int = 12) -> _DataT:
 
 
 def qtly_to_monthly(
-    data: _DataT,
+    data: DataT,
     interpolate: bool = True,
     limit: Optional[int] = 2,  # only used if interpolate is True
     dropna: bool = True,
-) -> _DataT:
+) -> DataT:
     """Convert a pandas timeseries with a Quarterly PeriodIndex to an
     timeseries with a Monthly PeriodIndex.
     Arguments:
@@ -49,7 +49,7 @@ def qtly_to_monthly(
     assert data.index.is_unique
     assert data.index.is_monotonic_increasing
 
-    def set_axis_monthly_periods(x: _DataT) -> _DataT:
+    def set_axis_monthly_periods(x: DataT) -> DataT:
         """Convert a DatetimeIndex to a Monthly PeriodIndex."""
 
         return x.set_axis(
@@ -75,7 +75,7 @@ def qtly_to_monthly(
     return data
 
 
-def monthly_to_qtly(data: _DataT, q_ending="DEC") -> _DataT:
+def monthly_to_qtly(data: DataT, q_ending="DEC") -> DataT:
     """Convert monthly PeriodIndex data to quarterly PeriodIndex data."""
 
     return (
