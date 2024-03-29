@@ -1,11 +1,15 @@
 """Produce a naive time series decomposition."""
 
+import sys
 from operator import sub, truediv
 from typing import cast, Final, Sequence
 
 import numpy as np
 import pandas as pd
-from pmdarima.arima import auto_arima
+try:
+    from pmdarima.arima import auto_arima
+except ImportError:
+    print("Could not import auto_arima from pmdarima")
 
 from henderson import hma
 
@@ -164,12 +168,15 @@ def _get_trend(
 
 
 def _extend_series_by_arima(
-    s: pd.Series, freq: int, h: int, arima_extend
+    s: pd.Series, 
+    freq: int, 
+    h: int, 
+    arima_extend: bool
 ) -> pd.DataFrame:
     """Use auto_arima() to extend the series in each direction.
     Returns the results dataframe that will be subsequently populated."""
 
-    if arima_extend:
+    if arima_extend and "pmdarima" in sys.modules:
         p_length = int(h / 2)
         forward = _make_projection(s, freq=freq, p_length=p_length, direction=1)
         back = _make_projection(s, freq=freq, p_length=p_length, direction=-1)
