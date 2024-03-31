@@ -23,6 +23,7 @@ dependencies:
   - scipy 
   - scikit-learn 
   - nltk
+  - pycountry
   #- pmdarima
   # Microsoft Excel 
   - openpyxl

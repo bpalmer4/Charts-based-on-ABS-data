@@ -6,6 +6,7 @@ from typing import cast, Final, Sequence
 
 import numpy as np
 import pandas as pd
+
 try:
     from pmdarima.arima import auto_arima
 except ImportError:
@@ -168,10 +169,7 @@ def _get_trend(
 
 
 def _extend_series_by_arima(
-    s: pd.Series, 
-    freq: int, 
-    h: int, 
-    arima_extend: bool
+    s: pd.Series, freq: int, h: int, arima_extend: bool
 ) -> pd.DataFrame:
     """Use auto_arima() to extend the series in each direction.
     Returns the results dataframe that will be subsequently populated."""
