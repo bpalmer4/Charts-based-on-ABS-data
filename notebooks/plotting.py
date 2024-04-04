@@ -118,8 +118,11 @@ _chart_dir = ChartDirSingleton(None)  # global chart directory stored here
 def set_chart_dir(chart_dir: str | None) -> None:
     """A function to set a global chart directory for finalise_plot(),
     so that it does not need to be included as an argument in each
-    call to finalise_plot()."""
+    call to finalise_plot(). Create the directory if it does not exist."""
+
+    Path(chart_dir).mkdir(parents=True, exist_ok=True)
     _chart_dir.set(chart_dir)
+    
 
 
 # --- finalise_plot()
