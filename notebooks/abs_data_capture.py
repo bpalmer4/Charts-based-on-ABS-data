@@ -277,6 +277,7 @@ def _prefix_url(url: str) -> str:
 def get_data_links(
     landing_page: AbsLandingPage,
     verbose: bool = False,
+    inspect = "",  # for debugging - save the landing page to disk
 ) -> dict[str, list[str]]:
     """Scan the ABS landing page for links to ZIP files and for
     links to Microsoft Excel files. Return the links in
@@ -286,18 +287,23 @@ def get_data_links(
     # get relevant web-page from ABS website
     page = _get_abs_page(landing_page)
 
+    # save the page to disk for inspection
+    if inspect:
+        with open(inspect, "w") as file_handle:
+            file_handle.write(page.decode("utf-8"))
+
     # remove those pesky span tags - probably not necessary
     page = re.sub(b"<span[^>]*>", b" ", page)
     page = re.sub(b"</span>", b" ", page)
     page = re.sub(b"\\s+", b" ", page)  # tidy up white space
 
     # capture all links (of a particular type)
-    link_types = (".xlsx", ".zip", ".xls")  # lower case
+    link_types = (".xlsx", ".zip", ".xls")  # must be lower case
     soup = BeautifulSoup(page, features="lxml")
     link_dict: dict[str, list[str]] = {}
     for link in soup.findAll("a"):
         url = link.get("href")
-        if url is None or url == "":
+        if url is None:
             # ignore silly cases
             continue
         for link_type in link_types:
@@ -309,19 +315,23 @@ def get_data_links(
 
     if verbose:
         for link_type, link_list in link_dict.items():
-            print(f"Found: {len(link_list)} items of type {link_type}")
+            summary = [x.split("/")[-1] for x in link_list]  # just the file name
+            print(f"Found: {len(link_list)} items of type {link_type}: {summary}")
 
     return link_dict
 
 
 # private
 def _get_abs_zip_file(
-    landing_page: AbsLandingPage, zip_table: int, verbose: bool
+    landing_page: AbsLandingPage, 
+    zip_table: int, 
+    verbose: bool,
+    inspect: str,
 ) -> bytes:
     """Get the latest zip_file of all tables for
     a specified ABS catalogue identifier"""
 
-    link_dict = get_data_links(landing_page, verbose)
+    link_dict = get_data_links(landing_page, verbose, inspect)
 
     # happy case - found a .zip URL on the ABS page
     if r".zip" in link_dict and zip_table < len(link_dict[".zip"]):
@@ -578,7 +588,10 @@ def _get_all_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
 # public
 @cache
 def get_abs_data(
-    landing_page: AbsLandingPage, zip_table: int = 0, verbose: bool = False
+    landing_page: AbsLandingPage, 
+    zip_table: int = 0, 
+    verbose: bool = False,
+    inspect: str = "",  # filename for saving the webpage
 ) -> AbsDict:
     """For the relevant ABS page return a dictionary containing
     a meta-data Data-Frame and one or more DataFrames of actual
@@ -594,12 +607,14 @@ def get_abs_data(
             Note: a negative zip_file number will cause the
             zip_file not to be recovered and for individual
             excel files to be recovered from the ABS
-     - verbose - display additional web-scraping and caching information"""
+     - verbose - display additional web-scraping and caching information.
+     - inspect - save the webpage to disk for inspection - 
+            inspect is the file name."""
 
     if verbose:
         print(f"In get_abs_data() {zip_table=} {verbose=}")
         print(f"About to get data on: {landing_page.topic.replace('-', ' ').title()} ")
-    zip_file = _get_abs_zip_file(landing_page, zip_table, verbose)
+    zip_file = _get_abs_zip_file(landing_page, zip_table, verbose, inspect)
     if not zip_file:
         raise AbsCaptureError("An unexpected empty zipfile.")
     dictionary = _get_all_dataframes(zip_file, verbose=verbose)
