@@ -251,7 +251,9 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
 
 # === Data capture from the ABS
 # private
-def _get_abs_page(page: AbsLandingPage):
+def _get_abs_page(
+        page: AbsLandingPage, 
+) -> bytes:
     """Return the HTML for the ABS topic landing page."""
 
     head = "https://www.abs.gov.au/statistics/"

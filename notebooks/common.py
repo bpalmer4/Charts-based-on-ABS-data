@@ -2,12 +2,14 @@
 Data capture over the intrwebs with a cache facility."""
 
 # --- imports
+# system imports
 from hashlib import md5
 import re
 from datetime import datetime, timezone
 from os import utime
 from pathlib import Path
 
+# data imports
 import pandas as pd
 import requests
 
