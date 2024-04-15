@@ -9,6 +9,7 @@ from typing import Iterable
 
 # analytic imports
 import pandas as pd
+import numpy as np
 from bs4 import BeautifulSoup
 
 # local imports
@@ -140,4 +141,35 @@ def get_data(label: str) -> tuple[pd.DataFrame, pd.DataFrame] | None:
     if "istribution" not in label:
         data.index = pd.DatetimeIndex(data.index)
 
-    return meta.T.dropna(how="all", axis=1), data
+    return meta.T.dropna(how="all", axis=1), data.sort_index()
+
+
+def get_ocr_data(freq: str = 'M') -> pd.Series:
+    """Get the official cash rate (OCR) data from the RBA website.
+    Get with either a monthly or daily frequency PeriodIndex.
+    Ensure there is a data point for every period within the series."""
+
+    # get the the raw RBA data
+    a2 = get_data("Monetary Policy Changes – A2")
+    if a2 is None:
+        return pd.Series()
+
+    # get the OCR data
+    _a2_meta, a2_data = a2
+    ocr = a2_data['ARBAMPCNCRT']
+    ocr.index = pd.PeriodIndex(ocr.index, freq=freq)
+    drops = ocr.index.duplicated(keep='last')  # Do we need to drop duplicates?
+    ocr = ocr[~drops]
+
+    # add today's data if it is missing (because it usually is)
+    today = pd.Period(pd.Timestamp("today"), freq=freq)
+    if today > ocr.index[-1]:
+        last = ocr.iloc[-1]
+        ocr[today] = last
+        ocr = ocr.sort_index()
+
+    # restore missing periods - needed if we are going to subset the data
+    new_index = pd.period_range(start=ocr.index.min(), end=ocr.index.max())
+    ocr = ocr.reindex(new_index, fill_value=np.nan).ffill()
+
+    return ocr
