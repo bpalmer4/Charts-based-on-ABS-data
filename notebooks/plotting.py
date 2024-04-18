@@ -53,12 +53,12 @@ def _states() -> tuple[dict[str, str], dict[str, str]]:
     state_data = {
         "New South Wales": ("NSW", "deepskyblue"),
         "Victoria": ("Vic", "navy"),
-        "Queensland": ("Qld", "maroon"),
+        "Queensland": ("Qld", "#c32148"),  # a lighter maroon
         "South Australia": ("SA", "red"),
         "Western Australia": ("WA", "gold"),
-        "Tasmania": ("Tas", "green"),
+        "Tasmania": ("Tas", "seagreen"),  # bottle green is too dark #006A4E
         "Northern Territory": ("NT", "#CC7722"),  # ochre
-        "Australian Capital Territory": ("ACT", "royalblue"),
+        "Australian Capital Territory": ("ACT", "blue"),
     }
 
     colors, abbreviations = {}, {}
@@ -426,7 +426,7 @@ def _get_style_width_color_etc(
                 "#AA4499",
             ],
             13: [
-                "#800000",  # Maroon
+                "#c32148",  # Maroon
                 "#FF0000",  # Red
                 "#9A6324",  # Brown
                 "#f58231",  # Orange
