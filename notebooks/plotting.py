@@ -753,7 +753,7 @@ def plot_growth(
     frame.index = frame.index + pd.Timedelta(days=adjustment)
 
     # plot
-    thick_line_threshold = 24  # data items
+    thick_line_threshold = 180  # data items
     _, axes = plt.subplots()
     axes.plot(
         frame[frame.columns[0]].index,
