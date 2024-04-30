@@ -718,11 +718,18 @@ def plot_growth(
     annual: Series,
     periodic: Series,
     from_: str | pd.Timestamp | pd.Period | None = None,
-    # Note: from_ is neither a list nor a tuple ...
+    annotate: bool = False,
+    annotation_rounding: int = 1,
 ) -> None | plt.Axes:
     """Plot a bar and line percentage growth chart.
     Both pandas Series should have a quarterly or monthly
-    PeriodIndex."""
+    PeriodIndex. Allow an option to annotate the bars, provided
+    the number of bars is less than max_annotation, the value of 
+    annotate is fontsize (suggest: "xx-small")."""
+
+    # maximum number of bars to annotate
+    max_annotation = 30
+    style = {"fontsize": "xx-small", "fontname": "Helvetica",}
 
     # sanity checks
     for series in (annual, periodic):
@@ -756,19 +763,48 @@ def plot_growth(
     thick_line_threshold = 180  # data items
     _, axes = plt.subplots()
     axes.plot(
-        frame[frame.columns[0]].index,
-        frame[frame.columns[0]].values,
+        frame.index,
+        frame["Annual"].values,
         lw=WIDE_WIDTH if len(frame) <= thick_line_threshold else NARROW_WIDTH,
         color=COLOR_BLUE,
         label="Annual growth",
     )
     axes.bar(
-        frame[frame.columns[1]].index,
-        frame[frame.columns[1]].values,
+        frame.index,
+        frame["Periodic"].values,
         color=COLOR_RED,
         width=0.7 * adjustment * 2,
         label=f"{period} growth",
     )
+
+    if annotate and len(frame) <= max_annotation:
+        adj = (frame.max().max() - frame.min().min() * 0.02)
+        span = frame.max().max() - frame.min().min()
+        adj = span * 0.005
+        for i, value in enumerate(frame["Periodic"]):
+            va = "bottom" if value >= 0 else "top"
+            position = adj if value >= 0 else -adj
+            text = axes.text(
+                frame.index[i],
+                position,
+                f"{value:.{annotation_rounding}f}",
+                ha="center",
+                va=va,
+                **style,
+                fontdict=None,
+                color="white",
+            )
+            text.set_path_effects([pe.withStroke(linewidth=2, foreground=COLOR_RED)])
+            axes.text(
+                frame.index[-1],
+                frame["Annual"].iloc[-1],
+                f" {frame["Annual"].iloc[-1]:.{annotation_rounding}f}",
+                ha="left",
+                va="center",
+                **style,
+                fontdict=None,
+                color=COLOR_BLUE,
+            )
 
     locator = mdates.AutoDateLocator(minticks=4, maxticks=13)
     formatter = mdates.ConciseDateFormatter(locator)
@@ -781,6 +817,7 @@ def plot_growth_finalise(
     annual: Series,
     periodic: Series,
     from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
+    annotate: bool = False,
     **kwargs,
 ) -> None:
     """Plot growth and finalise the plot. Repeat if multiple starting
@@ -789,8 +826,9 @@ def plot_growth_finalise(
     if not isinstance(from_, list) and not isinstance(from_, tuple):
         from_ = (from_,)
 
-    kwargs[LEGEND] = LEGEND_SET if LEGEND not in kwargs else kwargs[LEGEND]
-    tag_stem = kwargs["tag"] if "tag" in kwargs else ""
+    annotation_rounding = kwargs.pop("annotation_rounding", 1)
+    kwargs[LEGEND] = kwargs.get(LEGEND, LEGEND_SET)
+    tag_stem = kwargs.get("tag", "")
     if "ylabel" not in kwargs:
         kwargs["ylabel"] = "Per cent Growth"
 
@@ -799,6 +837,8 @@ def plot_growth_finalise(
             annual,
             periodic,
             start,
+            annotate=annotate,
+            annotation_rounding=annotation_rounding
         )
         if axes:
             kwargs["tag"] = f"{tag_stem}-{i}"
