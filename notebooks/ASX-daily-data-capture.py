@@ -1,5 +1,6 @@
 """Daily ASX rate scraper - based on Matt Cowgill's R scraper at 
-   https://github.com/MattCowgill/cash-rate-scraper.git"""
+   https://github.com/MattCowgill/cash-rate-scraper.git
+   crontab: 29 19 * * 1-5 /Users/bryanpalmer/ABS/notebooks/ASX-daily-capture.sh"""
 
 # imports
 from pathlib import Path
@@ -27,7 +28,7 @@ def get_asx_data() -> pd.DataFrame:
     raw_jason = common.request_get(url)
     df = pd.DataFrame(json.loads(raw_jason)['data']['items'])
     df[CASH_RATE] = (100 - df.pricePreviousSettlement).round(3)
-    df[SCRAPE_DATE] = df.loc[df['dateLastTrade'].notna(), 'dateLastTrade'].max()
+    df[SCRAPE_DATE] = pd.to_datetime('today').normalize().date()
     df.index = pd.PeriodIndex(df['dateExpiry'], freq='M')
     df.index.name = DATE  # consistency with Matt Cowgill's R scraper
     return df[[CASH_RATE, SCRAPE_DATE]]
