@@ -28,7 +28,8 @@ def get_asx_data() -> pd.DataFrame:
     raw_jason = common.request_get(url)
     df = pd.DataFrame(json.loads(raw_jason)['data']['items'])
     df[CASH_RATE] = (100 - df.pricePreviousSettlement).round(3)
-    df[SCRAPE_DATE] = pd.to_datetime('today').normalize().date()
+    #df[SCRAPE_DATE] = pd.to_datetime('today').normalize().date()
+    df[SCRAPE_DATE] = df['dateLastTrade']
     df.index = pd.PeriodIndex(df['dateExpiry'], freq='M')
     df.index.name = DATE  # consistency with Matt Cowgill's R scraper
     return df[[CASH_RATE, SCRAPE_DATE]]
@@ -39,7 +40,8 @@ def save_asx_data(df: pd.DataFrame) -> None:
 
     directory = "./ASX_DAILY_DATA/"
     Path(directory).mkdir(parents=True, exist_ok=True)
-    filename = f"{directory}{FILE_STEM}{df[SCRAPE_DATE].max()}.csv"
+    file_date = pd.to_datetime('today').normalize().date()
+    filename = f"{directory}{FILE_STEM}{file_date}.csv"
     get_asx_data().to_csv(path_or_buf=filename)
 
 
