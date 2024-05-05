@@ -122,7 +122,6 @@ def set_chart_dir(chart_dir: str | None) -> None:
 
     Path(chart_dir).mkdir(parents=True, exist_ok=True)
     _chart_dir.set(chart_dir)
-    
 
 
 # --- finalise_plot()
@@ -408,8 +407,8 @@ def _get_style_width_color_etc(
 ) -> tuple[dict[str, list], dict]:
     """Get the plot-line attributes arguemnts."""
 
-    if 'color' not in kwargs:
-        
+    if "color" not in kwargs:
+
         colours: dict[int, str | list[str]] = {
             # default colours change depending on the number of lines
             1: COLOR_RED,
@@ -442,12 +441,14 @@ def _get_style_width_color_etc(
             ],
         }
         k = colours.keys()
-        minimum: float | int = min(i for i in list(k) + [float("inf")] if i >= item_count)
+        minimum: float | int = min(
+            i for i in list(k) + [float("inf")] if i >= item_count
+        )
         n_colours = int(minimum if minimum is not float("inf") else max(k))
         color = colours[n_colours]
     else:
-        color = kwargs['color']
-        
+        color = kwargs["color"]
+
     data_point_thresh = 24
     defaults: dict[str, Any] = {
         STYLE: "-",
@@ -724,12 +725,15 @@ def plot_growth(
     """Plot a bar and line percentage growth chart.
     Both pandas Series should have a quarterly or monthly
     PeriodIndex. Allow an option to annotate the bars, provided
-    the number of bars is less than max_annotation, the value of 
+    the number of bars is less than max_annotation, the value of
     annotate is fontsize (suggest: "xx-small")."""
 
     # maximum number of bars to annotate
     max_annotation = 30
-    style = {"fontsize": "xx-small", "fontname": "Helvetica",}
+    style = {
+        "fontsize": "xx-small",
+        "fontname": "Helvetica",
+    }
 
     # sanity checks
     for series in (annual, periodic):
@@ -778,7 +782,7 @@ def plot_growth(
     )
 
     if annotate and len(frame) <= max_annotation:
-        adj = (frame.max().max() - frame.min().min() * 0.02)
+        adj = frame.max().max() - frame.min().min() * 0.02
         span = frame.max().max() - frame.min().min()
         adj = span * 0.005
         for i, value in enumerate(frame["Periodic"]):
@@ -838,7 +842,7 @@ def plot_growth_finalise(
             periodic,
             start,
             annotate=annotate,
-            annotation_rounding=annotation_rounding
+            annotation_rounding=annotation_rounding,
         )
         if axes:
             kwargs["tag"] = f"{tag_stem}-{i}"

@@ -131,7 +131,7 @@ if __name__ == "__main__" and DO_TEST:
     URL2 = "https://www.rba.gov.au/statistics/tables/xls/a02hist.xls"  # RBA
     TEST_CACHE_DIR = "./TEST_CACHE/"
     path = Path(TEST_CACHE_DIR)
-    
+
     # do the testing
     for url_ in (URL1, URL2):
         content = get_file(url_, path, verbose=True)

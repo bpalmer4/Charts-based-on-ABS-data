@@ -384,8 +384,6 @@ def x_line_plot(selected: pd.DataFrame, tudds: Tudds) -> None:
     )
 
 
-
-
 def plot_all_zip_files(
     cat_id,
     verbose=False,
@@ -397,7 +395,10 @@ def plot_all_zip_files(
 
     def rule_if(verbose: bool, on: bool = False):
         if verbose:
-            print(f"{'vvv' if on else '^^^'}==================== {cat_id if on else ''}")
+            print(
+                f"{'vvv' if on else '^^^'}==================== {cat_id if on else ''}"
+            )
+
     rule_if(verbose, on=True)
 
     zip_suffix = ".zip"

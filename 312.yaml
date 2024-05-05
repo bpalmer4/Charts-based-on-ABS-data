@@ -24,7 +24,7 @@ dependencies:
   - scikit-learn 
   - nltk
   - pycountry
-  #- pmdarima
+  - pmdarima
   # Microsoft Excel 
   - openpyxl
   - xlrd

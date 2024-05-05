@@ -11,14 +11,14 @@ def percent_change(data: DataT, periods: int) -> DataT:
     return (data / data.shift(periods) - 1) * 100
 
 
-def annualise_rates(data: DataT, periods: int|float = 12) -> DataT:
+def annualise_rates(data: DataT, periods: int | float = 12) -> DataT:
     """Annualise a growth rate for a period.
     Note: returns a percentage (and not a rate)!"""
 
     return (((1 + data) ** periods) - 1) * 100
 
 
-def annualise_percentages(data: DataT, periods: int|float = 12) -> DataT:
+def annualise_percentages(data: DataT, periods: int | float = 12) -> DataT:
     """Annualise a growth rate (expressed as a percentage) for a period."""
 
     rates = data / 100.0

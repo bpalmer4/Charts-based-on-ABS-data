@@ -252,7 +252,7 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
 # === Data capture from the ABS
 # private
 def _get_abs_page(
-        page: AbsLandingPage, 
+    page: AbsLandingPage,
 ) -> bytes:
     """Return the HTML for the ABS topic landing page."""
 
@@ -279,7 +279,7 @@ def _prefix_url(url: str) -> str:
 def get_data_links(
     landing_page: AbsLandingPage,
     verbose: bool = False,
-    inspect = "",  # for debugging - save the landing page to disk
+    inspect="",  # for debugging - save the landing page to disk
 ) -> dict[str, list[str]]:
     """Scan the ABS landing page for links to ZIP files and for
     links to Microsoft Excel files. Return the links in
@@ -325,8 +325,8 @@ def get_data_links(
 
 # private
 def _get_abs_zip_file(
-    landing_page: AbsLandingPage, 
-    zip_table: int, 
+    landing_page: AbsLandingPage,
+    zip_table: int,
     verbose: bool,
     inspect: str,
 ) -> bytes:
@@ -453,7 +453,8 @@ def _unpack_excel_into_df(
     if freq:
         if freq in ("Q", "A"):
             month = calendar.month_abbr[
-                cast(pd.PeriodIndex, data.index).month.max()].upper()
+                cast(pd.PeriodIndex, data.index).month.max()
+            ].upper()
             freq = f"{freq}-{month}"
         if isinstance(data.index, pd.DatetimeIndex):
             data = data.to_period(freq=freq)
@@ -590,8 +591,8 @@ def _get_all_dataframes(zip_file: bytes, verbose: bool) -> AbsDict:
 # public
 @cache
 def get_abs_data(
-    landing_page: AbsLandingPage, 
-    zip_table: int = 0, 
+    landing_page: AbsLandingPage,
+    zip_table: int = 0,
     verbose: bool = False,
     inspect: str = "",  # filename for saving the webpage
 ) -> AbsDict:
@@ -610,7 +611,7 @@ def get_abs_data(
             zip_file not to be recovered and for individual
             excel files to be recovered from the ABS
      - verbose - display additional web-scraping and caching information.
-     - inspect - save the webpage to disk for inspection - 
+     - inspect - save the webpage to disk for inspection -
             inspect is the file name."""
 
     if verbose:

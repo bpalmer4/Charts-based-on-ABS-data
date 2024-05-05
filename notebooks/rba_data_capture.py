@@ -144,7 +144,7 @@ def get_data(label: str) -> tuple[pd.DataFrame, pd.DataFrame] | None:
     return meta.T.dropna(how="all", axis=1), data.sort_index()
 
 
-def get_ocr_data(freq: str = 'M') -> pd.Series:
+def get_ocr_data(freq: str = "M") -> pd.Series:
     """Get the official cash rate (OCR) data from the RBA website.
     Get with either a monthly or daily frequency PeriodIndex.
     Ensure there is a data point for every period within the series."""
@@ -156,9 +156,9 @@ def get_ocr_data(freq: str = 'M') -> pd.Series:
 
     # get the OCR data
     _a2_meta, a2_data = a2
-    ocr = a2_data['ARBAMPCNCRT']
+    ocr = a2_data["ARBAMPCNCRT"]
     ocr.index = pd.PeriodIndex(ocr.index, freq=freq)
-    drops = ocr.index.duplicated(keep='last')  # Do we need to drop duplicates?
+    drops = ocr.index.duplicated(keep="last")  # Do we need to drop duplicates?
     ocr = ocr[~drops]
 
     # add today's data if it is missing (because it usually is)
