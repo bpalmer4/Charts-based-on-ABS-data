@@ -947,7 +947,7 @@ def get_single_series(
         print(f"Search terms:\n{search_terms}")
 
     series_id, unit = find_id(meta, search_terms, verbose=verbose)
-    series = data[series_id]
+    series = data[series_id].copy(deep=True)
     if selector.calc_growth:
         periods = 4 if cast(pd.PeriodIndex, series.index).freqstr[0] == "Q" else 12
         series = (series / series.shift(periods) - 1) * 100.0
