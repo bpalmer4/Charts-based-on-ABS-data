@@ -42,7 +42,7 @@ from collections import namedtuple
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import Any, Callable, Final, TypeVar, TypeAlias, cast
+from typing import Any, Callable, Final, TypeVar, TypeAlias, cast, Sequence
 
 # analytical imports
 import pandas as pd
@@ -732,6 +732,79 @@ def get_identifier(
     }
 
     return find_id(meta, search, exact=False, verbose=verbose)
+
+
+# === Get ABS data using catalogue numbers and series identifiers
+# public
+@cache
+def get_abs_directory() -> pd.Series:
+    """Return a Series of ABS landing pages for all
+    ABS Catalogue numbers."""
+
+    # get ABS web page of catalogue numbers
+    url = "https://www.abs.gov.au/about/data-services/help/abs-time-series-directory"
+    page = common.get_file(url, _CACHE_PATH, cache_name_prefix="ABS_DIRECTORY")
+    links = pd.read_html(page, extract_links='body')[1]  # second table on the page
+
+    # extract catalogue numbers
+    cats = links['Catalogue Number'].apply(pd.Series)[0]
+
+    # extract landing pages
+    root = "https://www.abs.gov.au/statistics/"
+    topics = links['Topic'].apply(pd.Series)[1].apply(str).str.replace(root, "")
+    topics = topics[~topics.str.contains("http")]  # remove bad links
+    landings = topics.str.split("/").apply(lambda x: AbsLandingPage( *(x[0:3])) )
+
+    # combine and return
+    cats = cats.loc[landings.index]
+    landings.index = cats
+    landings.index.name = "Catalogue Number"
+    landings.name = "Landing Page"
+    return landings
+
+
+# public
+def get_abs_series(
+    cat_id: str,
+    series_ids: Sequence[str]|str,
+    **kwargs: Any,  # passed to get_abs_data()
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Get selected ABS selected items.
+    Arguments:
+     - cat_id - string - ABS catalogue number
+     - series_ids - a string or a list of strings - series identifiers
+     - kwargs - additional arguments for get_abs_data()
+    Returns two data frames:
+     - the first is the metadata for the series_ids
+     - the second is the actual data for the series_ids
+    Both dataframes will be empty if the series_ids are not found."""
+
+    # get the ABS landing page directory, check we are in the directory
+    landings = get_abs_directory()
+    if cat_id not in landings.index:
+        print(f"Catalogue number {cat_id} not found in ABS directory.")
+        return pd.DataFrame(), pd.DataFrame()
+
+    # get the key data from the ABS landing page
+    landing_page = landings[cat_id]
+    abs_dict = get_abs_data(landing_page, **kwargs)
+    meta = abs_dict[META_DATA]
+    if isinstance(series_ids, str):
+        series_ids = [series_ids]
+
+    # get the data for each series
+    r_meta, r_data = {}, {}
+    for series_id in series_ids:
+        if meta[metacol.id].str.contains(series_id).sum() == 0:
+            print(f"Could not find series {series_id} in the metadata.")
+            continue
+        series_meta = meta[meta[metacol.id] == series_id].iloc[0]
+        r_meta[series_id] = series_meta
+        table = series_meta[metacol.table]
+        data = abs_dict[table][series_id].copy()
+        r_data[series_id] = data
+    
+    return pd.DataFrame(r_meta), pd.DataFrame(r_data)
 
 
 # === simplified plotting of ABS data ...
