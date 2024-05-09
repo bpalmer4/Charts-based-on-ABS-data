@@ -1,0 +1,44 @@
+digraph {
+	llambda [label="llambda
+~
+Normal" shape=ellipse]
+	beta2 [label="beta2
+~
+Normal" shape=ellipse]
+	beta3 [label="beta3
+~
+Normal" shape=ellipse]
+	gamma [label="gamma
+~
+Normal" shape=ellipse]
+	alpha [label="alpha
+~
+Normal" shape=ellipse]
+	beta1 [label="beta1
+~
+Normal" shape=ellipse]
+	delta [label="delta
+~
+Normal" shape=ellipse]
+	nairu_innovation [label="nairu_innovation
+~
+Normal" shape=ellipse]
+	subgraph cluster153 {
+		nairu [label="nairu
+~
+RandomWalk" shape=ellipse]
+		observed_inflation [label="observed_inflation
+~
+Normal" shape=ellipse style=filled]
+		label=153 labeljust=r labelloc=b style=rounded
+	}
+	nairu_innovation -> nairu
+	llambda -> observed_inflation
+	beta2 -> observed_inflation
+	beta3 -> observed_inflation
+	gamma -> observed_inflation
+	alpha -> observed_inflation
+	nairu -> observed_inflation
+	beta1 -> observed_inflation
+	delta -> observed_inflation
+}
