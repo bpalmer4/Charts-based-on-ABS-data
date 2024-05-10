@@ -1,44 +1,88 @@
 digraph {
-	llambda [label="llambda
+	omega2_l [label="omega2_l
 ~
 Normal" shape=ellipse]
-	beta2 [label="beta2
+	const_l [label="const_l
 ~
 Normal" shape=ellipse]
-	beta3 [label="beta3
+	omega1_l [label="omega1_l
 ~
 Normal" shape=ellipse]
-	gamma [label="gamma
+	chi3_i [label="chi3_i
 ~
 Normal" shape=ellipse]
-	alpha [label="alpha
+	beta3_i [label="beta3_i
 ~
 Normal" shape=ellipse]
-	beta1 [label="beta1
+	const_i [label="const_i
 ~
 Normal" shape=ellipse]
-	delta [label="delta
+	llambda_l [label="llambda_l
+~
+Normal" shape=ellipse]
+	chi1_i [label="chi1_i
+~
+Normal" shape=ellipse]
+	llambda_i [label="llambda_i
+~
+Normal" shape=ellipse]
+	gamma_l [label="gamma_l
+~
+Normal" shape=ellipse]
+	beta2_i [label="beta2_i
+~
+Normal" shape=ellipse]
+	beta1_i [label="beta1_i
+~
+Normal" shape=ellipse]
+	gamma_i [label="gamma_i
 ~
 Normal" shape=ellipse]
 	nairu_innovation [label="nairu_innovation
 ~
 Normal" shape=ellipse]
-	subgraph cluster153 {
+	chi2_i [label="chi2_i
+~
+Normal" shape=ellipse]
+	delta_l [label="delta_l
+~
+Normal" shape=ellipse]
+	alpha_i [label="alpha_i
+~
+Normal" shape=ellipse]
+	delta_i [label="delta_i
+~
+Normal" shape=ellipse]
+	subgraph cluster152 {
 		nairu [label="nairu
 ~
 RandomWalk" shape=ellipse]
-		observed_inflation [label="observed_inflation
+		observed_l [label="observed_l
 ~
 Normal" shape=ellipse style=filled]
-		label=153 labeljust=r labelloc=b style=rounded
+		observed_i [label="observed_i
+~
+Normal" shape=ellipse style=filled]
+		label=152 labeljust=r labelloc=b style=rounded
 	}
 	nairu_innovation -> nairu
-	llambda -> observed_inflation
-	beta2 -> observed_inflation
-	beta3 -> observed_inflation
-	gamma -> observed_inflation
-	alpha -> observed_inflation
-	nairu -> observed_inflation
-	beta1 -> observed_inflation
-	delta -> observed_inflation
+	chi3_i -> observed_i
+	nairu -> observed_i
+	const_i -> observed_i
+	beta3_i -> observed_i
+	chi1_i -> observed_i
+	llambda_i -> observed_i
+	beta2_i -> observed_i
+	beta1_i -> observed_i
+	gamma_i -> observed_i
+	chi2_i -> observed_i
+	alpha_i -> observed_i
+	delta_i -> observed_i
+	gamma_l -> observed_l
+	const_l -> observed_l
+	omega2_l -> observed_l
+	omega1_l -> observed_l
+	nairu -> observed_l
+	delta_l -> observed_l
+	llambda_l -> observed_l
 }
