@@ -1,88 +1,40 @@
 digraph {
-	omega2_l [label="omega2_l
-~
-Normal" shape=ellipse]
-	const_l [label="const_l
-~
-Normal" shape=ellipse]
-	omega1_l [label="omega1_l
-~
-Normal" shape=ellipse]
-	chi3_i [label="chi3_i
-~
-Normal" shape=ellipse]
-	beta3_i [label="beta3_i
-~
-Normal" shape=ellipse]
-	const_i [label="const_i
-~
-Normal" shape=ellipse]
-	llambda_l [label="llambda_l
-~
-Normal" shape=ellipse]
-	chi1_i [label="chi1_i
-~
-Normal" shape=ellipse]
-	llambda_i [label="llambda_i
-~
-Normal" shape=ellipse]
-	gamma_l [label="gamma_l
-~
-Normal" shape=ellipse]
-	beta2_i [label="beta2_i
-~
-Normal" shape=ellipse]
-	beta1_i [label="beta1_i
-~
-Normal" shape=ellipse]
-	gamma_i [label="gamma_i
-~
-Normal" shape=ellipse]
-	nairu_innovation [label="nairu_innovation
-~
-Normal" shape=ellipse]
-	chi2_i [label="chi2_i
-~
-Normal" shape=ellipse]
-	delta_l [label="delta_l
-~
-Normal" shape=ellipse]
-	alpha_i [label="alpha_i
-~
-Normal" shape=ellipse]
-	delta_i [label="delta_i
-~
-Normal" shape=ellipse]
 	subgraph cluster152 {
 		nairu [label="nairu
 ~
 RandomWalk" shape=ellipse]
-		observed_l [label="observed_l
-~
-Normal" shape=ellipse style=filled]
-		observed_i [label="observed_i
+		observed_inf [label="observed_inf
 ~
 Normal" shape=ellipse style=filled]
 		label=152 labeljust=r labelloc=b style=rounded
 	}
-	nairu_innovation -> nairu
-	chi3_i -> observed_i
-	nairu -> observed_i
-	const_i -> observed_i
-	beta3_i -> observed_i
-	chi1_i -> observed_i
-	llambda_i -> observed_i
-	beta2_i -> observed_i
-	beta1_i -> observed_i
-	gamma_i -> observed_i
-	chi2_i -> observed_i
-	alpha_i -> observed_i
-	delta_i -> observed_i
-	gamma_l -> observed_l
-	const_l -> observed_l
-	omega2_l -> observed_l
-	omega1_l -> observed_l
-	nairu -> observed_l
-	delta_l -> observed_l
-	llambda_l -> observed_l
+	"beta_𝝿3_inf" [label="beta_𝝿3_inf
+~
+Normal" shape=ellipse]
+	"beta_𝝿2_inf" [label="beta_𝝿2_inf
+~
+Normal" shape=ellipse]
+	gamma_ue_gap_inf [label="gamma_ue_gap_inf
+~
+Normal" shape=ellipse]
+	lambda_ur_inf [label="lambda_ur_inf
+~
+Normal" shape=ellipse]
+	"delta_𝝿e_inf" [label="delta_𝝿e_inf
+~
+Normal" shape=ellipse]
+	alpha_mp_inf [label="alpha_mp_inf
+~
+Normal" shape=ellipse]
+	"beta_𝝿1_inf" [label="beta_𝝿1_inf
+~
+Normal" shape=ellipse]
+	"beta_𝝿3_inf" -> observed_inf
+	nairu -> observed_inf
+	gamma_ue_gap_inf -> observed_inf
+	"beta_𝝿2_inf" -> observed_inf
+	lambda_ur_inf -> observed_inf
+	"delta_𝝿e_inf" -> observed_inf
+	alpha_mp_inf -> observed_inf
+	"beta_𝝿1_inf" -> observed_inf
 }
