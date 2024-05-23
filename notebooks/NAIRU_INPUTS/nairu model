@@ -1,60 +1,64 @@
 digraph {
 	subgraph cluster157 {
+		observed_price_inflation [label="observed_price_inflation
+~
+Normal" shape=ellipse style=filled]
 		nairu [label="nairu
 ~
 RandomWalk" shape=ellipse]
 		observed_wage_growth [label="observed_wage_growth
 ~
 Normal" shape=ellipse style=filled]
-		observed_price_inflation [label="observed_price_inflation
-~
-Normal" shape=ellipse style=filled]
 		label=157 labeljust=r labelloc=b style=rounded
 	}
-	delta_inf [label="delta_inf
-~
-Normal" shape=ellipse]
-	beta1_inf [label="beta1_inf
-~
-Normal" shape=ellipse]
-	lambda_inf [label="lambda_inf
-~
-Normal" shape=ellipse]
-	beta2_inf [label="beta2_inf
-~
-Normal" shape=ellipse]
-	lambda_lab [label="lambda_lab
+	gamma_inf [label="gamma_inf
 ~
 Normal" shape=ellipse]
 	beta3_inf [label="beta3_inf
 ~
 Normal" shape=ellipse]
-	const_lab [label="const_lab
+	beta2_inf [label="beta2_inf
+~
+Normal" shape=ellipse]
+	lambda_inf [label="lambda_inf
+~
+Normal" shape=ellipse]
+	lambda_lab [label="lambda_lab
 ~
 Normal" shape=ellipse]
 	omega_lab [label="omega_lab
 ~
 Normal" shape=ellipse]
-	gamma_inf [label="gamma_inf
-~
-Normal" shape=ellipse]
-	gamma_lab [label="gamma_lab
+	const_lab [label="const_lab
 ~
 Normal" shape=ellipse]
 	alpha_inf [label="alpha_inf
 ~
 Normal" shape=ellipse]
-	delta_inf -> observed_price_inflation
-	beta1_inf -> observed_price_inflation
+	beta1_inf [label="beta1_inf
+~
+Normal" shape=ellipse]
+	delta_lab [label="delta_lab
+~
+Normal" shape=ellipse]
+	gamma_lab [label="gamma_lab
+~
+Normal" shape=ellipse]
+	delta_inf [label="delta_inf
+~
+Normal" shape=ellipse]
+	gamma_inf -> observed_price_inflation
+	beta3_inf -> observed_price_inflation
 	lambda_inf -> observed_price_inflation
 	beta2_inf -> observed_price_inflation
 	nairu -> observed_price_inflation
-	beta3_inf -> observed_price_inflation
-	gamma_inf -> observed_price_inflation
 	alpha_inf -> observed_price_inflation
+	beta1_inf -> observed_price_inflation
+	delta_inf -> observed_price_inflation
 	lambda_lab -> observed_wage_growth
-	const_lab -> observed_wage_growth
 	nairu -> observed_wage_growth
-	gamma_lab -> observed_wage_growth
 	omega_lab -> observed_wage_growth
+	const_lab -> observed_wage_growth
+	delta_lab -> observed_wage_growth
+	gamma_lab -> observed_wage_growth
 }
