@@ -1,40 +1,60 @@
 digraph {
-	subgraph cluster152 {
+	subgraph cluster157 {
 		nairu [label="nairu
 ~
 RandomWalk" shape=ellipse]
-		observed_inf [label="observed_inf
+		observed_wage_growth [label="observed_wage_growth
 ~
 Normal" shape=ellipse style=filled]
-		label=152 labeljust=r labelloc=b style=rounded
+		observed_price_inflation [label="observed_price_inflation
+~
+Normal" shape=ellipse style=filled]
+		label=157 labeljust=r labelloc=b style=rounded
 	}
-	"beta_𝝿3_inf" [label="beta_𝝿3_inf
+	delta_inf [label="delta_inf
 ~
 Normal" shape=ellipse]
-	"beta_𝝿2_inf" [label="beta_𝝿2_inf
+	beta1_inf [label="beta1_inf
 ~
 Normal" shape=ellipse]
-	gamma_ue_gap_inf [label="gamma_ue_gap_inf
+	lambda_inf [label="lambda_inf
 ~
 Normal" shape=ellipse]
-	lambda_ur_inf [label="lambda_ur_inf
+	beta2_inf [label="beta2_inf
 ~
 Normal" shape=ellipse]
-	"delta_𝝿e_inf" [label="delta_𝝿e_inf
+	lambda_lab [label="lambda_lab
 ~
 Normal" shape=ellipse]
-	alpha_mp_inf [label="alpha_mp_inf
+	beta3_inf [label="beta3_inf
 ~
 Normal" shape=ellipse]
-	"beta_𝝿1_inf" [label="beta_𝝿1_inf
+	const_lab [label="const_lab
 ~
 Normal" shape=ellipse]
-	"beta_𝝿3_inf" -> observed_inf
-	nairu -> observed_inf
-	gamma_ue_gap_inf -> observed_inf
-	"beta_𝝿2_inf" -> observed_inf
-	lambda_ur_inf -> observed_inf
-	"delta_𝝿e_inf" -> observed_inf
-	alpha_mp_inf -> observed_inf
-	"beta_𝝿1_inf" -> observed_inf
+	omega_lab [label="omega_lab
+~
+Normal" shape=ellipse]
+	gamma_inf [label="gamma_inf
+~
+Normal" shape=ellipse]
+	gamma_lab [label="gamma_lab
+~
+Normal" shape=ellipse]
+	alpha_inf [label="alpha_inf
+~
+Normal" shape=ellipse]
+	delta_inf -> observed_price_inflation
+	beta1_inf -> observed_price_inflation
+	lambda_inf -> observed_price_inflation
+	beta2_inf -> observed_price_inflation
+	nairu -> observed_price_inflation
+	beta3_inf -> observed_price_inflation
+	gamma_inf -> observed_price_inflation
+	alpha_inf -> observed_price_inflation
+	lambda_lab -> observed_wage_growth
+	const_lab -> observed_wage_growth
+	nairu -> observed_wage_growth
+	gamma_lab -> observed_wage_growth
+	omega_lab -> observed_wage_growth
 }
