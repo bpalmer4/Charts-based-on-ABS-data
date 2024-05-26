@@ -1,41 +1,29 @@
 digraph {
 	subgraph cluster157 {
-		observed_wage_growth [label="observed_wage_growth
-~
-Normal" shape=ellipse style=filled]
 		nairu [label="nairu
 ~
 RandomWalk" shape=ellipse]
 		observed_price_inflation [label="observed_price_inflation
 ~
 Normal" shape=ellipse style=filled]
+		observed_wage_growth [label="observed_wage_growth
+~
+Normal" shape=ellipse style=filled]
 		label=157 labeljust=r labelloc=b style=rounded
 	}
-	lambda_pi [label="lambda_pi
-~
-Normal" shape=ellipse]
-	beta1_pi [label="beta1_pi
-~
-Normal" shape=ellipse]
-	delta_wg [label="delta_wg
-~
-Normal" shape=ellipse]
-	delta_pi [label="delta_pi
-~
-Normal" shape=ellipse]
-	xi_2sq_pi [label="xi_2sq_pi
-~
-Normal" shape=ellipse]
 	gamma_pi [label="gamma_pi
-~
-Normal" shape=ellipse]
-	gamma_wg [label="gamma_wg
 ~
 Normal" shape=ellipse]
 	beta2_pi [label="beta2_pi
 ~
 Normal" shape=ellipse]
+	xi_2sq_pi [label="xi_2sq_pi
+~
+Normal" shape=ellipse]
 	lambda_wg [label="lambda_wg
+~
+Normal" shape=ellipse]
+	delta_wg [label="delta_wg
 ~
 Normal" shape=ellipse]
 	sigma_wg [label="sigma_wg
@@ -47,22 +35,34 @@ Normal" shape=ellipse]
 	sigma_pi [label="sigma_pi
 ~
 Normal" shape=ellipse]
+	gamma_wg [label="gamma_wg
+~
+Normal" shape=ellipse]
+	lambda_pi [label="lambda_pi
+~
+Normal" shape=ellipse]
 	beta_wg [label="beta_wg
 ~
 Normal" shape=ellipse]
-	lambda_pi -> observed_price_inflation
-	beta1_pi -> observed_price_inflation
-	nairu -> observed_price_inflation
-	delta_pi -> observed_price_inflation
-	xi_2sq_pi -> observed_price_inflation
+	delta_pi [label="delta_pi
+~
+Normal" shape=ellipse]
+	beta1_pi [label="beta1_pi
+~
+Normal" shape=ellipse]
 	gamma_pi -> observed_price_inflation
 	beta2_pi -> observed_price_inflation
+	xi_2sq_pi -> observed_price_inflation
 	alpha_pi -> observed_price_inflation
 	sigma_pi -> observed_price_inflation
-	gamma_wg -> observed_wage_growth
-	lambda_wg -> observed_wage_growth
-	delta_wg -> observed_wage_growth
-	sigma_wg -> observed_wage_growth
+	lambda_pi -> observed_price_inflation
+	delta_pi -> observed_price_inflation
+	nairu -> observed_price_inflation
+	beta1_pi -> observed_price_inflation
 	nairu -> observed_wage_growth
 	beta_wg -> observed_wage_growth
+	lambda_wg -> observed_wage_growth
+	delta_wg -> observed_wage_growth
+	gamma_wg -> observed_wage_growth
+	sigma_wg -> observed_wage_growth
 }
