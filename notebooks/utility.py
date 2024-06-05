@@ -1,5 +1,6 @@
 from typing import TypeVar, Optional, cast
 from pandas import Series, DataFrame, PeriodIndex, DatetimeIndex
+from numpy import nan
 
 # - define a useful typevar for working with both Series and DataFrames
 DataT = TypeVar("DataT", Series, DataFrame)
@@ -76,22 +77,13 @@ def qtly_to_monthly(
 
 
 def monthly_to_qtly(data: DataT, q_ending="DEC") -> DataT:
-    """Convert monthly PeriodIndex data to quarterly PeriodIndex data."""
+    """Convert monthly data to quarterly data by taking the mean of
+    the three months in each quarter. Ignore quarters with less than
+    three months data. Drop NA items."""
 
     return (
-        data.pipe(
-            lambda x: x.set_axis(
-                labels=cast(PeriodIndex, x.index).to_timestamp(how="end"),
-                axis="index",
-                copy=True,
-            )
-        )
-        .resample(rule="QE")
-        .mean()
-        .pipe(
-            lambda x: x.set_axis(
-                labels=cast(DatetimeIndex, x.index).to_period(freq=f"Q-{q_ending}"),
-                axis="index",
-            )
-        )
+        data.groupby(PeriodIndex(data.index, freq=f"Q-{q_ending}"))
+        .agg(["mean", "count"])
+        .apply(lambda x: x["mean"] if x["count"] == 3 else nan, axis=1)
+        .dropna()
     )
