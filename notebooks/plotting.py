@@ -620,13 +620,13 @@ def plot_covid_recovery(series: Series, verbose=False, **kwargs) -> None:
         # set programatically
         if freq in ["M", "D"]:
             # assume last unaffected month is January 2020
-            start_regression = pd.Period("2017-01-31", freq=freq)
+            start_regression = pd.Period("2015-01-31", freq=freq)
             end_regression = pd.Period("2020-01-31", freq=freq)
         else:
             # assume last unaffected quarter ends in December 2019
             # but allow for odd quarters such as with Job Vacancies
             full_freq = series.index.freq
-            start_regression = pd.Period("2016-11-01", freq=full_freq)
+            start_regression = pd.Period("2014-11-01", freq=full_freq)
             end_regression = pd.Period("2019-11-01", freq=full_freq)
 
     recent = series[series.index >= start_regression]
