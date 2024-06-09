@@ -25,6 +25,7 @@ dependencies:
   - nltk
   - pycountry
   - pmdarima
+  - pandasdmx
   # Microsoft Excel 
   - openpyxl
   - xlrd
