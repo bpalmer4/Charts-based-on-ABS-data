@@ -1,25 +1,10 @@
 digraph {
-	subgraph cluster158 {
-		nairu [label="nairu
-~
-RandomWalk" shape=ellipse]
-		observed_price_inflation [label="observed_price_inflation
-~
-Normal" shape=ellipse style=filled]
-		observed_wage_growth [label="observed_wage_growth
-~
-Normal" shape=ellipse style=filled]
-		label=158 labeljust=r labelloc=b style=rounded
-	}
 	gamma_pi [label="gamma_pi
 ~
 Normal" shape=ellipse]
 	epsilon_pi [label="epsilon_pi
 ~
 HalfNormal" shape=ellipse]
-	xi_2sq_pi [label="xi_2sq_pi
-~
-Normal" shape=ellipse]
 	delta_wg [label="delta_wg
 ~
 Normal" shape=ellipse]
@@ -35,6 +20,9 @@ Normal" shape=ellipse]
 	gamma_wg [label="gamma_wg
 ~
 Normal" shape=ellipse]
+	nairu [label="nairu
+~
+Normal" shape=ellipse]
 	beta1_pi [label="beta1_pi
 ~
 Normal" shape=ellipse]
@@ -47,14 +35,22 @@ Normal" shape=ellipse]
 	beta_wg [label="beta_wg
 ~
 Normal" shape=ellipse]
+	subgraph cluster13 {
+		observed_price_inflation [label="observed_price_inflation
+~
+Normal" shape=ellipse style=filled]
+		observed_wage_growth [label="observed_wage_growth
+~
+Normal" shape=ellipse style=filled]
+		label=13 labeljust=r labelloc=b style=rounded
+	}
 	epsilon_pi -> observed_price_inflation
 	gamma_pi -> observed_price_inflation
-	beta2_pi -> observed_price_inflation
-	delta_pi -> observed_price_inflation
 	nairu -> observed_price_inflation
 	beta1_pi -> observed_price_inflation
-	xi_2sq_pi -> observed_price_inflation
+	beta2_pi -> observed_price_inflation
 	alpha_pi -> observed_price_inflation
+	delta_pi -> observed_price_inflation
 	lambda_wg -> observed_wage_growth
 	gamma_wg -> observed_wage_growth
 	nairu -> observed_wage_growth
