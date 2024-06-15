@@ -46,6 +46,7 @@ from typing import Any, Callable, Final, TypeVar, TypeAlias, cast, Sequence
 
 # analytical imports
 import pandas as pd
+import matplotlib.pyplot as plt
 from pandas import Series, DataFrame
 from bs4 import BeautifulSoup
 
@@ -59,6 +60,7 @@ from plotting import (
     state_colors,
     state_abbr,
     LEGEND_SET,
+    finalise_plot,
 )
 from utility import qtly_to_monthly
 
@@ -992,6 +994,69 @@ def plot_rows_seas_trend(
             ylabel=r_units,
             **kwargs,
         )
+
+
+def get_summary_data(to_get: dict, abs: AbsDict, md:pd.DataFrame) -> pd.DataFrame:
+    """Get required data items. If period is specified, calculate 
+    the percentage change. Return a DataFrame with the data."""
+    
+    data = pd.DataFrame()
+    for label, [code, period] in to_get.items():
+        selected = md[md[metacol.id] == code].iloc[0]
+        table = selected[metacol.table]
+        did = selected[metacol.did]
+        stype = selected[metacol.stype]
+        print(code, table, did, stype)
+        series = abs[table][code]
+        if period:
+            series = series.pct_change(periods=period, fill_method=None) * 100
+        data[label] = series
+    return data
+
+
+def plot_summary(
+        to_get: dict[str, list],
+        abs: AbsDict,  # abs data tables
+        md:pd.DataFrame,  # meta data
+        start:str,  # starting period for z-score calculation
+        middle=0.9,  # middle proportion of data
+        **kwargs: Any,
+) -> None:
+    """Calculate z-scores and plot. By-and-large ignore outliers,
+    unless there are outliers in the most recent print."""
+
+    summary = get_summary_data(to_get=to_get, abs=abs, md=md)[start:]
+    z = (summary - summary.mean()) / summary.std()
+    q = (round((1 - middle)/ 2, 2), round(1 - (1 - middle)/ 2, 2))
+    lmh = z.quantile(q=q).T  # get the middle section of data
+
+    # horizontal bar plot the middle of the data
+    scope = max(z.iloc[-1].abs().max(), lmh.abs().max().max())
+    ends = (scope + 0.1) if scope > 1.5 else 1.6
+    _fig, ax = plt.subplots()
+    ax.barh(y=lmh.index, width=lmh[q[1]]-lmh[q[0]], left=lmh[q[0]], 
+            color="#bbbbbb", label=f"Middle {middle*100:0.0f}% of prints")
+
+    # plot the latest data
+    ax.scatter(z.iloc[-1], z.columns, color="darkorange")
+    f_size = 10
+    row = z.index[-1]
+    for col in summary.columns:
+        ax.text(z.at[row, col], col, f'{summary.at[row, col]:.1f}', 
+                ha='center', va='center', size=f_size)
+
+    # plotting text
+    kwargs['title'] = kwargs.get("title", f"Summary at {z.index[-1]}")
+    kwargs['show'] = kwargs.get("show", False)
+    kwargs['xlabel'] = kwargs.get("xlabel", f"Z-scores for prints since {start}")
+    kwargs['ylabel'] = kwargs.get("ylabel", None)
+    kwargs['xlim'] = kwargs.get("xlim", (-ends, ends))
+    kwargs['legend'] = kwargs.get("legend", {"loc":"best", "fontsize":"xx-small"})
+    kwargs['x0'] = kwargs.get("x0", True)
+
+    # finalise
+    ax.tick_params(axis='y', labelsize=10)
+    finalise_plot(ax, **kwargs)
 
 
 # === Select multiple series from different ABS datasets
