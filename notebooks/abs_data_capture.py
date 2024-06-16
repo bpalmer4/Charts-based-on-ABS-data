@@ -996,17 +996,26 @@ def plot_rows_seas_trend(
         )
 
 
-def get_summary_data(to_get: dict, abs: AbsDict, md:pd.DataFrame) -> pd.DataFrame:
-    """Get required data items. If period is specified, calculate 
-    the percentage change. Return a DataFrame with the data."""
+# private
+def _get_summary_data(
+    to_get: dict[str, Sequence], 
+    abs: AbsDict, 
+    md:pd.DataFrame,
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """Get required data items. If period is specified, 
+    calculate the percentage change over that period. 
+    Return a DataFrame with the data."""
     
     data = pd.DataFrame()
     for label, [code, period] in to_get.items():
         selected = md[md[metacol.id] == code].iloc[0]
+        table_desc = selected[metacol.tdesc]
         table = selected[metacol.table]
         did = selected[metacol.did]
         stype = selected[metacol.stype]
-        print(code, table, did, stype)
+        if verbose:
+            print(code, table, table_desc, did, stype)
         series = abs[table][code]
         if period:
             series = series.pct_change(periods=period, fill_method=None) * 100
@@ -1014,49 +1023,78 @@ def get_summary_data(to_get: dict, abs: AbsDict, md:pd.DataFrame) -> pd.DataFram
     return data
 
 
+# public
 def plot_summary(
-        to_get: dict[str, list],
-        abs: AbsDict,  # abs data tables
-        md:pd.DataFrame,  # meta data
-        start:str,  # starting period for z-score calculation
-        middle=0.9,  # middle proportion of data
-        **kwargs: Any,
+    to_get: dict[str, list],
+    abs: AbsDict,  # abs data tables
+    md:pd.DataFrame,  # meta data
+    start:str,  # starting period for z-score calculation
+    **kwargs: Any,
 ) -> None:
-    """Calculate z-scores and plot. By-and-large ignore outliers,
-    unless there are outliers in the most recent print."""
+    """Calculate z-scores and plot. By-and recent print."""
 
-    summary = get_summary_data(to_get=to_get, abs=abs, md=md)[start:]
-    z = (summary - summary.mean()) / summary.std()
-    q = (round((1 - middle)/ 2, 2), round(1 - (1 - middle)/ 2, 2))
-    lmh = z.quantile(q=q).T  # get the middle section of data
-
-    # horizontal bar plot the middle of the data
-    scope = max(z.iloc[-1].abs().max(), lmh.abs().max().max())
-    ends = (scope + 0.1) if scope > 1.5 else 1.6
-    _fig, ax = plt.subplots()
-    ax.barh(y=lmh.index, width=lmh[q[1]]-lmh[q[0]], left=lmh[q[0]], 
-            color="#bbbbbb", label=f"Middle {middle*100:0.0f}% of prints")
-
-    # plot the latest data
-    ax.scatter(z.iloc[-1], z.columns, color="darkorange")
-    f_size = 10
-    row = z.index[-1]
-    for col in summary.columns:
-        ax.text(z.at[row, col], col, f'{summary.at[row, col]:.1f}', 
-                ha='center', va='center', size=f_size)
-
-    # plotting text
-    kwargs['title'] = kwargs.get("title", f"Summary at {z.index[-1]}")
+    # optional arguments
+    verbose = kwargs.get("verbose", False)
+    middle = kwargs.get("middle", 0.8)
+    plot_types = kwargs.get("plot_types", ["zscores", "scaled"])
     kwargs['show'] = kwargs.get("show", False)
-    kwargs['xlabel'] = kwargs.get("xlabel", f"Z-scores for prints since {start}")
     kwargs['ylabel'] = kwargs.get("ylabel", None)
-    kwargs['xlim'] = kwargs.get("xlim", (-ends, ends))
-    kwargs['legend'] = kwargs.get("legend", {"loc":"best", "fontsize":"xx-small"})
+    kwargs['legend'] = kwargs.get("legend", 
+        {"loc":"upper center", "fontsize":"xx-small", 
+         "bbox_to_anchor":(0.5, -0.15), "ncol":2})
     kwargs['x0'] = kwargs.get("x0", True)
 
-    # finalise
-    ax.tick_params(axis='y', labelsize=10)
-    finalise_plot(ax, **kwargs)
+    summary = _get_summary_data(to_get=to_get, abs=abs, md=md, verbose=verbose)[start:]
+    z_scores = (summary - summary.mean()) / summary.std()
+    z_scaled = (
+        (((z_scores - z_scores.min()) / (z_scores.max() - z_scores.min())) - 0.5)
+        * 2
+    )
+    q = (round((1 - middle)/ 2, 2), round(1 - (1 - middle)/ 2, 2))
+    kwargs['title'] = kwargs.get("title", f"Summary at {summary.index[-1]}")
+
+    for plot_type in plot_types:
+        if plot_type == "zscores":
+            data = z_scores
+            kwargs['xlabel'] = f"Z-scores for prints since {start}"
+        elif plot_type == "scaled":
+            data = z_scaled            
+            kwargs['xlabel'] = f"Scaled z-scores since {start}"
+        else:
+            print(f"Unknown plot type {plot_type}")
+            continue
+
+        # horizontal bar plot the middle of the data
+        lmh = data.quantile(q=q).T  # get the middle section of data
+        scope = max(data.iloc[-1].abs().max(), lmh.abs().max().max())
+        ends = 1.2 if plot_type == "scaled" else scope + 0.1
+        kwargs['xlim'] = (-ends, ends)
+        _fig, ax = plt.subplots()
+        ax.barh(y=lmh.index, width=lmh[q[1]]-lmh[q[0]], left=lmh[q[0]], 
+            color="#bbbbbb", label=f"Middle {middle*100:0.0f}% of prints")
+
+        # plot the latest data
+        ax.scatter(data.iloc[-1], data.columns, color="darkorange")
+        f_size = 10
+        row = data.index[-1]
+        for col in summary.columns:
+            ax.text(data.at[row, col], col, f'{summary.at[row, col]:.1f}', 
+                ha='center', va='center', size=f_size)
+            
+        # label extremes
+        if plot_type == "scaled":
+            ax.scatter(data.median(), data.columns, color="darkorchid",
+                       marker="x", s=5, label="Median")
+            for col in summary.columns:
+                ax.text(-ends, col, f" {summary[col].min():.1f}",
+                        ha='left', va='center', size=f_size)
+                ax.text(ends, col, f"{summary[col].max():.1f} ",
+                        ha='right', va='center', size=f_size)
+
+        # finalise
+        kwargs['pre_tag'] = plot_type
+        ax.tick_params(axis='y', labelsize=10)
+        finalise_plot(ax, **kwargs)
 
 
 # === Select multiple series from different ABS datasets
