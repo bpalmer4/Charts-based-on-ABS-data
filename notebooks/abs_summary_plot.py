@@ -1,14 +1,18 @@
 """abs_summary_plot.py
 ======================
-Produce a summary plot of the most recent key data items in their
-historical context. The data is normalised to z-scores and scaled."""
+Produce a summary plot of the most recent (specified) key data items in
+their historical context. The data is normalised to z-scores and scaled."""
 
+# system imports
+from typing import Any, Sequence
 
-# imports
+# analytic third-party imports
 import matplotlib.pyplot as plt
 import pandas as pd
-from typing import Any, Sequence
 from pandas import DataFrame
+from IPython.display import display
+
+# custom imports
 from abs_data_capture import AbsDict, metacol
 from plotting import finalise_plot
 
@@ -40,6 +44,41 @@ def _get_summary_data(
     return data
 
 
+def _calculate_z(
+    original: pd.DataFrame,  # only contains the data points of interest
+    middle: float,  # middle proportion of data to highlight (eg. 0.8)
+    verbose: bool = False,  # print the summary data
+) -> pd.DataFrame:
+    """Calculate z-scores, scaled z-scores and middle quantiles.
+    Return z_scores, z_scaled, q (which are the quantiles for the
+    start/end of the middle proportion of data to highlight)"""
+
+    # calculate z-scores, scaled scores and middle quantiles
+    z_scores = (original - original.mean()) / original.std()
+    z_scaled = (
+        # scale z-scores between -1 and +1
+        (((z_scores - z_scores.min()) / (z_scores.max() - z_scores.min())) - 0.5)
+        * 2
+    )
+    q = (round((1 - middle) / 2, 3), round(1 - (1 - middle) / 2, 3))
+
+    if verbose:
+        frame = DataFrame(
+            {
+                "count": original.count(),
+                "mean": original.mean(),
+                "median": original.median(),
+                "min shaded": original.quantile(q=q[0]),
+                "max shaded": original.quantile(q=q[1]),
+                "z-scores": z_scores.iloc[-1],
+                "scaled": z_scaled.iloc[-1],
+            }
+        )
+        display(frame)
+
+    return z_scores, z_scaled, q
+
+
 # public
 def plot_summary(
     to_get: dict[str, list],  # dictionary of daya items to get
@@ -51,7 +90,7 @@ def plot_summary(
     """Calculate z-scores and scaled z-scores and plot."""
 
     # optional arguments
-    verbose = kwargs.pop("verbose", False) 
+    verbose = kwargs.pop("verbose", False)
     middle = kwargs.pop("middle", 0.8)
     plot_types = kwargs.pop("plot_types", ["zscores", "scaled"])
 
@@ -70,47 +109,36 @@ def plot_summary(
     kwargs["x0"] = kwargs.get("x0", True)
 
     # get the data, calculate z-scores and scaled scores based on the start period
-    summary = _get_summary_data(to_get=to_get, abs_data=abs_data, md=md, verbose=verbose)
-    original = summary[start:]
-    z_scores = ((original - original.mean()) / original.std())
-    z_scaled = (
-        (((z_scores - z_scores.min()) 
-        / (z_scores.max() - z_scores.min())) - 0.5) * 2
-    )
-
-    # display a summary of the data
-    q = (round((1 - middle) / 2, 2), round(1 - (1 - middle) / 2, 2))
-    if verbose:
-        display(pd,DataFrame({
-            "count": original.count(),
-            "mean": original.mean(),
-            "median": original.median(),
-            "min shaded": original.quantile(q=q[0]),
-            "max shaded": original.quantile(q=q[1]),
-            "final z-scores": z_scores.iloc[-1],
-            "final scaled": z_scaled.iloc[-1],
-        }))
+    original = _get_summary_data(
+        to_get=to_get, abs_data=abs_data, md=md, verbose=verbose
+    )[start:]  # Note: original is trimmed to the final period of interest
+    z_scores, z_scaled, q = _calculate_z(original, middle, verbose=verbose)
 
     # plot as required by the plot_types argument
-    kwargs["title"] = kwargs.get("title", f"Summary at {summary.index[-1]}")
+    kwargs["title"] = kwargs.get("title", f"Summary at {original.index[-1]}")
     for plot_type in plot_types:
         if "xlabel" in kwargs:
-            print(f"Overriding xlabel: {kwargs['xlabel']}") 
+            print(f"Overriding xlabel: {kwargs['xlabel']}")
+        if "x0" in kwargs:
+            print(f"Overriding x0: {kwargs['x0']}")
         if plot_type == "zscores":
             adjusted = z_scores
             kwargs["xlabel"] = f"Z-scores for prints since {start}"
+            kwargs["x0"] = True
         elif plot_type == "scaled":
             adjusted = z_scaled
-            kwargs["xlabel"] = f"Scaled z-scores since {start}"
+            kwargs["xlabel"] = f"-1 to 1 scaled z-scores since {start}"
         else:
             print(f"Unknown plot type {plot_type}")
             continue
 
         # horizontal bar plot the middle of the data
         lo_hi = adjusted.quantile(q=q).T  # get the middle section of data
-        scope = max(adjusted.iloc[-1].abs().max(), lo_hi.abs().max().max())
-        ends = 1.2 if plot_type == "scaled" else scope + 0.1
-        kwargs["xlim"] = (-ends, ends)
+        span = 1.15
+        space = 0.15
+        low = min(adjusted.iloc[-1].min(), lo_hi.min().min(), -span) - space
+        high = max(adjusted.iloc[-1].max(), lo_hi.max().max(), span) + space
+        kwargs["xlim"] = (low, high)
         _fig, ax = plt.subplots()
         ax.barh(
             y=lo_hi.index,
@@ -134,8 +162,10 @@ def plot_summary(
                 size=f_size,
             )
 
-        # label extremes
+        # label extremes in the scaled plots
         if plot_type == "scaled":
+            ax.axvline(-1, color="#555555", linewidth=0.5, linestyle="--")
+            ax.axvline(1, color="#555555", linewidth=0.5, linestyle="--")
             ax.scatter(
                 adjusted.median(),
                 adjusted.columns,
@@ -146,7 +176,7 @@ def plot_summary(
             )
             for col in original.columns:
                 ax.text(
-                    -ends,
+                    low,
                     col,
                     f" {original[col].min():.1f}",
                     ha="left",
@@ -154,7 +184,7 @@ def plot_summary(
                     size=f_size,
                 )
                 ax.text(
-                    ends,
+                    high,
                     col,
                     f"{original[col].max():.1f} ",
                     ha="right",
@@ -169,3 +199,4 @@ def plot_summary(
 
         # pre-pare for next loop
         kwargs.pop("xlabel", None)
+        kwargs.pop("x0", None)
