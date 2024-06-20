@@ -26,6 +26,7 @@ dependencies:
   - pycountry
   - pmdarima
   - pandasdmx
+  - tabulate
   # Microsoft Excel 
   - openpyxl
   - xlrd
