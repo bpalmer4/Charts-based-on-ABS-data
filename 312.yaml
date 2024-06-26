@@ -7,6 +7,14 @@ channels:
 dependencies:
   # python version 3.12
   - python >=3.12, <3.13
+  # conda/pip - build - dist
+  - conda-build
+  - grayskull
+  - wheel
+  - setuptools
+  - pip
+  - build
+  - twine
   # Jupyter notebooks
   - jupyter 
   - jupyterlab 
