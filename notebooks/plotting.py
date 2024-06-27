@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Final, cast, TypeVar
 
 # data science imports
+import matplotlib as mpl
 import matplotlib.dates as mdates
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
@@ -22,6 +23,11 @@ import statsmodels.formula.api as smf
 
 # --- constants - default settings
 _DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
+
+# no need to set plotstyle elsewhere
+plt.style.use("fivethirtyeight")
+mpl.rcParams["font.size"] = 12
+
 
 DEFAULT_FILE_TYPE: Final[str] = "png"
 DEFAULT_FIG_SIZE: Final[tuple[float, float]] = (9.0, 4.5)
@@ -213,7 +219,7 @@ def _apply_annotations(axes, **kwargs) -> None:
                 kwargs[annotation],
                 ha=h_align,
                 va=v_align,
-                fontsize=9,
+                fontsize=8,
                 fontstyle="italic",
                 color="#999999",
             )
@@ -241,12 +247,12 @@ def _apply_kwargs(axes, **kwargs) -> None:
     if check_kwargs("y0"):
         low, high = axes.get_ylim()
         if low < 0 < high:
-            axes.axhline(y=0, lw=0.75, c="#555555")
+            axes.axhline(y=0, lw=0.66, c="#555555")
 
     if check_kwargs("x0"):
         low, high = axes.get_xlim()
         if low < 0 < high:
-            axes.axvline(x=0, lw=0.75, c="#555555")
+            axes.axvline(x=0, lw=0.66, c="#555555")
 
 
 # private
@@ -514,8 +520,8 @@ def line_plot(data: _DataT, **kwargs: Any) -> None:
             start = pd.Period(start, freq=cast(pd.PeriodIndex, df.index).freq)
         recent = df[df.index >= start] if start else df
         axes = None
-        for i, column in enumerate(recent.columns):
-            if recent[column].isna().all():
+        for i, column in enumerate(recent):
+            if (recent[column].isna()).all():
                 continue
             series = (
                 recent[column].dropna()
