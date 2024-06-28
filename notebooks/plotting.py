@@ -725,7 +725,7 @@ def plot_growth(
     annual: Series,
     periodic: Series,
     from_: str | pd.Timestamp | pd.Period | None = None,
-    annotate: bool = False,
+    annotate: bool | str | int = False,
     annotation_rounding: int = 1,
 ) -> None | plt.Axes:
     """Plot a bar and line percentage growth chart.
@@ -737,7 +737,7 @@ def plot_growth(
     # maximum number of bars to annotate
     max_annotation = 30
     style = {
-        "fontsize": "xx-small",
+        "fontsize": annotate,
         "fontname": "Helvetica",
     }
 
