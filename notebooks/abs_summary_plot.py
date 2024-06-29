@@ -13,7 +13,7 @@ from pandas import DataFrame
 from IPython.display import display
 
 # custom imports
-from readabs import metacol
+from readabs import metacol as mc
 from plotting import finalise_plot
 
 
@@ -30,11 +30,11 @@ def _get_summary_data(
 
     data = DataFrame()
     for label, [code, period] in to_get.items():
-        selected = md[md[metacol.id] == code].iloc[0]
-        table_desc = selected[metacol.tdesc]
-        table = selected[metacol.table]
-        did = selected[metacol.did]
-        stype = selected[metacol.stype]
+        selected = md[md[mc.id] == code].iloc[0]
+        table_desc = selected[mc.tdesc]
+        table = selected[mc.table]
+        did = selected[mc.did]
+        stype = selected[mc.stype]
         if verbose:
             print(code, table, table_desc, did, stype)
         series = abs_data[table][code]
@@ -111,7 +111,9 @@ def plot_summary(
     # get the data, calculate z-scores and scaled scores based on the start period
     original = _get_summary_data(
         to_get=to_get, abs_data=abs_data, md=md, verbose=verbose
-    )[start:]  # Note: original is trimmed to the final period of interest
+    )[
+        start:
+    ]  # Note: original is trimmed to the final period of interest
     z_scores, z_scaled, q = _calculate_z(original, middle, verbose=verbose)
 
     # plot as required by the plot_types argument
