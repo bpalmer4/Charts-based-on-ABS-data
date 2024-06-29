@@ -732,7 +732,7 @@ def plot_growth(
     Both pandas Series should have a quarterly or monthly
     PeriodIndex. Allow an option to annotate the bars, provided
     the number of bars is less than max_annotation, the value of
-    annotate is fontsize (suggest: "xx-small")."""
+    annotate is fontsize (suggest: "x-small")."""
 
     # maximum number of bars to annotate
     max_annotation = 30

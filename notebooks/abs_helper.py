@@ -1,12 +1,20 @@
-"""A collection of functions to make working with ABS data just a littel bit easier."""
+"""A collection of functions to make working with ABS data just a litte bit easier."""
 
+# === imports
 import pandas as pd
 import readabs as ra
 from plotting import set_chart_dir, clear_chart_dir
 
 
+# === data retrieval and initialisation
 def get_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
-    """Get ABS data, create plot directories."""
+    """Get ABS data for a specific catalogue number and create plot directories.
+    My standard set-up for notebooks that use ABS data. 
+    
+    Argument: an ABS catalogue number (as a string, eg. "6401.0")
+
+    Returns: the data in a dictionary, metadata, source and a recent date 
+    to plot from."""
 
     # get data
     abs_dict_, meta_ = ra.read_abs_cat(cat)
@@ -21,12 +29,28 @@ def get_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]
     return abs_dict_, meta_, source_, recent_
 
 
-# Useful constants for plotting
+# === Useful constants for plotting
 ANNUAL_CPI_TARGET_RANGE = {
     "ymin": 2,
     "ymax": 3,
     "color": "#dddddd",
     "label": "2-3% annual inflation target range",
+    "zorder": -1,
+}
+
+QUARTERLY_CPI_TARGET = {
+    "y": (pow(1.025, 0.25) - 1) * 100,
+    "linestyle": "dashed",
+    "linewidth": 0.75,
+    "color": "darkred",
+    "label": "Quarterly growth consistent with 2.5% annual inflation",
+}
+
+QUARTERLY_CPI_RANGE = {
+    "ymin": (pow(1.02, 0.25) - 1) * 100,
+    "ymax": (pow(1.03, 0.25) - 1) * 100,
+    "color": "#ffdddd",
+    "label": "Quarterly growth consistent with 2-3% annual inflation target",
     "zorder": -1,
 }
 
@@ -47,6 +71,4 @@ MONTHLY_CPI_TARGET = {
     "label": "Monthly growth consistent with a 2.5% annual inflation target",
     "zorder": -1,
 }
-
-
 

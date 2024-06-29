@@ -13,22 +13,22 @@ from pandas import DataFrame
 from IPython.display import display
 
 # custom imports
-from abs_data_capture import AbsDict, metacol
+from readabs import metacol
 from plotting import finalise_plot
 
 
 # private
 def _get_summary_data(
     to_get: dict[str, Sequence],
-    abs_data: AbsDict,
-    md: pd.DataFrame,
+    abs_data: dict[str, DataFrame],
+    md: DataFrame,
     verbose: bool = False,
-) -> pd.DataFrame:
+) -> DataFrame:
     """Get required data items. If period is specified,
     calculate the percentage change over that period.
     Return a DataFrame with the data."""
 
-    data = pd.DataFrame()
+    data = DataFrame()
     for label, [code, period] in to_get.items():
         selected = md[md[metacol.id] == code].iloc[0]
         table_desc = selected[metacol.tdesc]
@@ -45,10 +45,10 @@ def _get_summary_data(
 
 
 def _calculate_z(
-    original: pd.DataFrame,  # only contains the data points of interest
+    original: DataFrame,  # only contains the data points of interest
     middle: float,  # middle proportion of data to highlight (eg. 0.8)
     verbose: bool = False,  # print the summary data
-) -> pd.DataFrame:
+) -> DataFrame:
     """Calculate z-scores, scaled z-scores and middle quantiles.
     Return z_scores, z_scaled, q (which are the quantiles for the
     start/end of the middle proportion of data to highlight)"""
@@ -82,8 +82,8 @@ def _calculate_z(
 # public
 def plot_summary(
     to_get: dict[str, list],  # dictionary of daya items to get
-    abs_data: AbsDict,  # abs data tables
-    md: pd.DataFrame,  # meta data
+    abs_data: dict[str, DataFrame],  # abs data tables
+    md: DataFrame,  # meta data
     start: str,  # starting period for z-score calculation
     **kwargs: Any,
 ) -> None:
