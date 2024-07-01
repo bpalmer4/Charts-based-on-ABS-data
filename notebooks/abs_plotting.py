@@ -5,7 +5,7 @@ from typing import Any, Callable, Final
 from pandas import DataFrame, Series
 from readabs import recalibrate, search_meta
 from readabs import metacol as mc
-from plotting import seas_trend_plot, abbreviate, state_colors, LEGEND_SET, line_plot
+from plotting import seas_trend_plot, abbreviate, state_colors, state_abbr,  LEGEND_SET, line_plot
 
 
 # === Constants
@@ -204,3 +204,38 @@ def plot_rows_collectively(
         **kwargs,
     )
     # end plot_rows_collectively()
+
+
+# public
+def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
+    """Simplify complex ABS series names."""
+
+    check = [
+        "Chain volume measures",  # National Accounts,
+        "Chain Volume Measures",  # Business indicators,
+        "Chain Volume Measure",  # Retail Trade
+        "Current Prices",
+        "Current Price",
+        "Total (State)",
+        "Total (Industry)",
+        # Business Indicators
+        "CORP",
+        "TOTAL (SCP_SCOPE)",
+    ]
+    for c in check:
+        if c in title:
+            title = title.replace(f"{c} ;", "")
+            lfooter += f"{c}. "
+
+    for s, abbr in state_abbr.items():
+        title = title.replace(s, abbr)
+
+    title = (
+        title.replace(";", "")
+        .replace(" - ", " ")
+        .replace("    ", " ")
+        .replace("   ", " ")
+        .replace("  ", " ")
+        .strip()
+    )
+    return title, lfooter

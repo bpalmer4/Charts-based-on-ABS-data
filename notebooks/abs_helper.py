@@ -20,7 +20,7 @@ def get_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]
     abs_dict_, meta_ = ra.read_abs_cat(cat)
     source_ = f"ABS: {cat}"
     chart_dir = f"./CHARTS/{cat} - {ra.catalogue_map().loc[cat, "Topic"]}/"
-    recent_ = "2019-12-01"
+    recent_ = "2020-12-01"
 
     # create plot plot directories
     set_chart_dir(chart_dir)

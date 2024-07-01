@@ -41,7 +41,7 @@ COLOR_GREEN: Final[str] = "mediumseagreen"
 
 NARROW_WIDTH: Final[float] = 0.75
 WIDE_WIDTH: Final[float] = 2.0
-LEGEND_FONTSIZE: Final[str] = "x-small"
+LEGEND_FONTSIZE: Final[str] = "8"
 LEGEND_SET: Final[dict[str, Any]] = {"loc": "best", "fontsize": LEGEND_FONTSIZE}
 
 
@@ -575,7 +575,7 @@ def get_projection(original: Series, to_period: pd.Period) -> Series:
     to the to_period (inclusive). Returns projection over the whole
     period of the original series."""
 
-    y_regress = original[original.index <= to_period]
+    y_regress = original[original.index <= to_period].copy()
     x_regress = np.arange(len(y_regress))
     regress_data = DataFrame(
         {
@@ -635,7 +635,8 @@ def plot_covid_recovery(series: Series, verbose=False, **kwargs) -> None:
             start_regression = pd.Period("2014-11-01", freq=full_freq)
             end_regression = pd.Period("2019-11-01", freq=full_freq)
 
-    recent = series[series.index >= start_regression]
+    recent = series[series.index >= start_regression].copy()
+    recent.name = "Series"
     projection = get_projection(recent, end_regression)
     projection.name = "Pre-COVID projection"
     data_set = DataFrame([projection, recent]).T
@@ -816,7 +817,7 @@ def plot_growth(
                 color=COLOR_BLUE,
             )
 
-    locator = mdates.AutoDateLocator(minticks=4, maxticks=13)
+    locator = mdates.AutoDateLocator(minticks=4, maxticks=16)
     formatter = mdates.ConciseDateFormatter(locator)
     axes.xaxis.set_major_locator(locator)
     axes.xaxis.set_major_formatter(formatter)
