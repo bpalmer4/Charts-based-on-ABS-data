@@ -9,11 +9,11 @@ from plotting import set_chart_dir, clear_chart_dir
 # === data retrieval and initialisation
 def get_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
     """Get ABS data for a specific catalogue number and create plot directories.
-    My standard set-up for notebooks that use ABS data. 
-    
+    My standard set-up for notebooks that use ABS data.
+
     Argument: an ABS catalogue number (as a string, eg. "6401.0")
 
-    Returns: the data in a dictionary, metadata, source and a recent date 
+    Returns: the data in a dictionary, metadata, source and a recent date
     to plot from."""
 
     # get data
@@ -64,11 +64,10 @@ ANNUAL_CPI_TARGET = {
 }
 
 MONTHLY_CPI_TARGET = {
-    "y": (pow(1.025, 1.0/12.0) - 1) * 100,
+    "y": (pow(1.025, 1.0 / 12.0) - 1) * 100,
     "color": "darkred",
     "linewidth": 0.75,
     "linestyle": "--",
     "label": "Monthly growth consistent with a 2.5% annual inflation target",
     "zorder": -1,
 }
-

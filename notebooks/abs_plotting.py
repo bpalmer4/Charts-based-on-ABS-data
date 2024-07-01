@@ -5,7 +5,14 @@ from typing import Any, Callable, Final
 from pandas import DataFrame, Series
 from readabs import recalibrate, search_meta
 from readabs import metacol as mc
-from plotting import seas_trend_plot, abbreviate, state_colors, state_abbr,  LEGEND_SET, line_plot
+from plotting import (
+    seas_trend_plot,
+    abbreviate,
+    state_colors,
+    state_abbr,
+    LEGEND_SET,
+    line_plot,
+)
 
 
 # === Constants
