@@ -7,7 +7,7 @@ from plotting import set_chart_dir, clear_chart_dir
 
 
 # === data retrieval and initialisation
-def get_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
+def get_abs_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
     """Get ABS data for a specific catalogue number and create plot directories.
     My standard set-up for notebooks that use ABS data.
 
@@ -16,13 +16,13 @@ def get_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]
     Returns: the data in a dictionary, metadata, source and a recent date
     to plot from."""
 
-    # get data
+    # get data - 
     abs_dict_, meta_ = ra.read_abs_cat(cat)
     source_ = f"ABS: {cat}"
-    chart_dir = f"./CHARTS/{cat} - {ra.catalogue_map().loc[cat, "Topic"]}/"
     recent_ = "2020-12-01"
 
     # create plot plot directories
+    chart_dir = f"./CHARTS/{cat} - {ra.catalogue_map().loc[cat, "Topic"]}/"
     set_chart_dir(chart_dir)
     clear_chart_dir(chart_dir)
 
@@ -30,6 +30,16 @@ def get_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]
 
 
 # === Useful constants for plotting
+# CPI targets
+ANNUAL_CPI_TARGET = {
+    "y": 2.5,
+    "color": "gray",
+    "linestyle": "--",
+    "linewidth": 0.75,
+    "label": "2.5% annual inflation target",
+    "zorder": -1,
+}
+
 ANNUAL_CPI_TARGET_RANGE = {
     "ymin": 2,
     "ymax": 3,
@@ -51,15 +61,6 @@ QUARTERLY_CPI_RANGE = {
     "ymax": (pow(1.03, 0.25) - 1) * 100,
     "color": "#ffdddd",
     "label": "Quarterly growth consistent with 2-3% annual inflation target",
-    "zorder": -1,
-}
-
-ANNUAL_CPI_TARGET = {
-    "y": 2.5,
-    "color": "gray",
-    "linestyle": "--",
-    "linewidth": 0.75,
-    "label": "2.5% annual inflation target",
     "zorder": -1,
 }
 
