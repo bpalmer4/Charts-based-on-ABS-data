@@ -126,7 +126,8 @@ def set_chart_dir(chart_dir: str | None) -> None:
     so that it does not need to be included as an argument in each
     call to finalise_plot(). Create the directory if it does not exist."""
 
-    Path(chart_dir).mkdir(parents=True, exist_ok=True)
+    if chart_dir is not None:
+        Path(chart_dir).mkdir(parents=True, exist_ok=True)
     _chart_dir.set(chart_dir)
 
 
