@@ -38,6 +38,7 @@ dependencies:
   # Microsoft Excel 
   - openpyxl
   - xlrd
+  - pyxlsb
   # data base
   - pyarrow 
   - fastparquet 
