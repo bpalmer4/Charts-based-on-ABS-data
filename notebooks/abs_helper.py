@@ -16,7 +16,7 @@ def get_abs_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, 
     Returns: the data in a dictionary, metadata, source and a recent date
     to plot from."""
 
-    # get data - 
+    # get data -
     abs_dict_, meta_ = ra.read_abs_cat(cat)
     source_ = f"ABS: {cat}"
     recent_ = "2020-12-01"
