@@ -227,6 +227,11 @@ def _apply_annotations(axes, **kwargs) -> None:
 
 
 # private
+def _apply_late_kwargs(axes, **kwargs) -> None:
+    """Apply settings found in kwargs, after plotting the data."""
+    _apply_splat_kwargs(axes, _splat_kwargs, **kwargs)
+
+
 def _apply_kwargs(axes, **kwargs) -> None:
     """Apply settings found in kwargs."""
 
@@ -234,7 +239,6 @@ def _apply_kwargs(axes, **kwargs) -> None:
         return name in kwargs and kwargs[name]
 
     _apply_value_kwargs(axes, _value_kwargs, **kwargs)
-    _apply_splat_kwargs(axes, _splat_kwargs, **kwargs)
     _apply_annotations(axes, **kwargs)
 
     if check_kwargs("zero_y"):
@@ -338,6 +342,8 @@ def finalise_plot(axes, **kwargs) -> None:
     # tight layout
     fig = axes.figure
     fig.tight_layout(pad=1.1)
+
+    _apply_late_kwargs(axes, **kwargs)
 
     _save_to_file(fig, **kwargs)
 
@@ -722,7 +728,7 @@ def plot_series_highlighted(series: Series, **kwargs) -> plt.Axes:
 def plot_growth(
     annual: Series,
     periodic: Series,
-    from_: str | pd.Timestamp | pd.Period | None = None,
+    from_: str | pd.Period | None = None,
     annotate: bool | str | int = False,
     annotation_rounding: int = 1,
 ) -> None | plt.Axes:
@@ -747,9 +753,8 @@ def plot_growth(
         ), "Series index should be a PeriodIndex"
 
     # put our two series into a datadrame
-    frame = DataFrame([annual.copy(), periodic.copy()], index=["Annual", "Periodic"]).T
+    frame = DataFrame([annual, periodic], index=["Annual", "Periodic"]).T
 
-    # CHECK next block - has been reworked - Dec 2023
     df_period = cast(pd.PeriodIndex, frame.index).freqstr[:1]
     if not df_period or df_period not in "QM":
         print(f"Unrecognised frequency: {df_period} :")
@@ -760,10 +765,8 @@ def plot_growth(
     }[df_period]
 
     # set index to the middle of the period for selection
-    if from_:
-        if not isinstance(from_, pd.Period):
-            from_ = pd.Period(from_, freq=cast(pd.PeriodIndex, periodic.index).freq)
-        frame = frame[frame.index >= from_]
+    if from_ is not None:
+        frame = frame[from_:]
     frame = frame.to_timestamp(how="start")
     frame.index = frame.index + pd.Timedelta(days=adjustment)
 
