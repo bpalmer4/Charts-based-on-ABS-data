@@ -457,7 +457,10 @@ def _get_style_width_color_etc(
         minimum: float | int = min(
             i for i in list(k) + [float("inf")] if i >= item_count
         )
-        n_colours = int(minimum if minimum is not float("inf") else max(k))
+        if np.isinf(minimum):
+            n_colours = max(k)
+        else:
+            n_colours = int(minimum)
         color = colours[n_colours]
     else:
         color = kwargs["color"]

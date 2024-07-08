@@ -102,7 +102,7 @@ def plot_summary(
             # put the legend below the x-axis label
             "loc": "upper center",
             "fontsize": "xx-small",
-            "bbox_to_anchor": (0.5, -0.15),
+            "bbox_to_anchor": (0.5, -0.125),
             "ncol": 4,
         },
     )
