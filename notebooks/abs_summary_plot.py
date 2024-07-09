@@ -81,7 +81,7 @@ def _calculate_z(
 
 # public
 def plot_summary(
-    to_get: dict[str, list],  # dictionary of daya items to get
+    to_get: dict[str, list],  # {label: [series_id: str, n_periods_growth: int], ...}
     abs_data: dict[str, DataFrame],  # abs data tables
     md: DataFrame,  # meta data
     start: str,  # starting period for z-score calculation
