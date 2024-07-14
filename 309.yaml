@@ -1,0 +1,76 @@
+# micromamba env create -f 309.yaml
+name: 309
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  # python version 3.09
+  - python >=3.09, <3.10
+  # conda/pip - build - dist
+  - conda-build
+  - grayskull
+  - wheel
+  - setuptools
+  - pip
+  - build
+  - twine
+  # Jupyter notebooks
+  - jupyter 
+  - jupyterlab 
+  - nodejs 
+  - watermark
+  - jupyterlab-spellchecker 
+  - jupyterlab_code_formatter
+  # data science
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - statsmodels 
+  - scipy 
+  - scikit-learn 
+  - nltk
+  - pycountry
+  - pmdarima
+  - pandasdmx
+  - tabulate
+  # Microsoft Excel 
+  - openpyxl
+  - xlrd
+  - pyxlsb
+  # data base
+  - pyarrow 
+  - fastparquet 
+  - h5py
+  - arrow 
+  - polars 
+  # web stuff
+  - selenium
+  - webdriver-manager
+  - lxml 
+  - bs4
+  - requests_cache
+  # PyMC - Bayesian statistics
+  - pymc >= 5.12.0 
+  - pytensor >= 2.19
+  - numpyro
+  - jax
+  # python linters and formatters
+  - pylint 
+  - flake8 
+  - black 
+  - nbqa 
+  - ruff 
+  - isort
+  - mypy
+  - pandas-stubs
+  - types-Pillow
+  - types-Pygments 
+  - types-colorama 
+  - types-decorator 
+  - types-jsonschema 
+  - types-six 
+  - types-ujson
+  - types-beautifulsoup4
+  - types-requests
+
