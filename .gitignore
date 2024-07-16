@@ -27,4 +27,6 @@ notebooks/CHARTS/**
 notebooks/DATA/**
 notebooks/documents/**
 notebooks/LOGS/**
-notebooks/.vscode/**   
+notebooks/.vscode/**
+notebooks/OLD/**
+ 

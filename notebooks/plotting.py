@@ -620,7 +620,7 @@ def plot_covid_recovery(series: Series, verbose=False, **kwargs) -> None:
         raise ValueError("The series index must have a D, M or Q freq")
 
     # plot COVID counterfactural
-    freq = series.index.freqstr  # CHECK 
+    freq = series.index.freqstr  # CHECK
     if "start_r" in kwargs and "end_r" in kwargs:
         # set COVID regression using a bespoke range
         # Note must set both start_r and end_r
@@ -629,7 +629,9 @@ def plot_covid_recovery(series: Series, verbose=False, **kwargs) -> None:
         end_regression = pd.Period(kwargs.pop("end_r"), freq=freq)
         assert start_regression < end_regression
         if verbose:
-            print(f"Bespoke pre-COVID regression from {start_regression=} to {end_regression=}")
+            print(
+                f"Bespoke pre-COVID regression from {start_regression=} to {end_regression=}"
+            )
     else:
         # set COVID regression programatically
         if freq[0] == "Q":
@@ -639,7 +641,9 @@ def plot_covid_recovery(series: Series, verbose=False, **kwargs) -> None:
             start_regression = pd.Period("2015-01-31", freq=freq)
             end_regression = pd.Period("2020-01-31", freq=freq)
         if verbose:
-            print(f"Default pre-COVID regression from {start_regression} to {end_regression}")
+            print(
+                f"Default pre-COVID regression from {start_regression} to {end_regression}"
+            )
 
     recent = series[series.index >= start_regression].copy()
     recent.name = "Series"

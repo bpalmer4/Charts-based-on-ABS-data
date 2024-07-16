@@ -3,7 +3,7 @@
 # === Imports
 from typing import Any, Callable, Final
 from pandas import DataFrame, Series
-from readabs import recalibrate, search_meta
+from readabs import recalibrate, search_abs_meta
 from readabs import metacol as mc
 from plotting import (
     seas_trend_plot,
@@ -35,7 +35,7 @@ def iudts_from_row(row: Series) -> tuple[str, str, str, str, str]:
 
 
 def search_args_from_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Return a dictionary of arguments that are not used by search_meta()."""
+    """Return a dictionary of arguments that are not used by search_abs_meta()."""
 
     args = {}
     for arg in "exact_natch", "regex", "validate_unique", "verbose":
@@ -54,7 +54,7 @@ def plot_rows_seas_trend(
     the metadata with selector.
     Agruments:
     - abs_dict - dict[str, DataFrame] - dictionary of ABS dataframes
-    - selector - dict - used with search_meta() to select rows from meta
+    - selector - dict - used with search_abs_meta() to select rows from meta
       this needs to select both a Trend and Seasonally Adjusted row, and
       must exclude the "Series Type" column
     - **kwargs - arguments passed to plotting function."""
@@ -68,7 +68,7 @@ def plot_rows_seas_trend(
     args = search_args_from_kwargs(kwargs)
     st_data = {}
     for series_type in SEAS_ADJ, TREND:
-        st_data[series_type] = search_meta(
+        st_data[series_type] = search_abs_meta(
             meta,
             {**selector, series_type: mc.stype},
             **args,
@@ -120,7 +120,7 @@ def plot_rows_individually(
     - **kwargs - arguments passed to plotting function."""
 
     args = search_args_from_kwargs(kwargs)
-    rows = search_meta(meta, selector, **args)
+    rows = search_abs_meta(meta, selector, **args)
 
     for _, row in rows.iterrows():
         series_id, units, did, table, series_type = iudts_from_row(row)
@@ -188,7 +188,7 @@ def plot_rows_collectively(
     - **kwargs - arguments passed to plotting function."""
 
     args = search_args_from_kwargs(kwargs)
-    rows = search_meta(meta, selector, **args)
+    rows = search_abs_meta(meta, selector, **args)
 
     frame = DataFrame()
 

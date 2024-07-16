@@ -1,13 +1,17 @@
 """A collection of functions to make working with ABS data just a litte bit easier."""
 
 # === imports
+from typing import Any
 import pandas as pd
 import readabs as ra
 from plotting import set_chart_dir, clear_chart_dir
 
 
 # === data retrieval and initialisation
-def get_abs_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
+def get_abs_data(
+        cat: str, 
+        **kwargs: Any,
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
     """Get ABS data for a specific catalogue number and create plot directories.
     My standard set-up for notebooks that use ABS data.
 
@@ -17,12 +21,12 @@ def get_abs_data(cat: str) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, 
     to plot from."""
 
     # get data -
-    abs_dict_, meta_ = ra.read_abs_cat(cat)
+    abs_dict_, meta_ = ra.read_abs_cat(cat, **kwargs)
     source_ = f"ABS: {cat}"
     recent_ = "2020-12-01"
 
     # create plot plot directories
-    chart_dir = f"./CHARTS/{cat} - {ra.catalogue_map().loc[cat, "Topic"]}/"
+    chart_dir = f"./CHARTS/{cat} - {ra.abs_catalogue().loc[cat, "Topic"]}/"
     set_chart_dir(chart_dir)
     clear_chart_dir(chart_dir)
 
