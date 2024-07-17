@@ -2,59 +2,59 @@ digraph {
 	beta_wg [label="beta_wg
 ~
 Normal" shape=ellipse]
+	beta1_pi [label="beta1_pi
+~
+Normal" shape=ellipse]
 	beta2_pi [label="beta2_pi
-~
-Normal" shape=ellipse]
-	epsilon_pi [label="epsilon_pi
-~
-HalfNormal" shape=ellipse]
-	alpha_pi [label="alpha_pi
-~
-Normal" shape=ellipse]
-	gamma_wg [label="gamma_wg
-~
-Normal" shape=ellipse]
-	nairu [label="nairu
-~
-Normal" shape=ellipse]
-	gamma_pi [label="gamma_pi
 ~
 Normal" shape=ellipse]
 	epsilon_wg [label="epsilon_wg
 ~
 HalfNormal" shape=ellipse]
-	delta_wg [label="delta_wg
+	gamma_wg [label="gamma_wg
 ~
 Normal" shape=ellipse]
-	delta_pi [label="delta_pi
+	delta_wg [label="delta_wg
 ~
 Normal" shape=ellipse]
 	lambda_wg [label="lambda_wg
 ~
 Normal" shape=ellipse]
-	beta1_pi [label="beta1_pi
+	gamma_pi [label="gamma_pi
 ~
 Normal" shape=ellipse]
+	delta_pi [label="delta_pi
+~
+Normal" shape=ellipse]
+	alpha_pi [label="alpha_pi
+~
+Normal" shape=ellipse]
+	nairu [label="nairu
+~
+Normal" shape=ellipse]
+	epsilon_pi [label="epsilon_pi
+~
+HalfNormal" shape=ellipse]
 	subgraph cluster13 {
-		observed_wage_growth [label="observed_wage_growth
+		observed_price_inflation [label="observed_price_inflation
 ~
 Normal" shape=ellipse style=filled]
-		observed_price_inflation [label="observed_price_inflation
+		observed_wage_growth [label="observed_wage_growth
 ~
 Normal" shape=ellipse style=filled]
 		label=13 labeljust=r labelloc=b style=rounded
 	}
-	beta2_pi -> observed_price_inflation
-	delta_pi -> observed_price_inflation
-	epsilon_pi -> observed_price_inflation
-	alpha_pi -> observed_price_inflation
-	nairu -> observed_price_inflation
 	beta1_pi -> observed_price_inflation
 	gamma_pi -> observed_price_inflation
+	beta2_pi -> observed_price_inflation
+	delta_pi -> observed_price_inflation
+	alpha_pi -> observed_price_inflation
+	nairu -> observed_price_inflation
+	epsilon_pi -> observed_price_inflation
 	beta_wg -> observed_wage_growth
-	lambda_wg -> observed_wage_growth
 	gamma_wg -> observed_wage_growth
-	nairu -> observed_wage_growth
 	delta_wg -> observed_wage_growth
+	lambda_wg -> observed_wage_growth
 	epsilon_wg -> observed_wage_growth
+	nairu -> observed_wage_growth
 }
