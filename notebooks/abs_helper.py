@@ -9,8 +9,8 @@ from plotting import set_chart_dir, clear_chart_dir
 
 # === data retrieval and initialisation
 def get_abs_data(
-        cat: str, 
-        **kwargs: Any,
+    cat: str,
+    **kwargs: Any,
 ) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
     """Get ABS data for a specific catalogue number and create plot directories.
     My standard set-up for notebooks that use ABS data.
