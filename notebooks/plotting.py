@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
-import statsmodels.formula.api as smf
 
 # --- constants - default settings
 _DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
@@ -593,13 +592,11 @@ def get_projection(original: Series, to_period: pd.Period) -> Series:
             "x": x_regress,
         }
     )
-    model = smf.ols(formula="y ~ x", data=regress_data).fit()
-    # print(model.summary())
-    # print(model.params)
+    m, b = np.polyfit(x_regress, y_regress, 1)
 
     x_complete = np.arange(len(original))
     projection = Series(
-        x_complete * model.params["x"] + model.params["Intercept"], index=original.index
+        (x_complete * m) + b, index=original.index
     )
 
     return projection
@@ -773,7 +770,7 @@ def plot_growth(
 
     # set index to the middle of the period for selection
     if from_ is not None:
-        frame = frame[from_:]
+        frame = frame.loc[lambda x: x.index >= from_]
     frame = frame.to_timestamp(how="start")
     frame.index = frame.index + pd.Timedelta(days=adjustment)
 
@@ -782,14 +779,14 @@ def plot_growth(
     _, axes = plt.subplots()
     axes.plot(
         frame.index,
-        frame["Annual"].values,
+        frame["Annual"].to_numpy(),
         lw=WIDE_WIDTH if len(frame) <= thick_line_threshold else NARROW_WIDTH,
         color=COLOR_BLUE,
         label="Annual growth",
     )
     axes.bar(
         frame.index,
-        frame["Periodic"].values,
+        frame["Periodic"].to_numpy(),
         color=COLOR_RED,
         width=0.7 * adjustment * 2,
         label=f"{period} growth",
