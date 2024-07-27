@@ -595,9 +595,7 @@ def get_projection(original: Series, to_period: pd.Period) -> Series:
     m, b = np.polyfit(x_regress, y_regress, 1)
 
     x_complete = np.arange(len(original))
-    projection = Series(
-        (x_complete * m) + b, index=original.index
-    )
+    projection = Series((x_complete * m) + b, index=original.index)
 
     return projection
 
@@ -733,7 +731,7 @@ def plot_growth(
     annual: Series,
     periodic: Series,
     from_: str | pd.Period | None = None,
-    annotate: bool | str | int = False,
+    annotate: int = 0,
     annotation_rounding: int = 1,
 ) -> None | plt.Axes:
     """Plot a bar and line percentage growth chart.
@@ -832,7 +830,7 @@ def plot_growth_finalise(
     annual: Series,
     periodic: Series,
     from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
-    annotate: bool = False,
+    annotate: int = 0,
     **kwargs,
 ) -> None:
     """Plot growth and finalise the plot. Repeat if multiple starting
