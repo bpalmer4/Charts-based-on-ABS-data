@@ -39,7 +39,7 @@ def _get_summary_data(
             print(code, table, table_desc, did, stype)
         series = abs_data[table][code]
         if period:
-            series = series.pct_change(periods=period) * 100
+            series = series.pct_change(periods=period, fill_method=None) * 100
         data[label] = series
     return data
 
@@ -81,7 +81,9 @@ def _calculate_z(
 
 # public
 def plot_summary(
-    to_get: dict[str, tuple[str, int]],  # {label: {series_id: str, n_periods_growth: int), ...}
+    to_get: dict[
+        str, tuple[str, int]
+    ],  # {label: {series_id: str, n_periods_growth: int), ...}
     abs_data: dict[str, DataFrame],  # abs data tables
     md: DataFrame,  # meta data
     start: str,  # starting period for z-score calculation
@@ -133,7 +135,9 @@ def plot_summary(
             continue
 
         # horizontal bar plot the middle of the data
-        lo_hi: DataFrame = adjusted.quantile(q=np.array(q)).T  # get the middle section of data
+        lo_hi: DataFrame = adjusted.quantile(
+            q=np.array(q)
+        ).T  # get the middle section of data
         span = 1.15
         space = 0.15
         low = min(adjusted.iloc[-1].min(), lo_hi.min().min(), -span) - space

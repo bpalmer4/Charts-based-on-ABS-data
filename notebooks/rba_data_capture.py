@@ -5,7 +5,7 @@ import io
 import re
 import sys
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, cast
 
 # analytic imports
 import pandas as pd
@@ -126,7 +126,7 @@ def get_data(label: str) -> tuple[pd.DataFrame, pd.DataFrame] | None:
         if series_id not in frame.index:
             print(f"Series identifier not found for {label}")
             return None
-    sid_row = (frame.index.get_loc(series_id)) + 1
+    sid_row: int = cast(int, frame.index.get_loc(series_id)) + 1
     meta = frame.iloc[0:sid_row]
     data = frame[sid_row:].dropna(how="all", axis=0).copy()
 

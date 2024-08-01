@@ -509,9 +509,12 @@ def line_plot(data: _DataT, **kwargs: Any) -> None:
       argument to finalise_plot cannot be used. Use tags instead.]"""
 
     # sanity checks
-    if (not isinstance(data, (Series, DataFrame))
-        or not isinstance(data.index, pd.PeriodIndex)):
-        raise TypeError("The data argument must be a pandas Series or DataFrame with a PeriodIndex")
+    if not isinstance(data, (Series, DataFrame)) or not isinstance(
+        data.index, pd.PeriodIndex
+    ):
+        raise TypeError(
+            "The data argument must be a pandas Series or DataFrame with a PeriodIndex"
+        )
     if AX in kwargs and kwargs[AX] is not None and STARTS in kwargs:
         print("Caution: only one chart can be plotted with the passed axes")
 
