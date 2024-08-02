@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 try:
-    from pmdarima.arima import auto_arima
+    from pmdarima.arima import auto_arima  # type: ignore
 except ImportError:
     print("Could not import auto_arima from pmdarima")
 
@@ -36,7 +36,7 @@ FINAL_IRREGULAR: Final[str] = "Irregular"
 
 
 # --- public Decomposition function
-def decompose(
+def decompose(  # pylint: disable=too-many-arguments
     s: pd.Series,
     model: str = "multiplicative",
     arima_extend=False,
@@ -126,6 +126,9 @@ def decompose(
     result[FINAL_TREND] = _get_trend(result[FINAL_SEASADJ], h, discontinuity_list)
     result[FINAL_IRREGULAR] = oper(result[FINAL_SEASADJ], result[FINAL_TREND])
     return result
+
+
+# pylint: enable=too-many-arguments
 
 
 #  === private methods below ===
@@ -301,7 +304,7 @@ def _smooth_seasonal(
     for col in ptable:
         if constant_seasonal and ignore_years:
             # mypy chokes on this next line - but it is fine ...
-            ptable.loc[ptable.index.isin(ignore_years), col] = np.nan
+            ptable.loc[ptable.index.isin(ignore_years), col] = np.nan  # type: ignore[index]
             # print(ptable[col].values)
         if constant_seasonal or (len(ptable) < len_seasonal_smoother + 3):
             ptable[col] = ptable[col].mean(skipna=True)
@@ -314,11 +317,15 @@ def _smooth_seasonal(
     returnable = cast(pd.Series, ptable.stack(future_stack=True))
     year = returnable.index.get_level_values(0).values
     period = returnable.index.get_level_values(1).values
-    freq = series.index.freqstr
+    freq = cast(pd.PeriodIndex, series.index).freqstr
     if n_periods == 4:
-        index = pd.PeriodIndex.from_fields(year=year, quarter=period, freq=freq)
+        index = pd.PeriodIndex.from_fields(  # type: ignore[attr-defined]
+            year=year, quarter=period, freq=freq
+        )
     else:
-        index = pd.PeriodIndex.from_fields(year=year, month=period, freq=freq)
+        index = pd.PeriodIndex.from_fields(  # type: ignore[attr-defined]
+            year=year, month=period, freq=freq
+        )
     returnable.index = index
     if returnable.isna().any():
         returnable = _extend_series(returnable, n_periods)
