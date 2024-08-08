@@ -92,9 +92,10 @@ def abbreviate(name: str) -> str:
 def clear_chart_dir(chart_dir: str) -> None:
     """Remove all graph-image files from the chart_dir."""
 
-    for fs_object in Path(chart_dir).glob(f"*.{DEFAULT_FILE_TYPE}"):
-        if fs_object.is_file():
-            fs_object.unlink()
+    for ext in ("png", "svg"):
+        for fs_object in Path(chart_dir).glob(f"*.{ext}"):
+            if fs_object.is_file():
+                fs_object.unlink()
 
 
 # private - global chart directory ...
@@ -274,7 +275,7 @@ def _save_to_file(fig, **kwargs) -> None:
         tag = kwargs.get("tag", "")
         file_title = re.sub(_remove, "-", shorter).lower()
         file_title = re.sub(_reduce, "-", file_title)
-        file_type = kwargs.get("file_type", DEFAULT_FILE_TYPE)
+        file_type = kwargs.get("file_type", DEFAULT_FILE_TYPE).lower() # png or svg
         dpi = kwargs.get("dpi", DEFAULT_DPI)
         fig.savefig(f"{chart_dir}{pre_tag}{file_title}-{tag}.{file_type}", dpi=dpi)
 
