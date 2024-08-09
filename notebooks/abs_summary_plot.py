@@ -5,6 +5,7 @@ their historical context. The data is normalised to z-scores and scaled."""
 
 # system imports
 from typing import Any
+from functools import cache
 
 # analytic third-party imports
 import matplotlib.pyplot as plt
@@ -46,14 +47,20 @@ def _get_summary_data(
     return data
 
 
+@cache
+def _calc_quantiles(middle: float) -> np.ndarray:
+    """Calculate the quantiles for the middle of the data."""
+    return np.array([(1 - middle) / 2.0, 1 - (1 - middle) / 2.0])
+
+
 def _calculate_z(
     original: DataFrame,  # only contains the data points of interest
     middle: float,  # middle proportion of data to highlight (eg. 0.8)
     verbose: bool = False,  # print the summary data
-) -> tuple[DataFrame, DataFrame, tuple[float, float]]:
+) -> tuple[DataFrame, DataFrame]:
     """Calculate z-scores, scaled z-scores and middle quantiles.
     Return z_scores, z_scaled, q (which are the quantiles for the
-    start/end of the middle proportion of data to highlight)"""
+    start/end of the middle proportion of data to highlight)."""
 
     # calculate z-scores, scaled scores and middle quantiles
     z_scores = (original - original.mean()) / original.std()
@@ -62,7 +69,7 @@ def _calculate_z(
         (((z_scores - z_scores.min()) / (z_scores.max() - z_scores.min())) - 0.5)
         * 2
     )
-    q_middle = ((1 - middle) / 2, 1 - (1 - middle) / 2)
+    q_middle = _calc_quantiles(middle)
 
     if verbose:
         frame = DataFrame(
@@ -78,7 +85,80 @@ def _calculate_z(
         )
         display(frame)
 
-    return z_scores, z_scaled, q_middle
+    return z_scores, z_scaled
+
+
+def _horizontal_bar_plot(
+    original: DataFrame,
+    adjusted: DataFrame,
+    middle: float,
+    plot_type: str,
+    kwargs: dict[str, Any],
+) -> plt.Axes:
+    """Plot horizontal bars for the middle of the data."""
+
+    # horizontal bar plot the middle of the data
+    q = _calc_quantiles(middle)
+    lo_hi: DataFrame = adjusted.quantile(q=q).T  # get the middle section of data
+    span = 1.15
+    space = 0.15
+    low = min(adjusted.iloc[-1].min(), lo_hi.min().min(), -span) - space
+    high = max(adjusted.iloc[-1].max(), lo_hi.max().max(), span) + space
+    kwargs["xlim"] = (low, high)
+    _fig, ax = plt.subplots()
+    ax.barh(
+        y=lo_hi.index,
+        width=lo_hi[q[1]] - lo_hi[q[0]],
+        left=lo_hi[q[0]],
+        color="#bbbbbb",
+        label=f"Middle {middle*100:0.0f}% of prints",
+    )
+
+    # plot the latest data
+    ax.scatter(adjusted.iloc[-1], adjusted.columns, color="darkorange")
+    f_size = 10
+    row = adjusted.index[-1]
+    for col_num, col_name in enumerate(original.columns):
+        ax.text(
+            x=adjusted.at[row, col_name],
+            y=col_num,
+            s=f"{original.at[row, col_name]:.1f}",
+            ha="center",
+            va="center",
+            size=f_size,
+        )
+
+    # label extremes in the scaled plots
+    if plot_type == "scaled":
+        ax.axvline(-1, color="#555555", linewidth=0.5, linestyle="--")
+        ax.axvline(1, color="#555555", linewidth=0.5, linestyle="--")
+        ax.scatter(
+            adjusted.median(),
+            adjusted.columns,
+            color="darkorchid",
+            marker="x",
+            s=5,
+            label="Median",
+        )
+        for col_num, col_name in enumerate(original.columns):
+            ax.text(
+                low,
+                col_num,
+                f" {original[col_name].min():.1f}",
+                ha="left",
+                va="center",
+                size=f_size,
+            )
+            ax.text(
+                high,
+                col_num,
+                f"{original[col_name].max():.1f} ",
+                ha="right",
+                va="center",
+                size=f_size,
+            )
+
+    return ax
 
 
 # public
@@ -116,7 +196,7 @@ def plot_summary(
     original = _get_summary_data(
         to_get=to_get, abs_data=abs_data, md=md, verbose=verbose
     ).loc[lambda x: x.index >= start]
-    z_scores, z_scaled, q = _calculate_z(original, middle, verbose=verbose)
+    z_scores, z_scaled = _calculate_z(original, middle, verbose=verbose)
 
     # plot as required by the plot_types argument
     kwargs["title"] = kwargs.get("title", f"Summary at {original.index[-1]}")
@@ -136,67 +216,7 @@ def plot_summary(
             print(f"Unknown plot type {plot_type}")
             continue
 
-        # horizontal bar plot the middle of the data
-        lo_hi: DataFrame = adjusted.quantile(
-            q=np.array(q)
-        ).T  # get the middle section of data
-        span = 1.15
-        space = 0.15
-        low = min(adjusted.iloc[-1].min(), lo_hi.min().min(), -span) - space
-        high = max(adjusted.iloc[-1].max(), lo_hi.max().max(), span) + space
-        kwargs["xlim"] = (low, high)
-        _fig, ax = plt.subplots()
-        ax.barh(
-            y=lo_hi.index,
-            width=lo_hi[q[1]] - lo_hi[q[0]],
-            left=lo_hi[q[0]],
-            color="#bbbbbb",
-            label=f"Middle {middle*100:0.0f}% of prints",
-        )
-
-        # plot the latest data
-        ax.scatter(adjusted.iloc[-1], adjusted.columns, color="darkorange")
-        f_size = 10
-        row = adjusted.index[-1]
-        for col_num, col_name in enumerate(original.columns):
-            ax.text(
-                x=adjusted.at[row, col_name],
-                y=col_num,
-                s=f"{original.at[row, col_name]:.1f}",
-                ha="center",
-                va="center",
-                size=f_size,
-            )
-
-        # label extremes in the scaled plots
-        if plot_type == "scaled":
-            ax.axvline(-1, color="#555555", linewidth=0.5, linestyle="--")
-            ax.axvline(1, color="#555555", linewidth=0.5, linestyle="--")
-            ax.scatter(
-                adjusted.median(),
-                adjusted.columns,
-                color="darkorchid",
-                marker="x",
-                s=5,
-                label="Median",
-            )
-            for col_num, col_name in enumerate(original.columns):
-                ax.text(
-                    low,
-                    col_num,
-                    f" {original[col_name].min():.1f}",
-                    ha="left",
-                    va="center",
-                    size=f_size,
-                )
-                ax.text(
-                    high,
-                    col_num,
-                    f"{original[col_name].max():.1f} ",
-                    ha="right",
-                    va="center",
-                    size=f_size,
-                )
+        ax = _horizontal_bar_plot(original, adjusted, middle, plot_type, kwargs)
 
         # finalise
         kwargs["pre_tag"] = plot_type

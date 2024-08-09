@@ -5,7 +5,7 @@
 # set-up parameters
 home=/Users/bryanpalmer
 working=ABS/notebooks
-runrun=ASX-daily-data-capture.py
+runrun=asx_daily_data_capture.py
 mmenv=311
 
 # move to the home directory

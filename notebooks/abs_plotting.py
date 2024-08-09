@@ -198,12 +198,12 @@ def plot_rows_collectively(
     if len(frame) == 0:
         return
 
-    r_frame, units = recalibrate(frame, units)
-    r_frame, title, colours = _column_name_fix(r_frame)
+    frame, units = recalibrate(frame, units)
+    frame, title, colours = _column_name_fix(frame)
 
     legend = {**LEGEND_SET, "ncols": 2, **(kwargs.pop("legend", {}))}
     line_plot(
-        r_frame,
+        frame,
         title=title,
         ylabel=units,
         legend=legend,

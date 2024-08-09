@@ -1,12 +1,15 @@
-for i in *.ipynb; do
-    [ -f "$i" ] || break
-    echo "$i"
-    nbqa pylint --disable=C0114,W0106,W0104 "$i"
-done
+# Do the python files first
 for i in *.py; do
     [ -f "$i" ] || break
     echo "$i"
     pylint "$i"
+done
+
+# then jupyter notebooks
+for i in *.ipynb; do
+    [ -f "$i" ] || break
+    echo "$i"
+    nbqa pylint --disable=C0114,W0106,W0104 "$i"
 done
 
 # Note, these are the pylint codes that are disabled for 

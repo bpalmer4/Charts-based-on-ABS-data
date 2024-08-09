@@ -42,7 +42,7 @@ def save_asx_data(df: pd.DataFrame) -> None:
     Path(directory).mkdir(parents=True, exist_ok=True)
     file_date = pd.to_datetime("today").normalize().date()
     filename = f"{directory}{FILE_STEM}{file_date}.csv"
-    get_asx_data().to_csv(path_or_buf=filename)
+    df.to_csv(path_or_buf=filename)
 
 
 def main() -> None:
