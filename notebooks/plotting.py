@@ -275,7 +275,7 @@ def _save_to_file(fig, **kwargs) -> None:
         tag = kwargs.get("tag", "")
         file_title = re.sub(_remove, "-", shorter).lower()
         file_title = re.sub(_reduce, "-", file_title)
-        file_type = kwargs.get("file_type", DEFAULT_FILE_TYPE).lower() # png or svg
+        file_type = kwargs.get("file_type", DEFAULT_FILE_TYPE).lower()  # png or svg
         dpi = kwargs.get("dpi", DEFAULT_DPI)
         fig.savefig(f"{chart_dir}{pre_tag}{file_title}-{tag}.{file_type}", dpi=dpi)
 
