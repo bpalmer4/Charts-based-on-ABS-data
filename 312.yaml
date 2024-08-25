@@ -1,5 +1,4 @@
 # micromamba env create -f 312.yaml
-# Note: pmdarima alsox requires python 3.11
 name: 312
 channels:
   - conda-forge
@@ -13,7 +12,7 @@ dependencies:
   - wheel
   - setuptools
   - pip
-  - build
+  #- build
   - twine
   # Jupyter notebooks
   - jupyter 
