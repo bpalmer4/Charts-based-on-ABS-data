@@ -436,22 +436,16 @@ def _get_style_width_color_etc(
                 "#882255",
                 "#AA4499",
             ],
-            13: [
-                "#c32148",  # Maroon
-                "#FF0000",  # Red
-                "#9A6324",  # Brown
-                "#f58231",  # Orange
-                "#808000",  # Olive
-                "#bfef45",  # Lime
-                "#3cb44b",  # Green
-                "#469990",  # Teal
-                "#42d4f4",  # Cyan
-                "#000075",  # Navy
-                "#4363d8",  # Blue
-                "#911eb4",  # Purple
-                "#f032e6",  # Magenta
-            ],
         }
+        if item_count > max(colours.keys()):
+            # generate a gradient of colours
+            c = plt.cm.nipy_spectral(np.linspace(0, 1, item_count))  # type: ignore
+            crgb = [
+                f"#{int(x*255):02x}{int(y*255):02x}{int(z*255):02x}"
+                for x, y, z, _ in c
+            ]
+            colours[item_count] = crgb  # type: ignore
+
         k = colours.keys()
         minimum: float | int = min(
             i for i in list(k) + [float("inf")] if i >= item_count
