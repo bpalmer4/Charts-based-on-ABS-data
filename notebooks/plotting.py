@@ -831,15 +831,16 @@ def plot_growth_finalise(
     """Plot growth and finalise the plot. Repeat if multiple starting
     times in the from_ argument."""
 
-    if not isinstance(from_, list) and not isinstance(from_, tuple):
-        from_ = (from_,)
-
+    # defaults - and specific settings for this function
     annotation_rounding = kwargs.pop("annotation_rounding", 1)
     kwargs[LEGEND] = kwargs.get(LEGEND, LEGEND_SET)
-    tag_stem = kwargs.get("tag", "")
-    if "ylabel" not in kwargs:
-        kwargs["ylabel"] = "Per cent Growth"
+    kwargs["zero_y"] = kwargs.get("zero_y", True)
+    kwargs["ylabel"] = kwargs.get("ylabel", "Per cent Growth")
 
+    # loop through multiple starting points
+    tag_stem = kwargs.get("tag", "")
+    if not isinstance(from_, list) and not isinstance(from_, tuple):
+        from_ = (from_,)
     for i, start in enumerate(from_):
         axes = plot_growth(
             annual,
