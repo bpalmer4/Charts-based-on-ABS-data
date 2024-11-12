@@ -1,4 +1,6 @@
 # micromamba env create -f 313.yaml
+# Note: not all packages are available at this stage
+#       missing packages are commented with ###
 name: 313
 channels:
   - conda-forge
@@ -8,11 +10,10 @@ dependencies:
   - python >=3.13, <3.14
   - cpython
   # conda/pip - build - dist
-  - conda-build
+  ### - conda-build
   - wheel
   - setuptools
   - pip
-  #- build
   - twine
   # Jupyter notebooks
   - jupyter 
@@ -31,7 +32,7 @@ dependencies:
   - scikit-learn 
   - nltk
   - pycountry
-  - pmdarima
+  ### - pmdarima    ###
   - pandasdmx
   - tabulate
   # Microsoft Excel 
@@ -43,7 +44,7 @@ dependencies:
   - fastparquet 
   - h5py
   - arrow 
-  - polars 
+  ### - polars 
   # web stuff
   - selenium
   - webdriver-manager
@@ -51,10 +52,10 @@ dependencies:
   - bs4
   - requests_cache
   # PyMC - Bayesian statistics
-  - pymc >= 5.12.0 
-  - pytensor >= 2.19
-  - numpyro
-  - jax
+  ### - pymc >= 5.12.0 
+  ### - pytensor >= 2.19
+  ### - numpyro
+  ### - jax
   # python linters and formatters
   - pylint 
   - flake8 
@@ -73,4 +74,3 @@ dependencies:
   - types-ujson
   - types-beautifulsoup4
   - types-requests
-
