@@ -34,6 +34,9 @@ dependencies:
   - pmdarima
   - pandasdmx
   - tabulate
+  # shapefiles
+  - shapely
+  - pyshp
   # Microsoft Excel 
   - openpyxl
   - xlrd
