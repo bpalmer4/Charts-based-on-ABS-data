@@ -31,7 +31,7 @@ dependencies:
   - scikit-learn 
   - nltk
   - pycountry
-  ### - pmdarima    ### Python 313 issues
+  ###- pmdarima    ### Python 313 issues
   - pandasdmx
   - tabulate
   # shapefiles
@@ -54,8 +54,8 @@ dependencies:
   - bs4
   - requests_cache
   # PyMC - Bayesian statistics  
-  ### - pymc >= 5.12.0     ### Python 313 issues
-  ### - pytensor >= 2.19   ### Python 313 issues
+  ###- pymc >= 5.19.0     ### Python 313 issues
+  ###- pytensor >= 2.19   ### Python 313 issues
   - numpyro
   - jax
   # python linters and formatters
