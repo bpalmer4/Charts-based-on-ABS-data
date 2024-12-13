@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
+from readabs import recalibrate
+
 
 # --- constants - default settings
 _DataT = TypeVar("_DataT", Series, DataFrame)  # python 3.11+
@@ -887,5 +889,48 @@ def calc_and_plot_growth(
     plot_growth_finalise(
         *growth,
         from_,
+        **kwargs,
+    )
+
+
+# --- plot ABS data revisions
+
+# public
+def plot_revisions(data: pd.DataFrame, units: str, recent=18, **kwargs) -> None:
+    """plot the revisions to ABS data
+    Arguments
+    data : pd.DataFrame : the data to plot, a column for each data revision
+    units : str : the units for the data
+    recent : int : the number of recent data points to plot
+    kwargs : dict : additional arguments to pass to finalise_plot
+        (Note: the ylabel for the plot will be adjusted units)."""
+
+    # adjust units
+    latest_data = data[data.columns[::-1]].tail(recent)
+    repository, units = recalibrate(latest_data, units)
+
+    # plot the data
+    ax = repository.plot()
+
+    # Annotate the last value in each series ...
+    for c in repository.columns:
+        col: pd.Series = repository.loc[:, c].dropna()
+        x, y, s = (
+            col.index[-1],
+            col.iloc[-1],
+            f" {col.iloc[-1]:.{2 if col.iloc[-1] < 100 else 1}f}",
+        )
+        ax.text(x, y, s, fontsize=10, va="center", ha="left")
+
+    # change the line width for new data
+    how_far_back = len(data.columns)
+    linewidth = (np.arange(0, how_far_back) / (how_far_back - 1)) + 1
+    for line, width in zip(ax.get_lines(), linewidth):
+        line.set_linewidth(width)
+
+    
+    finalise_plot(
+        ax,
+        ylabel=f"{units}",
         **kwargs,
     )
