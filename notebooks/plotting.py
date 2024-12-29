@@ -869,7 +869,7 @@ def calc_growth(series: Series, ppy: int | None = None) -> tuple[Series, Series]
 
 
 def calc_and_plot_growth(
-    series: Series,
+    series: Series,  # but single column DataFrame is allowed
     from_: str | list | tuple | pd.Timestamp | pd.Period | None = None,
     **kwargs,
 ) -> None:
@@ -884,11 +884,18 @@ def calc_and_plot_growth(
             print(f"Warning: removing ylabel of {kwargs['ylabel']}")
             del kwargs["ylabel"]
 
-    growth = calc_growth(series)
+    s: Series | DataFrame = series
+    # kludge to allow a single column DataFrame to be passed
+    if isinstance(s, DataFrame):
+        if len(series.columns) == 1:
+            s = s[s.columns[0]]
+        else:
+            raise TypeError("Series expected, not a DataFrame")
+    growth = calc_growth(s)
 
     plot_growth_finalise(
         *growth,
-        from_,
+        from_=from_,
         **kwargs,
     )
 
