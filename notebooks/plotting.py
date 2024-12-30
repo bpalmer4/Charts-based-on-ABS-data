@@ -863,8 +863,8 @@ def calc_growth(series: Series, ppy: int | None = None) -> tuple[Series, Series]
     if ppy is None:
         ppy = {"Q": 4, "M": 12}[cast(pd.PeriodIndex, series.index).freqstr[:1]]
     # think about: do we need a ffill() in the next lines ...
-    annual = series.pct_change(periods=ppy) * 100
-    periodic = series.pct_change(periods=1) * 100
+    annual = series.pct_change(periods=ppy, fill_method=None) * 100
+    periodic = series.pct_change(periods=1, fill_method=None) * 100
     return annual, periodic
 
 
