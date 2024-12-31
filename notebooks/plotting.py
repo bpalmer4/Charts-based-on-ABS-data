@@ -443,8 +443,7 @@ def _get_style_width_color_etc(
             # generate a gradient of colours
             c = plt.cm.nipy_spectral(np.linspace(0, 1, item_count))  # type: ignore
             crgb = [
-                f"#{int(x*255):02x}{int(y*255):02x}{int(z*255):02x}"
-                for x, y, z, _ in c
+                f"#{int(x*255):02x}{int(y*255):02x}{int(z*255):02x}" for x, y, z, _ in c
             ]
             colours[item_count] = crgb  # type: ignore
 
@@ -862,9 +861,8 @@ def calc_growth(series: Series, ppy: int | None = None) -> tuple[Series, Series]
 
     if ppy is None:
         ppy = {"Q": 4, "M": 12}[cast(pd.PeriodIndex, series.index).freqstr[:1]]
-    # think about: do we need a ffill() in the next lines ...
-    annual = series.pct_change(periods=ppy, fill_method=None) * 100
-    periodic = series.pct_change(periods=1, fill_method=None) * 100
+    annual = series.pct_change(periods=ppy) * 100
+    periodic = series.pct_change(periods=1) * 100
     return annual, periodic
 
 
@@ -902,6 +900,7 @@ def calc_and_plot_growth(
 
 # --- plot ABS data revisions
 
+
 # public
 def plot_revisions(data: pd.DataFrame, units: str, recent=18, **kwargs) -> None:
     """plot the revisions to ABS data
@@ -935,7 +934,6 @@ def plot_revisions(data: pd.DataFrame, units: str, recent=18, **kwargs) -> None:
     for line, width in zip(ax.get_lines(), linewidth):
         line.set_linewidth(width)
 
-    
     finalise_plot(
         ax,
         ylabel=f"{units}",

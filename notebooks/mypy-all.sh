@@ -1,4 +1,4 @@
-micromamba activate 311
+micromamba activate 312
 for i in *.ipynb; do
     [ -f "$i" ] || break
     echo "$i"
