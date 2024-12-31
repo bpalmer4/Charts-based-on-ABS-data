@@ -221,6 +221,7 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
         "Chain volume measures",  # National Accounts,
         "Chain Volume Measures",  # Business indicators,
         "Chain Volume Measure",  # Retail Trade
+        "Current prices",  # National Accounts
         "Current Prices",
         "Current Price",
         "Total (State)",
