@@ -441,7 +441,7 @@ def _get_style_width_color_etc(
         }
         if item_count > max(colours.keys()):
             # generate a gradient of colours
-            c = plt.cm.nipy_spectral(np.linspace(0, 1, item_count))  # type: ignore
+            c = plt.cm.nipy_spectral(np.linspace(0, 1, item_count))  # type: ignore # pylint: disable=no-member
             crgb = [
                 f"#{int(x*255):02x}{int(y*255):02x}{int(z*255):02x}" for x, y, z, _ in c
             ]
@@ -723,11 +723,84 @@ def plot_series_highlighted(series: Series, **kwargs) -> plt.Axes:
 # --- plot_growth(), plot_growth_finalise() and calc_growth()
 
 
+def _plot_growth_line_bars(
+    frame: DataFrame,
+    period: str,
+    adjustment: int,
+    annotate: int | str = 0,
+    annotation_rounding: int = 1,
+) -> plt.Axes:
+    """Private function: Plot a bar and line percentage growth chart."""
+
+    defaults = {
+        "max_annotation": 30,  # maximum number of bars to annotate
+        "thick_line_threshold": 180,  # thin line if too many data points
+    }
+
+    _, axes = plt.subplots()
+    axes.plot(
+        frame.index,
+        frame["Annual"].to_numpy(),
+        lw=(
+            WIDE_WIDTH
+            if len(frame) <= defaults["thick_line_threshold"]
+            else NARROW_WIDTH
+        ),
+        color=COLOR_BLUE,
+        label="Annual growth",
+    )
+    axes.bar(
+        frame.index,
+        frame["Periodic"].to_numpy(),
+        color=COLOR_RED,
+        width=0.7 * adjustment * 2,
+        label=f"{period} growth",
+    )
+
+    if annotate and len(frame) <= defaults["max_annotation"]:
+        annotate_style = {
+            "fontsize": annotate,
+            "fontname": "Helvetica",
+        }
+        defaults["span"] = frame.max().max() - frame.min().min()
+        defaults["adj"] = defaults["span"] * 0.005
+        for i, value in enumerate(frame["Periodic"]):
+            va = "bottom" if value >= 0 else "top"
+            position = defaults["adj"] if value >= 0 else -defaults["adj"]
+            text = axes.text(
+                frame.index[i],
+                position,
+                f"{value:.{annotation_rounding}f}",
+                ha="center",
+                va=va,
+                **annotate_style,
+                fontdict=None,
+                color="white",
+            )
+            text.set_path_effects([pe.withStroke(linewidth=2, foreground=COLOR_RED)])
+            axes.text(
+                frame.index[-1],
+                frame["Annual"].iloc[-1],
+                f" {frame["Annual"].iloc[-1]:.{annotation_rounding}f}",
+                ha="left",
+                va="center",
+                **annotate_style,
+                fontdict=None,
+                color=COLOR_BLUE,
+            )
+
+    locator = mdates.AutoDateLocator(minticks=4, maxticks=16)
+    formatter = mdates.ConciseDateFormatter(locator)
+    axes.xaxis.set_major_locator(locator)
+    axes.xaxis.set_major_formatter(formatter)
+    return axes
+
+
 def plot_growth(
     annual: Series,
     periodic: Series,
     from_: str | pd.Period | None = None,
-    annotate: int = 0,
+    annotate: int | str = 0,
     annotation_rounding: int = 1,
 ) -> None | plt.Axes:
     """Plot a bar and line percentage growth chart.
@@ -735,13 +808,6 @@ def plot_growth(
     PeriodIndex. Allow an option to annotate the bars, provided
     the number of bars is less than max_annotation, the value of
     annotate is fontsize (suggest: "x-small")."""
-
-    # maximum number of bars to annotate
-    max_annotation = 30
-    style = {
-        "fontsize": annotate,
-        "fontname": "Helvetica",
-    }
 
     # sanity checks
     for series in (annual, periodic):
@@ -769,57 +835,9 @@ def plot_growth(
     frame.index = frame.index + pd.Timedelta(days=adjustment)
 
     # plot
-    thick_line_threshold = 180  # data items
-    _, axes = plt.subplots()
-    axes.plot(
-        frame.index,
-        frame["Annual"].to_numpy(),
-        lw=WIDE_WIDTH if len(frame) <= thick_line_threshold else NARROW_WIDTH,
-        color=COLOR_BLUE,
-        label="Annual growth",
+    return _plot_growth_line_bars(
+        frame, period, adjustment, annotate, annotation_rounding
     )
-    axes.bar(
-        frame.index,
-        frame["Periodic"].to_numpy(),
-        color=COLOR_RED,
-        width=0.7 * adjustment * 2,
-        label=f"{period} growth",
-    )
-
-    if annotate and len(frame) <= max_annotation:
-        adj = frame.max().max() - frame.min().min() * 0.02
-        span = frame.max().max() - frame.min().min()
-        adj = span * 0.005
-        for i, value in enumerate(frame["Periodic"]):
-            va = "bottom" if value >= 0 else "top"
-            position = adj if value >= 0 else -adj
-            text = axes.text(
-                frame.index[i],
-                position,
-                f"{value:.{annotation_rounding}f}",
-                ha="center",
-                va=va,
-                **style,
-                fontdict=None,
-                color="white",
-            )
-            text.set_path_effects([pe.withStroke(linewidth=2, foreground=COLOR_RED)])
-            axes.text(
-                frame.index[-1],
-                frame["Annual"].iloc[-1],
-                f" {frame["Annual"].iloc[-1]:.{annotation_rounding}f}",
-                ha="left",
-                va="center",
-                **style,
-                fontdict=None,
-                color=COLOR_BLUE,
-            )
-
-    locator = mdates.AutoDateLocator(minticks=4, maxticks=16)
-    formatter = mdates.ConciseDateFormatter(locator)
-    axes.xaxis.set_major_locator(locator)
-    axes.xaxis.set_major_formatter(formatter)
-    return axes
 
 
 def plot_growth_finalise(
@@ -912,8 +930,9 @@ def plot_revisions(data: pd.DataFrame, units: str, recent=18, **kwargs) -> None:
         (Note: the ylabel for the plot will be adjusted units)."""
 
     # adjust units
-    latest_data = data[data.columns[::-1]].tail(recent)
-    repository, units = recalibrate(latest_data, units)
+    repository, units = recalibrate(
+        data[data.columns[::-1]].tail(recent), units
+    )
 
     # plot the data
     ax = repository.plot()

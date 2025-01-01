@@ -88,16 +88,15 @@ def _calculate_z(
     return z_scores, z_scaled
 
 
-def _horizontal_bar_plot(
-    original: DataFrame,
+def _plot_middle_bars(
     adjusted: DataFrame,
     middle: float,
-    plot_type: str,
     kwargs: dict[str, Any],
 ) -> plt.Axes:
-    """Plot horizontal bars for the middle of the data."""
+    """Plot the middle (typically 80%) of the data as a bar.
+    Note: also sets the x-axis limits in kwargs.
+    Return the matplotlib Axes object."""
 
-    # horizontal bar plot the middle of the data
     q = _calc_quantiles(middle)
     lo_hi: DataFrame = adjusted.quantile(q=q).T  # get the middle section of data
     span = 1.15
@@ -113,8 +112,17 @@ def _horizontal_bar_plot(
         color="#bbbbbb",
         label=f"Middle {middle*100:0.0f}% of prints",
     )
+    return ax
 
-    # plot the latest data
+
+def _plot_latest_datapoint(
+    ax: plt.Axes,
+    original: DataFrame,
+    adjusted: DataFrame,
+    f_size: int,
+) -> None:
+    """Add the latest datapoints to the summary plot"""
+
     ax.scatter(adjusted.iloc[-1], adjusted.columns, color="darkorange")
     f_size = 10
     row = adjusted.index[-1]
@@ -128,7 +136,18 @@ def _horizontal_bar_plot(
             size=f_size,
         )
 
-    # label extremes in the scaled plots
+
+def _label_extremes(
+    ax: plt.Axes,
+    data: tuple[DataFrame, DataFrame],
+    plot_type: str,
+    f_size: int,
+    kwargs: dict[str, Any],
+) -> None:
+    """Label the extremes in the scaled plots."""
+
+    original, adjusted = data
+    low, high = kwargs["xlim"]
     if plot_type == "scaled":
         ax.axvline(-1, color="#555555", linewidth=0.5, linestyle="--")
         ax.axvline(1, color="#555555", linewidth=0.5, linestyle="--")
@@ -157,6 +176,23 @@ def _horizontal_bar_plot(
                 va="center",
                 size=f_size,
             )
+
+
+def _horizontal_bar_plot(
+    original: DataFrame,
+    adjusted: DataFrame,
+    middle: float,
+    plot_type: str,
+    kwargs: dict[str, Any],  # definitely a dictionary and not a splat
+) -> plt.Axes:
+    """Plot horizontal bars for the middle of the data."""
+
+    ax = _plot_middle_bars(adjusted, middle, kwargs)
+    f_size = 10
+    _plot_latest_datapoint(ax, original, adjusted, f_size)
+    _label_extremes(
+        ax, data=(original, adjusted), plot_type=plot_type, f_size=f_size, kwargs=kwargs
+    )
 
     return ax
 

@@ -36,7 +36,7 @@ FINAL_IRREGULAR: Final[str] = "Irregular"
 
 
 # --- public Decomposition function
-def decompose(  # pylint: disable=too-many-arguments
+def decompose(  # pylint: disable=too-many-arguments,disable=too-many-positional-arguments
     s: pd.Series,
     model: str = "multiplicative",
     arima_extend=False,
@@ -127,8 +127,6 @@ def decompose(  # pylint: disable=too-many-arguments
     result[FINAL_IRREGULAR] = oper(result[FINAL_SEASADJ], result[FINAL_TREND])
     return result
 
-
-# pylint: enable=too-many-arguments
 
 
 #  === private methods below ===
