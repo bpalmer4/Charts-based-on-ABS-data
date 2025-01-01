@@ -40,9 +40,7 @@ def _get_summary_data(
             print(code, table, table_desc, did, stype)
         series = abs_data[table][code]
         if period:
-            series = (
-                series.pct_change(periods=period, fill_method=None) * 100  # type: ignore[arg-type]
-            )
+            series = series.pct_change(periods=period) * 100
         data[label] = series
     return data
 

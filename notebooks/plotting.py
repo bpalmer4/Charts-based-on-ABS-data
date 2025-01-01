@@ -1,4 +1,5 @@
-"""A set of functions for plotting with matplotlib.
+"""A set of functions for plotting timeseries data 
+   with matplotlib.
    The intent is to reduce repetitive code, while
    maintaining a consistent look and feel for chart
    outputs. """
@@ -14,6 +15,8 @@ import matplotlib as mpl
 import matplotlib.dates as mdates
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
+from matplotlib import cm
+
 import numpy as np
 import pandas as pd
 from pandas import Series, DataFrame
@@ -441,11 +444,11 @@ def _get_style_width_color_etc(
         }
         if item_count > max(colours.keys()):
             # generate a gradient of colours
-            c = plt.cm.nipy_spectral(np.linspace(0, 1, item_count))  # type: ignore # pylint: disable=no-member
+            c = cm.get_cmap("nipy_spectral")(np.linspace(0, 1, item_count))
             crgb = [
                 f"#{int(x*255):02x}{int(y*255):02x}{int(z*255):02x}" for x, y, z, _ in c
             ]
-            colours[item_count] = crgb  # type: ignore
+            colours[item_count] = crgb
 
         k = colours.keys()
         minimum: float | int = min(
@@ -723,6 +726,15 @@ def plot_series_highlighted(series: Series, **kwargs) -> plt.Axes:
 # --- plot_growth(), plot_growth_finalise() and calc_growth()
 
 
+def _format_x_axis(axes: plt.Axes, minticks: int, maxticks: int) -> None:
+    """Format the x-axis of a matplotlib Axes object."""
+
+    locator = mdates.AutoDateLocator(minticks=minticks, maxticks=maxticks)
+    formatter = mdates.ConciseDateFormatter(locator)
+    axes.xaxis.set_major_locator(locator)
+    axes.xaxis.set_major_formatter(formatter)
+
+
 def _plot_growth_line_bars(
     frame: DataFrame,
     period: str,
@@ -732,20 +744,14 @@ def _plot_growth_line_bars(
 ) -> plt.Axes:
     """Private function: Plot a bar and line percentage growth chart."""
 
-    defaults = {
-        "max_annotation": 30,  # maximum number of bars to annotate
-        "thick_line_threshold": 180,  # thin line if too many data points
-    }
+    max_annotation = 30  # maximum number of bars to annotate
+    thick_line_threshold = 180  # thin line if too many data points
 
-    _, axes = plt.subplots()
+    _fig, axes = plt.subplots()
     axes.plot(
         frame.index,
         frame["Annual"].to_numpy(),
-        lw=(
-            WIDE_WIDTH
-            if len(frame) <= defaults["thick_line_threshold"]
-            else NARROW_WIDTH
-        ),
+        lw=(WIDE_WIDTH if len(frame) <= thick_line_threshold else NARROW_WIDTH),
         color=COLOR_BLUE,
         label="Annual growth",
     )
@@ -757,19 +763,17 @@ def _plot_growth_line_bars(
         label=f"{period} growth",
     )
 
-    if annotate and len(frame) <= defaults["max_annotation"]:
+    if annotate and len(frame) <= max_annotation:
         annotate_style = {
             "fontsize": annotate,
             "fontname": "Helvetica",
         }
-        defaults["span"] = frame.max().max() - frame.min().min()
-        defaults["adj"] = defaults["span"] * 0.005
+        adjustment = (frame.max().max() - frame.min().min()) * 0.005
         for i, value in enumerate(frame["Periodic"]):
             va = "bottom" if value >= 0 else "top"
-            position = defaults["adj"] if value >= 0 else -defaults["adj"]
             text = axes.text(
                 frame.index[i],
-                position,
+                adjustment if value >= 0 else -adjustment,
                 f"{value:.{annotation_rounding}f}",
                 ha="center",
                 va=va,
@@ -789,10 +793,7 @@ def _plot_growth_line_bars(
                 color=COLOR_BLUE,
             )
 
-    locator = mdates.AutoDateLocator(minticks=4, maxticks=16)
-    formatter = mdates.ConciseDateFormatter(locator)
-    axes.xaxis.set_major_locator(locator)
-    axes.xaxis.set_major_formatter(formatter)
+    _format_x_axis(axes, minticks=4, maxticks=16)
     return axes
 
 
@@ -930,9 +931,7 @@ def plot_revisions(data: pd.DataFrame, units: str, recent=18, **kwargs) -> None:
         (Note: the ylabel for the plot will be adjusted units)."""
 
     # adjust units
-    repository, units = recalibrate(
-        data[data.columns[::-1]].tail(recent), units
-    )
+    repository, units = recalibrate(data[data.columns[::-1]].tail(recent), units)
 
     # plot the data
     ax = repository.plot()
