@@ -16,6 +16,7 @@ def get_abs_data(
     My standard set-up for notebooks that use ABS data.
 
     Argument: an ABS catalogue number (as a string, eg. "6401.0")
+    Keyword arguments: any additional arguments to pass to read_abs_cat
 
     Returns: the data in a dictionary, metadata, source and a recent date
     to plot from."""
