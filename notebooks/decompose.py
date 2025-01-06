@@ -128,7 +128,6 @@ def decompose(  # pylint: disable=too-many-arguments,disable=too-many-positional
     return result
 
 
-
 #  === private methods below ===
 _HENDERSON = "Henderson"
 
