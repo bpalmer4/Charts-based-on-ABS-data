@@ -257,6 +257,6 @@ def plot_summary(
         ax.tick_params(axis="y", labelsize=10)
         finalise_plot(ax, **kwargs)
 
-        # pre-pare for next loop
+        # prepare for next loop
         kwargs.pop("xlabel", None)
         kwargs.pop("x0", None)
