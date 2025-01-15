@@ -1,35 +1,47 @@
 #!/bin/zsh
 
-# Loop through each argument passed to the script
+# Apply a set of lint checks (black, mypy, pylint, ruff) to 
+# the calling arguments. Works for Python files and Jupyter 
+# notebooks.
+
 for arg in "$@"
 do
-    # Perform linting on the file or directory specified by the argument
+    echo "========================================"
     if [[ ! -e "$arg" ]]; then
-        echo "File or directory ($arg) not found, skipping..."
+        echo "File or directory ($arg) not found, skipping ..."
         continue
     fi
-    echo "----------------------------------------"
+    echo "Linting \"$arg\" ..."
     if [[ "$arg" == *.ipynb ]]; then
-        echo "Linting Jupyter notebook ($arg) ..."
+        echo "which is a Jupyter notebook ..."
+        echo "black ..."
         nbqa black "$arg"
+        echo "mypy ..."
         nbqa mypy "$arg"
+        echo "pylint ..."
         nbqa pylint "$arg"
+        echo "ruff ..."
         nbqa ruff "$arg"
-        # check to see if check has been disabled for the notebook
+        echo "Checking for type and pylint overrides ..."
         grep "# type: " "$arg"
         grep "# pylint: " "$arg"
         continue
     fi
     if [[ "$arg" == *.py ]]; then
-        echo "Linting Python file ($arg) ..."
+        echo "which is a Python file ..."
+        echo "black ..."
         black "$arg"
+        echo "mypy ..."
         mypy "$arg"
+        echo "pylint ..."
         pylint "$arg"
+        echo "ruff ..."
         ruff check "$arg"
-        # check to see if check has been disabled for the file
+        echo "Checking for type and pylint overrides ..."
         grep "# type: " "$arg"
         grep "# pylint: " "$arg"
+        continue
     fi
-    echo "===> Done with $arg <==="
-    echo "----------------------------------------"
+    echo "But file type not supported, skipping ..."
 done
+echo "========================================"
