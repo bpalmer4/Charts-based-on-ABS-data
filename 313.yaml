@@ -1,6 +1,4 @@
 # micromamba env create -f 313.yaml
-# Note: not all packages are available at this stage
-#       missing packages are commented with ###
 name: 313
 channels:
   - conda-forge
@@ -14,6 +12,7 @@ dependencies:
   - setuptools
   - pip
   - twine
+  - pdoc
   # Jupyter notebooks
   - jupyter 
   - jupyterlab 
@@ -24,12 +23,11 @@ dependencies:
   # data science
   - pandas
   - numpy
-  - matplotlib >= 3.9.2
+  - matplotlib
   - seaborn
   - statsmodels 
   - scipy 
   - scikit-learn 
-  - nltk
   - pycountry
   ###- pmdarima    ### Python 313 issues
   - pandasdmx
@@ -53,11 +51,6 @@ dependencies:
   - lxml 
   - bs4
   - requests_cache
-  # PyMC - Bayesian statistics  
-  - pymc >= 5.19.0     ### Python 313 issues
-  - pytensor >= 2.19   ### Python 313 issues
-  - numpyro
-  - jax
   # python linters and formatters
   - pylint 
   - flake8 
