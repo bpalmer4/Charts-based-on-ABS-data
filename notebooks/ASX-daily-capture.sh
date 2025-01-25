@@ -6,7 +6,7 @@
 home=/Users/bryanpalmer
 working=ABS/notebooks
 runrun=asx_daily_data_capture.py
-mmenv=312
+mmenv=313
 
 # move to the home directory
 cd $home
