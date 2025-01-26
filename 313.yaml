@@ -7,7 +7,7 @@ dependencies:
   # python version 3.13
   - python >=3.13, <3.14
   - cpython
-  # conda/pip - build - dist
+  # conda/pip - used to build readabs
   - wheel
   - setuptools
   - pip
