@@ -1,12 +1,13 @@
-"""A set of functions for plotting timeseries data 
-   with matplotlib.
-   The intent is to reduce repetitive code, while
-   maintaining a consistent look and feel for chart
-   outputs. """
+"""A set of functions for plotting timeseries data
+with matplotlib.
+The intent is to reduce repetitive code, while
+maintaining a consistent look and feel for chart
+outputs."""
 
 # --- imports
 # system imports
 import re
+import math
 from pathlib import Path
 from typing import Any, Final, cast, TypeVar
 
@@ -366,6 +367,7 @@ def finalise_plot(axes, **kwargs) -> None:
 STARTS, TAGS = "starts", "tags"
 AX = "ax"
 STYLE, WIDTH, COLOR = "style", "width", "color"
+ANNOTATE = "annotate"
 ALPHA, LEGEND, DROPNA = "alpha", "legend", "dropna"
 DRAWSTYLE, MARKER = "drawstyle", "marker"
 MARKERSIZE = "markersize"
@@ -374,7 +376,7 @@ MARKERSIZE = "markersize"
 # private
 def _apply_defaults(list_len: int, defaults: dict, kwargs: dict) -> tuple[dict, dict]:
     """Get arguments from kwargs, and apply a default from the
-    defaults dict if not there."""
+    defaults dict if not there. Remove the item from kwargs and return."""
 
     returnable = {}  # return vehicle
     for option, default in defaults.items():
@@ -422,7 +424,9 @@ def _get_multi_starts(**kwargs) -> tuple[dict[str, list], dict]:
 def _get_style_width_color_etc(
     item_count, num_data_points, **kwargs
 ) -> tuple[dict[str, list], dict]:
-    """Get the plot-line attributes arguemnts."""
+    """Get the plot-line attributes arguemnts.
+    Returns a dictionary of lists of attributes for each line, and
+    a modified kwargs dictionary."""
 
     if "color" not in kwargs:
 
@@ -471,6 +475,7 @@ def _get_style_width_color_etc(
         DRAWSTYLE: None,
         MARKER: None,
         MARKERSIZE: 10,
+        ANNOTATE: False,
     }
     swce, kwargs = _apply_defaults(item_count, defaults, kwargs)
 
@@ -487,6 +492,31 @@ def _get_style_width_color_etc(
     return swce, kwargs
 
 
+def _annotate(
+    axes: plt.Axes,
+    series: Series,
+    color: str = "#444444",
+    fontsize: int = 10,
+) -> None:
+    """Annotate the right-hand end-point of a line-plotted series."""
+
+    x, y = series.index[-1], series.iloc[-1]
+    if y is None or math.isnan(y):
+        return
+
+    rounding: int = 0 if y >= 100 else 1 if y >= 10 else 2
+    axes.text(
+        x=x,
+        y=y,
+        s=f" {y:.{rounding}f}",
+        ha="left",
+        va="center",
+        fontsize=fontsize,
+        color=color,
+        font="Helvetica",
+    )
+
+
 # public
 def line_plot(data: _DataT, **kwargs: Any) -> None:
     """Plot a series or a dataframe over multiple (starting_point) time horizons.
@@ -499,6 +529,7 @@ def line_plot(data: _DataT, **kwargs: Any) -> None:
     - width - float | list[float] - line widths.
     - style - str | list[str] - line styles.
     - alpha - float | list[float] - line transparencies.
+    - annotate - bool | list bool - whether to annotate the end-point of the line.
     - legend - dict | False - arguments to splat in a call to plt.Axes.legend()
     - drawstyle - str | list[str] - pandas drawing style
       if False, no legend will be displayed.
@@ -553,6 +584,8 @@ def line_plot(data: _DataT, **kwargs: Any) -> None:
                 drawstyle=swce[DRAWSTYLE][i],
                 ax=axes,
             )
+            if swce[ANNOTATE][i] and axes is not None:
+                _annotate(axes, series, swce[COLOR][i])
 
         if LEGEND in swce and isinstance(swce[LEGEND], dict):
             kwargs[LEGEND] = swce[LEGEND].copy()
@@ -566,6 +599,7 @@ def seas_trend_plot(data: DataFrame, **kwargs) -> None:
 
     colors = [COLOR_BLUE, COLOR_AMBER]
     widths = [NARROW_WIDTH, WIDE_WIDTH]
+    annotations = [True, False]
     styles = "-"
 
     if DROPNA not in kwargs:
@@ -576,7 +610,8 @@ def seas_trend_plot(data: DataFrame, **kwargs) -> None:
         width=widths,
         color=colors,
         style=styles,
-        legend=LEGEND_SET,
+        annotate=kwargs.get(ANNOTATE, annotations),
+        legend=kwargs.get(LEGEND, LEGEND_SET),
         **kwargs,
     )
 
@@ -782,16 +817,7 @@ def _plot_growth_line_bars(
                 color="white",
             )
             text.set_path_effects([pe.withStroke(linewidth=2, foreground=COLOR_RED)])
-            axes.text(
-                frame.index[-1],
-                frame["Annual"].iloc[-1],
-                f" {frame["Annual"].iloc[-1]:.{annotation_rounding}f}",
-                ha="left",
-                va="center",
-                **annotate_style,
-                fontdict=None,
-                color=COLOR_BLUE,
-            )
+            _annotate(axes, frame["Annual"], color=COLOR_BLUE, fontsize=annotate)
 
     _format_x_axis(axes, minticks=4, maxticks=16)
     return axes
@@ -939,12 +965,7 @@ def plot_revisions(data: pd.DataFrame, units: str, recent=18, **kwargs) -> None:
     # Annotate the last value in each series ...
     for c in repository.columns:
         col: pd.Series = repository.loc[:, c].dropna()
-        x, y, s = (
-            col.index[-1],
-            col.iloc[-1],
-            f" {col.iloc[-1]:.{2 if col.iloc[-1] < 100 else 1}f}",
-        )
-        ax.text(x, y, s, fontsize=10, va="center", ha="left")
+        _annotate(ax, col, color="#222222", fontsize=10)
 
     # change the line width for new data
     how_far_back = len(data.columns)
