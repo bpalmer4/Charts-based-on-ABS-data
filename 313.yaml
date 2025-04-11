@@ -76,3 +76,4 @@ dependencies:
   - types-ujson
   - types-beautifulsoup4
   - types-requests
+  - types-seaborn
