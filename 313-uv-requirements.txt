@@ -1,0 +1,82 @@
+# create: uv venv -p 3.13 ~/.venv/uv313
+# activate: source ~/.venv/uv313/bin/activate
+# install: uv pip install -r 313-uv-requirements.txt
+# to see what coul be updated (with caution): uv pip list --outdated
+
+
+# readabs
+readabs
+
+# Jupyter
+jupyter 
+jupyterlab 
+nodejs 
+watermark
+jupyterlab-spellchecker 
+jupyterlab_code_formatter
+ipykernel
+
+# data science
+pandas
+numpy
+matplotlib
+seaborn
+statsmodels 
+scipy 
+scikit-learn 
+pycountry
+pandasdmx
+tabulate
+
+# shapefiles
+shapely
+pyshp
+
+# Microsoft Excel 
+openpyxl
+xlrd
+pyxlsb
+
+# data base
+pyarrow 
+fastparquet 
+h5py
+arrow 
+polars
+ 
+# web stuff
+selenium
+webdriver-manager
+lxml 
+bs4
+requests_cache
+#
+# PyMC - Bayesian statistics
+pymc
+pytensor
+numpyro
+jax
+blackjax
+dm-tree
+#
+# python linters and formatters
+pylint 
+flake8 
+black 
+nbqa 
+ruff 
+isort
+mypy
+
+# types`
+pandas-stubs
+types-Pillow
+types-Pygments 
+types-colorama 
+types-decorator 
+types-jsonschema 
+types-six 
+types-ujson
+types-beautifulsoup4
+types-requests
+types-seaborn
