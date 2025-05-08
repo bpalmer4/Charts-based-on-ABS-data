@@ -1,7 +1,7 @@
 # create: uv venv -p 3.13 ~/.venv/uv313
 # activate: source ~/.venv/uv313/bin/activate
 # install: uv pip install -r 313-uv-requirements.txt
-# to see what coul be updated (with caution): uv pip list --outdated
+# to see what could be updated (with caution): uv pip list --outdated
 
 
 # readabs
