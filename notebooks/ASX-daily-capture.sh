@@ -4,22 +4,19 @@
 
 # set-up parameters
 home=/Users/bryanpalmer
-working=ABS/notebooks
+project=ABS
+working=notebooks
 runrun=asx_daily_data_capture.py
-mmenv=313
 
 # move to the home directory
 cd $home
 
-# activate the micromamba environment
-micromamba activate $mmenv
+# activate the uv environment
+source $home/$project/.venv/bin/activate
 
 # move to the working directory
-cd $working
+cd $project/$working
 
 # initiate the data capture
-$home/micromamba/envs/$mmenv/bin/python ./$runrun >>./LOGS/asx-log.log 2>>./LOGS/asx-err.log
+python ./$runrun >>./LOGS/asx-log.log 2>>./LOGS/asx-err.log
 
-# update git
-#git commit "../betting-data/sportsbet-2025-election-winner.csv" -m "data update"
-#git push

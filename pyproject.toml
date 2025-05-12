@@ -1,0 +1,44 @@
+[project]
+name = "abs"
+version = "0.0.0"
+description = "Capture and plot data from the ABS and the RBA"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # - Jupyter notebooks
+    "ipykernel",
+    "watermark",
+
+    # - system
+    "typing",
+
+    # - bespoke
+    "readabs",
+
+    # - data science
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "openpyxl",
+    "xlrd",
+    "statsmodels",
+
+    # - internet
+    "requests",
+    "bs4",
+    "lxml",
+
+    # - Bayesian
+    "pymc",
+    "arviz",
+    "jax",
+    "numpyro",
+    "graphviz",
+
+    # - code
+    "nbqa",
+    "black",
+    "pylint",
+    "ruff",
+    "mypy",
+]
