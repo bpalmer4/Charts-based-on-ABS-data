@@ -1,16 +1,22 @@
-"""A collection of functions to make working with ABS data just a litte bit easier."""
+"""
+abs_helper.py
+A collection of functions to make working with ABS data 
+just a litte bit easier.
+"""
 
 # === imports
 from typing import Any
-import pandas as pd
+from pandas import DataFrame, Series
 import readabs as ra
-from plotting import set_chart_dir, clear_chart_dir
+from readabs import metacol as mc
+
+from mgplot import set_chart_dir, clear_chart_dir
 
 
 # === frequently used data sources
 
 
-def get_gdp(gdp_type="CP", seasonal="SA") -> tuple[pd.Series, str]:
+def get_gdp(gdp_type="CP", seasonal="SA") -> tuple[Series, str]:
     """Return the ABS GDP Series (from the key aggregates table).
     Arguments:
     - gdp_type: str - The type of the series to return.
@@ -64,9 +70,10 @@ def get_gdp(gdp_type="CP", seasonal="SA") -> tuple[pd.Series, str]:
 def get_abs_data(
     cat: str,
     **kwargs: Any,
-) -> tuple[dict[str, pd.DataFrame], pd.DataFrame, str, str]:
-    """Get ABS data for a specific catalogue number and create plot directories.
-    My standard set-up for notebooks that use ABS data.
+) -> tuple[dict[str, DataFrame], DataFrame, str, str]:
+    """Get ABS data for a specific catalogue number and create 
+    the associated plot directories. This is my standard set-up 
+    for notebooks that use ABS data.
 
     Argument: an ABS catalogue number (as a string, eg. "6401.0")
     Keyword arguments: any additional arguments to pass to read_abs_cat
@@ -82,9 +89,45 @@ def get_abs_data(
     # create plot plot directories
     chart_dir = f"./CHARTS/{cat} - {ra.abs_catalogue().loc[cat, "Topic"]}/"
     set_chart_dir(chart_dir)
-    clear_chart_dir(chart_dir)
+    clear_chart_dir()
 
     return abs_dict_, meta_, source_, recent_
+
+
+# --- data collation
+def collate_summary_data(
+    to_get: dict[str, tuple[str, int]],
+    abs_data: dict[str, DataFrame],
+    md: DataFrame,
+    verbose: bool = False,
+) -> DataFrame:
+    """
+    Construct a summary DataFrame of key ABS data.
+    Get required data items. If period is specified,
+    calculate the percentage change over that period.
+    Return a DataFrame with the data. This DataFrame 
+    is then passed to the mgplot.summary_plot() function.
+
+    Args
+    - to_get: in the form {label: (series_id: str, n_periods_growth: int), ...}
+    - abs_data: duct of ABS data from readabs
+    - md: ABS meta data table from readabs
+    """
+
+    data = DataFrame()
+    for label, [code, period] in to_get.items():
+        selected = md[md[mc.id] == code].iloc[0]
+        table_desc = selected[mc.tdesc]
+        table = selected[mc.table]
+        did = selected[mc.did]
+        stype = selected[mc.stype]
+        if verbose:
+            print(code, table, table_desc, did, stype)
+        series = abs_data[table][code]
+        if period:
+            series = series.pct_change(periods=period) * 100
+        data[label] = series
+    return data
 
 
 # === Useful constants for plotting

@@ -5,14 +5,15 @@ from typing import Any, Callable, Final
 from pandas import DataFrame, Series
 from readabs import recalibrate, search_abs_meta
 from readabs import metacol as mc
-from plotting import (
+from mgplot import (
     seas_trend_plot,
-    abbreviate,
-    state_colors,
-    state_abbr,
-    LEGEND_SET,
-    line_plot,
+    colorise_list,
+    abbreviate_state,
+    get_setting,
+    line_plot_finalise,
+    state_names,
 )
+
 
 
 # === Constants
@@ -139,10 +140,8 @@ def _column_name_fix(r_frame: DataFrame) -> tuple[DataFrame, str, list[str]]:
     """Shorten column names."""
     columns = r_frame.columns.to_list()
     title = longest_common_prefex(columns)
-    renamer = {x: x.replace(title, "") for x in columns}
-    r_frame = r_frame.rename(columns=renamer)
-    renamer = {x: abbreviate(x) for x in r_frame.columns}
-    colours = [state_colors[x] for x in renamer.values()]
+    renamer = {x: abbreviate_state(x) for x in r_frame.columns}
+    colours = colorise_list(renamer.values())
     r_frame = r_frame.rename(columns=renamer)
     return r_frame, title, colours
 
@@ -201,8 +200,12 @@ def plot_rows_collectively(
     frame, units = recalibrate(frame, units)
     frame, title, colours = _column_name_fix(frame)
 
-    legend = {**LEGEND_SET, "ncols": 2, **(kwargs.pop("legend", {}))}
-    line_plot(
+    legend = {
+        **get_setting("legend"),
+        "ncols": 2,
+        **(kwargs.pop("legend", {}))
+    }
+    line_plot_finalise(
         frame,
         title=title,
         ylabel=units,
@@ -235,7 +238,7 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
             title = title.replace(f"{c} ;", "")
             lfooter += f"{c}. "
 
-    for s, abbr in state_abbr.items():
+    for s, abbr in state_names.items():
         title = title.replace(s, abbr)
 
     title = (
