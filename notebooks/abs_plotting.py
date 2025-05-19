@@ -6,12 +6,14 @@ from pandas import DataFrame, Series
 from readabs import recalibrate, search_abs_meta
 from readabs import metacol as mc
 from mgplot import (
+    #get_color,
     seas_trend_plot,
     colorise_list,
     abbreviate_state,
     get_setting,
     line_plot_finalise,
     state_names,
+    multi_start
 )
 
 
@@ -95,10 +97,22 @@ def plot_rows_seas_trend(
         # put the data into a frame and plot
         # Note - assume SA and Trend units are the same, this is not checked.
         frame, r_units = recalibrate(DataFrame(frame_data), r_units)
+        specific = {
+            "title": did.replace(" ;  ", ": ").replace(" ;", ""),
+            "ylabel": r_units,
+        }
+        if "starts" in kwargs:
+            multi_start(
+                frame,
+                function=seas_trend_plot,
+                **specific,
+                **kwargs,
+            )
+            continue
+
         seas_trend_plot(
             frame,  # cast(DataFrame, frame),
-            title=did.replace(" ;  ", ": ").replace(" ;", ""),  # NEEDS THINKING
-            ylabel=r_units,
+            **specific,
             **kwargs,
         )
 
