@@ -22,6 +22,8 @@ dependencies = [
     "openpyxl",
     "xlrd",
     "statsmodels",
+    "seaborn",
+    "babel",
 
     # - internet
     "requests",
