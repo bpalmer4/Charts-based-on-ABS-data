@@ -29,6 +29,9 @@ dependencies = [
     "requests",
     "bs4",
     "lxml",
+    "html5lib",
+    "webdriver_manager",
+    "selenium",
 
     # - Bayesian
     "pymc",
