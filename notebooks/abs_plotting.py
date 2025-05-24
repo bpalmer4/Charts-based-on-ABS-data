@@ -122,7 +122,7 @@ def plot_rows_individually(
     meta: DataFrame,
     selector: dict[str, str],
     plot_function: Callable,
-    **kwargs: Any,  # passed to plotting function
+    **kwargs,  # passed to plotting function
 ) -> None:
     """Produce an single chart for each row selected from
     the meta data with selector.
@@ -131,7 +131,6 @@ def plot_rows_individually(
     - selector - dict - used with find_rows() to select rows from meta
     - plot_function - callable - for plotting a series of dara
     - regex - bool - used with selector in find_rows()
-    - verbose - bool - used for feedback from find_rows()
     - **kwargs - arguments passed to plotting function."""
 
     args = search_args_from_kwargs(kwargs)
@@ -152,12 +151,20 @@ def plot_rows_individually(
 
 def _column_name_fix(r_frame: DataFrame) -> tuple[DataFrame, str, list[str]]:
     """Shorten column names."""
-    columns = r_frame.columns.to_list()
-    title = longest_common_prefex(columns)
+
+    # remove and leading common prefixes
+    prefix = longest_common_prefex(r_frame.columns.to_list())
+    if prefix != "":
+        renamer = {x: x.replace(prefix, "") for x in r_frame.columns}
+        r_frame = r_frame.rename(columns=renamer)
+
+    # if we have state names to abbreviate - do it now
     renamer = {x: abbreviate_state(x) for x in r_frame.columns}
-    colours = colorise_list(renamer.values())
     r_frame = r_frame.rename(columns=renamer)
-    return r_frame, title, colours
+
+    colours = colorise_list(list(r_frame.columns))
+
+    return r_frame, prefix, colours
 
 
 def longest_common_prefex(strings: list[str]) -> str:
@@ -219,7 +226,8 @@ def plot_rows_collectively(
         "ncols": 2,
         **(kwargs.pop("legend", {}))
     }
-    line_plot_finalise(
+    plot_function = kwargs.pop("plot_function", line_plot_finalise)
+    plot_function(
         frame,
         title=title,
         ylabel=units,
@@ -252,7 +260,8 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
             title = title.replace(f"{c} ;", "")
             lfooter += f"{c}. "
 
-    for s, abbr in state_names.items():
+    state_name_map = {p: abbreviate_state(p) for p in state_names}
+    for s, abbr in state_name_map.items():
         title = title.replace(s, abbr)
 
     title = (
@@ -264,3 +273,14 @@ def fix_abs_title(title: str, lfooter: str) -> tuple[str, str]:
         .strip()
     )
     return title, lfooter
+
+
+# --- test code ---
+if __name__ == "__main__":
+    example1 = ["blah 1", "blah 2", "blah 3"]
+    print(f"'{longest_common_prefex(example1)}'")
+
+    example2 = DataFrame(columns=example1)
+    frame_, prefix_, colors_ = _column_name_fix(example2)
+    print(frame_.columns, prefix_, colors_)
+    
