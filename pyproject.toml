@@ -24,6 +24,8 @@ dependencies = [
     "statsmodels",
     "seaborn",
     "babel",
+    "pycountry",
+    #"pmdarima",  # --- problematic
 
     # - internet
     "requests",
