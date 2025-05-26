@@ -7,7 +7,7 @@ from readabs import recalibrate, search_abs_meta
 from readabs import metacol as mc
 from mgplot import (
     #get_color,
-    seas_trend_plot,
+    seastrend_plot_finalise,
     colorise_list,
     abbreviate_state,
     get_setting,
@@ -104,13 +104,13 @@ def plot_rows_seas_trend(
         if "starts" in kwargs:
             multi_start(
                 frame,
-                function=seas_trend_plot,
+                function=seastrend_plot_finalise,
                 **specific,
                 **kwargs,
             )
             continue
 
-        seas_trend_plot(
+        seastrend_plot_finalise(
             frame,  # cast(DataFrame, frame),
             **specific,
             **kwargs,
@@ -283,4 +283,3 @@ if __name__ == "__main__":
     example2 = DataFrame(columns=example1)
     frame_, prefix_, colors_ = _column_name_fix(example2)
     print(frame_.columns, prefix_, colors_)
-    
