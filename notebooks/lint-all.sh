@@ -16,31 +16,35 @@ do
         echo "which is a Jupyter notebook ..."
         echo "black ..."
         nbqa black "$arg"
-        echo "mypy ..."
-        nbqa mypy "$arg"
         echo "pylint ..."
         nbqa pylint "$arg"
         echo "ruff ..."
         nbqa ruff "$arg"
-        echo "Checking for type and pylint overrides ..."
+        echo "\n\nmypy ..."
+        nbqa mypy "$arg"
+        echo "\n\nChecking for type and pylint overrides ..."
         grep "# type: " "$arg"
         grep "# pylint: " "$arg"
+        grep --regexp="from typing import .*cast" "$arg"
+        grep "cast(" "$arg"
         continue
     fi
     if [[ "$arg" == *.py ]]; then
         echo "which is a Python file ..."
         echo "black ..."
         black "$arg"
-        echo "mypy ..."
-        mypy "$arg"
         echo "pylint ..."
         pylint "$arg"
         echo "ruff ..."
         ruff check "$arg"
+        echo "mypy ..."
+        mypy "$arg"
         echo "Checking for type and pylint overrides ..."
         grep "# type: " "$arg"
         grep "# pylint: " "$arg"
-        continue
+        grep --regexp="from typing import .*cast" "$arg"
+        grep "cast(" "$arg"
+       continue
     fi
     echo "But file type not supported, skipping ..."
 done

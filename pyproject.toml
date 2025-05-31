@@ -49,4 +49,10 @@ dependencies = [
     "pylint",
     "ruff",
     "mypy",
+
+    # - typing
+    "pandas-stubs",
+    "numpy-typing",
+    "types-selenium",
+    "types-seaborn",
 ]

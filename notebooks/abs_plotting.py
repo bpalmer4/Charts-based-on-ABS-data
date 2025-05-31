@@ -13,7 +13,10 @@ from mgplot import (
     get_setting,
     line_plot_finalise,
     state_names,
-    multi_start
+    multi_start,
+
+    series_growth_plot_finalise,
+    series_growth_plot,
 )
 
 
@@ -141,11 +144,15 @@ def plot_rows_individually(
         series, units = recalibrate(abs_dict[table][series_id], units)
         series.name = f"{series_type.capitalize()} series"
 
+        copy_kwargs = kwargs.copy()
+        if plot_function not in (series_growth_plot_finalise, series_growth_plot):
+            # if we are doing a series_growth_plot, we dont need to pass the ylabel
+            copy_kwargs["ylabel"] = units
+
         plot_function(
             series,
             title=did.replace(" ;  ", ": ").replace(" ;", ""),
-            ylabel=units,
-            **kwargs,
+            **copy_kwargs,
         )
 
 
