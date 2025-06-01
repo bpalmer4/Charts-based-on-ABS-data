@@ -66,6 +66,45 @@ def get_gdp(gdp_type="CP", seasonal="SA") -> tuple[Series, str]:
     return gdp, units
 
 
+def get_population(
+        state="Australia",
+        project=True,
+        **kwargs,
+    ) -> tuple[Series, str]:
+    """Return the ABS population Series for a given state.
+
+    Arguments:
+    - state: str - The state to return the population for.
+      Defaults to 'Australia' for the national population.
+    - project: bool - Whether to project the population to the current date.
+
+    Returns a tuple comprising:
+    - the selected population series and 
+    - the units of that series.
+    """
+
+    # get the series
+    cat = "3101.0"
+    table = "310104"
+    pop_data, pop_meta = ra.read_abs_cat(cat, single_excel_only=table, verbose=False)
+    selector = {
+        f";  {state} ;": mc.did,
+        "Estimated Resident Population ;  Persons ;  ": mc.did
+    }
+    _table, series_id, units = ra.find_abs_id(pop_meta, selector, **kwargs)
+    pop = pop_data[table][series_id]
+
+    if project:
+        # a bit rough - but should do for such a simple seriies
+        # over such a short period
+        rate = pop.iloc[-1] / pop.iloc[-2]
+        base_period = pop.index[-1]
+        for i in range(1, 3):
+            pop[base_period + i] = pop[base_period + i - 1] * rate
+
+    return pop, units
+
+
 # === data retrieval and initialisation
 def get_abs_data(
     cat: str,

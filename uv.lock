@@ -549,7 +549,7 @@ wheels = [
 
 [[package]]
 name = "ipython"
-version = "9.2.0"
+version = "9.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -563,9 +563,9 @@ dependencies = [
     { name = "stack-data" },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/02/63a84444a7409b3c0acd1de9ffe524660e0e5d82ee473e78b45e5bfb64a4/ipython-9.2.0.tar.gz", hash = "sha256:62a9373dbc12f28f9feaf4700d052195bf89806279fc8ca11f3f54017d04751b", size = 4424394, upload-time = "2025-04-25T17:55:40.498Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/09/4c7e06b96fbd203e06567b60fb41b06db606b6a82db6db7b2c85bb72a15c/ipython-9.3.0.tar.gz", hash = "sha256:79eb896f9f23f50ad16c3bc205f686f6e030ad246cc309c6279a242b14afe9d8", size = 4426460, upload-time = "2025-05-31T16:34:55.678Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/ce/5e897ee51b7d26ab4e47e5105e7368d40ce6cfae2367acdf3165396d50be/ipython-9.2.0-py3-none-any.whl", hash = "sha256:fef5e33c4a1ae0759e0bba5917c9db4eb8c53fee917b6a526bd973e1ca5159f6", size = 604277, upload-time = "2025-04-25T17:55:37.625Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/99/9ed3d52d00f1846679e3aa12e2326ac7044b5e7f90dc822b60115fa533ca/ipython-9.3.0-py3-none-any.whl", hash = "sha256:1a0b6dd9221a1f5dddf725b57ac0cb6fddc7b5f470576231ae9162b9b3455a04", size = 605320, upload-time = "2025-05-31T16:34:52.154Z" },
 ]
 
 [[package]]
@@ -851,13 +851,14 @@ wheels = [
 
 [[package]]
 name = "mgplot"
-version = "0.1.1"
+version = "0.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "black" },
     { name = "matplotlib" },
     { name = "mypy" },
     { name = "numpy" },
+    { name = "numpy-typing" },
     { name = "pandas" },
     { name = "pandas-stubs" },
     { name = "pathlib" },
@@ -868,9 +869,9 @@ dependencies = [
     { name = "types-tabulate" },
     { name = "typing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/d2/f2344c4622b888b2dbeb883dc7819e9d92bd433958b8f747dfd3ee6b472d/mgplot-0.1.1.tar.gz", hash = "sha256:142ab674cc1b3e788be5dedd376bfb5f743b96c75a9c304182007f734260770b", size = 35923, upload-time = "2025-05-29T09:44:33.594Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/af/8c2ed0c791a45fbcb8408d82ae4bda44e295b3fb39030919525a1c9aa761/mgplot-0.1.3.tar.gz", hash = "sha256:2cea64faf298a338e3770746725ac878cd359ca54abe1f329cc3dd63e2e4c9ee", size = 36534, upload-time = "2025-05-31T07:57:14.998Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/28/6977eac7cfcf9383117746b4688b034883118cf36c52ce30bb30d3e431da/mgplot-0.1.1-py3-none-any.whl", hash = "sha256:920207c32c39c5969dcd065ca25d758f8137060230f0e65258204fa319323139", size = 42462, upload-time = "2025-05-29T09:44:31.436Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/a4/86ae7b67b82b31caf0873d4975ec9b45e700154fce6e239fadd0a95d1e7a/mgplot-0.1.3-py3-none-any.whl", hash = "sha256:51895c99f50f7d1cc40e9d231b7ce484ba233fb81958a01ccad355e5d93542a9", size = 43337, upload-time = "2025-05-31T07:57:13.574Z" },
 ]
 
 [[package]]
