@@ -76,7 +76,7 @@ def get_population(
     Arguments:
     - state: str - The state to return the population for.
       Defaults to 'Australia' for the national population.
-    - project: bool - Whether to project the population to the current date.
+    - project: bool - Whether to project the population to the present.
 
     Returns a tuple comprising:
     - the selected population series and 
@@ -88,15 +88,15 @@ def get_population(
     table = "310104"
     pop_data, pop_meta = ra.read_abs_cat(cat, single_excel_only=table, verbose=False)
     selector = {
-        f";  {state} ;": mc.did,
+        f";  {state} ;": mc.did,  # too many states have "Australia" in their name
         "Estimated Resident Population ;  Persons ;  ": mc.did
     }
     _table, series_id, units = ra.find_abs_id(pop_meta, selector, **kwargs)
     pop = pop_data[table][series_id]
 
     if project:
-        # a bit rough - but should do for such a simple seriies
-        # over such a short period
+        # a bit rough - but should do for such a simple series
+        # over such a short period (6 months)
         rate = pop.iloc[-1] / pop.iloc[-2]
         base_period = pop.index[-1]
         for i in range(1, 3):
