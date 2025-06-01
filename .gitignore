@@ -18,6 +18,7 @@ __pycache__/
 *.readabs_cache/
 notebooks/ABS_CACHE/**
 notebooks/AFSA_CACHE/**
+notebooks/ANGG_CACHE/**
 notebooks/ASIC_CACHE/**
 notebooks/ASX_DAILY_DATA/**
 notebooks/BIS_CACHE/**
