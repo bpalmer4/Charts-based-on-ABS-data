@@ -55,4 +55,5 @@ dependencies = [
     "numpy-typing",
     "types-selenium",
     "types-seaborn",
+    "types-tabulate",
 ]
