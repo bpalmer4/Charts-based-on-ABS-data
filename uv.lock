@@ -813,7 +813,7 @@ wheels = [
 
 [[package]]
 name = "mgplot"
-version = "0.1.11"
+version = "0.1.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
@@ -823,9 +823,9 @@ dependencies = [
     { name = "tabulate" },
     { name = "typing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/2a/35bea2cea1de49d0895958bfadc199759a2f279378f5ef824e798334b753/mgplot-0.1.11.tar.gz", hash = "sha256:d706bc079af46c98c3a7322bbc52b7b2d46cb80fb9f3e9b96c88e1a400d4e4c2", size = 371760, upload-time = "2025-06-11T08:50:28.755Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/7a/72926363f52f4b92337aa9d266b3cd27c6a1427855504278950a85354eca/mgplot-0.1.12.tar.gz", hash = "sha256:1c43da3239886b1af12aa7c4025cb2072fc570ea58c7da986461f9f2563c003d", size = 371810, upload-time = "2025-06-14T11:29:55.571Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/d3/174451e525c5ba6358bada964bba8e1051cdc3c49a3b571f0c02f2235647/mgplot-0.1.11-py3-none-any.whl", hash = "sha256:b30b14485008fe4a82bf2759d688eedc260b9c3cc52c1873766a6ab3d0424a69", size = 95341, upload-time = "2025-06-11T08:50:27.078Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/b3/c6ab1349af205b20c48aaceb3e1d020fb29b26a7524cdd8ea7eb8b9986b5/mgplot-0.1.12-py3-none-any.whl", hash = "sha256:f029ff24f0793500e45b7384386802b0c13af8fce1faa05a755a2095f32b47ff", size = 95335, upload-time = "2025-06-14T11:29:52.491Z" },
 ]
 
 [[package]]
@@ -1908,11 +1908,11 @@ wheels = [
 
 [[package]]
 name = "xlrd"
-version = "2.0.1"
+version = "2.0.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a6/b3/19a2540d21dea5f908304375bd43f5ed7a4c28a370dc9122c565423e6b44/xlrd-2.0.1.tar.gz", hash = "sha256:f72f148f54442c6b056bf931dbc34f986fd0c3b0b6b5a58d013c9aef274d0c88", size = 100259, upload-time = "2020-12-11T10:14:22.201Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/5a/377161c2d3538d1990d7af382c79f3b2372e880b65de21b01b1a2b78691e/xlrd-2.0.2.tar.gz", hash = "sha256:08b5e25de58f21ce71dc7db3b3b8106c1fa776f3024c54e45b45b374e89234c9", size = 100167, upload-time = "2025-06-14T08:46:39.039Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/0c/c2a72d51fe56e08a08acc85d13013558a2d793028ae7385448a6ccdfae64/xlrd-2.0.1-py2.py3-none-any.whl", hash = "sha256:6a33ee89877bd9abc1158129f6e94be74e2679636b8a205b43b85206c3f0bbdd", size = 96531, upload-time = "2020-12-11T10:14:20.877Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/62/c8d562e7766786ba6587d09c5a8ba9f718ed3fa8af7f4553e8f91c36f302/xlrd-2.0.2-py2.py3-none-any.whl", hash = "sha256:ea762c3d29f4cca48d82df517b6d89fbce4db3107f9d78713e48cd321d5c9aa9", size = 96555, upload-time = "2025-06-14T08:46:37.766Z" },
 ]
 
 [[package]]
