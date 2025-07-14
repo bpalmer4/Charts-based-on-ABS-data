@@ -15,6 +15,7 @@ dependencies = [
     # - bespoke
     "readabs",
     "mgplot",
+    "sdmxabs",
 
     # - data science
     "matplotlib",

@@ -15,7 +15,8 @@ __pycache__/
 .DS_Store
 
 # unnecessary detail to be ignored
-*.readabs_cache/
+.sdmxabs_cache/
+.readabs_cache/
 notebooks/ABS_CACHE/**
 notebooks/AFSA_CACHE/**
 notebooks/ANGG_CACHE/**
