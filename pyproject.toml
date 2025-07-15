@@ -58,3 +58,27 @@ dependencies = [
     "types-seaborn",
     "types-tabulate",
 ]
+
+[tool.ruff]
+line-length=115
+lint.select = [ "ALL" ]  # Aggresively select all rules
+lint.ignore = [
+    # --- general rules to ignore
+    "COM812",  # missing or trailing comma - recommended by ruff format
+    "D203",    # Incorrect blank line before class - recommended by ruff check
+    "D213",    # Multi-line docstring summary should start at the first line - recommended by ruff
+    "EM101",   # Exception must not use a string literal
+    "EM102",   # Exception must not use an f-string literal
+    "T201",    # Remove `print` --> But I use print to alert the user
+    "TRY003",  # Long exception messages.
+    "PD008",   # mypy doesnt like .loc[] / ruff doesn't like .at[]
+
+    # --- specifically for Jupyter notebooks.
+    "B018",    # Found useless attribute access (often at cell end for output) 
+    "BLE001",  # catch-all exceptions - not usefull in Jupyter notebooks
+    "D100",    # Missing docstring in public module
+    "E402",    # Module level import not at top of file - doesn't work with Notebooks
+    "INP001",  # implicit-namespace-package - not relevant for Jupyter notebooks
+    "PLR0913", # Too many arguments - not relevant for Jupyter notebooks
+]
+
