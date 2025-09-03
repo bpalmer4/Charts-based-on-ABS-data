@@ -11,6 +11,9 @@ __pycache__/
 # vscode stuff
 .vscode/
 
+# CLAUDE
+CLAUDE.md
+
 # MacOS stuff to be ignored
 .DS_Store
 
