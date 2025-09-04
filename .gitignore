@@ -14,6 +14,10 @@ __pycache__/
 # CLAUDE
 CLAUDE.md
 
+# API keys - keep private
+fred.api
+notebooks/fred.api
+
 # MacOS stuff to be ignored
 .DS_Store
 
