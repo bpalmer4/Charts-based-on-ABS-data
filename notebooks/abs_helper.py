@@ -171,7 +171,7 @@ def collate_summary_data(
 
 # === Useful constants for plotting
 # CPI targets
-ANNUAL_CPI_TARGET = {
+ANNUAL_CPI_TARGET: dict[str, float | str | int] = {
     "y": 2.5,
     "color": "gray",
     "linestyle": "--",
@@ -180,7 +180,7 @@ ANNUAL_CPI_TARGET = {
     "zorder": -1,
 }
 
-ANNUAL_CPI_TARGET_RANGE = {
+ANNUAL_CPI_TARGET_RANGE: dict[str, float |str | int] = {
     "ymin": 2,
     "ymax": 3,
     "color": "#dddddd",
@@ -188,7 +188,7 @@ ANNUAL_CPI_TARGET_RANGE = {
     "zorder": -1,
 }
 
-QUARTERLY_CPI_TARGET = {
+QUARTERLY_CPI_TARGET: dict[str, float | str | int] = {
     "y": (pow(1.025, 0.25) - 1) * 100,
     "linestyle": "dashed",
     "linewidth": 0.75,
@@ -196,7 +196,7 @@ QUARTERLY_CPI_TARGET = {
     "label": "Quarterly growth consistent with 2.5% annual inflation",
 }
 
-QUARTERLY_CPI_RANGE = {
+QUARTERLY_CPI_RANGE: dict[str, float | str | int] = {
     "ymin": (pow(1.02, 0.25) - 1) * 100,
     "ymax": (pow(1.03, 0.25) - 1) * 100,
     "color": "#ffdddd",
@@ -204,7 +204,7 @@ QUARTERLY_CPI_RANGE = {
     "zorder": -1,
 }
 
-MONTHLY_CPI_TARGET = {
+MONTHLY_CPI_TARGET: dict[str, float | str | int] = {
     "y": (pow(1.025, 1.0 / 12.0) - 1) * 100,
     "color": "darkred",
     "linewidth": 0.75,
