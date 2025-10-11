@@ -3,7 +3,7 @@ name = "abs"
 version = "0.0.0"
 description = "Capture and plot data from the ABS and the RBA"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     # - Jupyter notebooks
     "ipykernel",
