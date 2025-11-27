@@ -1471,7 +1471,7 @@ wheels = [
 
 [[package]]
 name = "readabs"
-version = "0.1.5"
+version = "0.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bs4" },
@@ -1486,9 +1486,9 @@ dependencies = [
     { name = "tabulate" },
     { name = "typing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/40/470029c2ecb7edcd5f17f7ba04d62cbe3d7bac14689268613a4ebafc320a/readabs-0.1.5.tar.gz", hash = "sha256:5b3a4eb026f2fd36997d1951b0f8f6360ab9b439a0da39a6b5c1825b69abcd6f", size = 6488782, upload-time = "2025-11-26T03:47:09.26Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/f2/0af384342f21e9a496cd53399d8d83a1e2878e8805108e998ea21ace56a3/readabs-0.1.6.tar.gz", hash = "sha256:4674a01dc56eb1024ea9a2109442059c5e5eaa32a143aae97cbe251fb06fc833", size = 6490436, upload-time = "2025-11-26T21:09:25.459Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/f4/3ddcf23236fb976612e7aaffee1c3168fda08657a20220ca2f1bb512e8c8/readabs-0.1.5-py3-none-any.whl", hash = "sha256:c39f37337da9cd4bc37c4e48478548bb7a0d048bc46f72da6d1e01e66b1aa92d", size = 6140385, upload-time = "2025-11-26T03:47:05.354Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/1a/65815728fc8d5ae141f38ec679f564c2642e894522df5a1abe4a34032ea4/readabs-0.1.6-py3-none-any.whl", hash = "sha256:3cd64c472fffb7de0f102ac3ab2c7ce9bf2843abf0d361d2fd526b83afc29835", size = 6140411, upload-time = "2025-11-26T21:09:22.18Z" },
 ]
 
 [[package]]
