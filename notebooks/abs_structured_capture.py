@@ -85,8 +85,9 @@ def get_zip_table(zip_file: str, table: str) -> tuple[DataFrame, DataFrame]:
 def get_table(cat: str, table: str) -> tuple[DataFrame, DataFrame]:
     """Get ABS data table and metadata for a given ABS catalogue-id and table-id."""
 
-    dictionary, meta = ra.read_abs_cat(cat, single_excel_only=table)
+    dictionary, meta = ra.read_abs_cat(cat, single_excel_only=table, verbose=False)
     data = dictionary[table]
+    meta = meta[meta[mc.table] == table]
     return (data, meta)
 
 
