@@ -13,6 +13,7 @@ __pycache__/
 
 # CLAUDE
 CLAUDE.md
+.claude
 
 # API keys - keep private
 fred.api
