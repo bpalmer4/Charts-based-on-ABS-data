@@ -93,11 +93,12 @@ def get_table(cat: str, table: str) -> tuple[DataFrame, DataFrame]:
 
 # --- public code ---
 @cache
-def load_series(input_tuple: ReqsTuple) -> Series:
+def load_series(input_tuple: ReqsTuple, verbose=False) -> Series:
     """Load an ABS data-series and return as a pandas Series.
 
     Args: 
         input_tuple (ReqsTuple): Tuple of selection requirements.
+        verbose (bool): Whether to print verbose output.
 
     Returns: 
         A pandas Series.
@@ -129,7 +130,7 @@ def load_series(input_tuple: ReqsTuple) -> Series:
         selector["Percentage"] = mc.did
         selector["revious"] = mc.did
         selector["ear"] = mc.did
-    _table, series_id, _units = ra.find_abs_id(meta, selector, verbose=False)
+    _table, series_id, _units = ra.find_abs_id(meta, selector, verbose=verbose)
     series = data[series_id]
     if calc_growth:
         periodicity = cast(PeriodIndex, series.index).freqstr[0]
@@ -141,11 +142,12 @@ def load_series(input_tuple: ReqsTuple) -> Series:
     return series
 
 
-def get_abs_data(wanted: ReqsDict) -> dict[str, Series]:
+def get_abs_data(wanted: ReqsDict, verbose=False) -> dict[str, Series]:
     """Load all the ABS data series specified in the dictionary of requirements.
     
     Args:
         wanted (ReqsDict): Dictionary of desired series with names as keys.
+        verbose (bool): Whether to print verbose output.
         
     Returns:
         dict[str, Series]: Dictionary of loaded series.
@@ -153,7 +155,7 @@ def get_abs_data(wanted: ReqsDict) -> dict[str, Series]:
 
     box = {}
     for (w, t) in wanted.items():
-        series = load_series(t)
+        series = load_series(t, verbose=verbose)
         box[w] = series
 
     return box
