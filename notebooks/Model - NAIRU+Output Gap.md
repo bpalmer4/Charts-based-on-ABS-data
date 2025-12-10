@@ -89,7 +89,7 @@ This captures time-varying effects including:
 
 $$ \pi_{t} = \frac{\pi^e_t}{4} + \rho_{\pi}\Delta_4 \rho^{m}_{t-1} +
    \gamma_{\pi}\frac{(U_t - U^*_t)}{U_t} +
-   \xi_{\pi}\Xi^2_{t-2} + \theta_{\pi}\omega_t + \epsilon_{\pi}$$
+   \xi_{\pi}\Xi^2_{t-2} + \epsilon_{\pi}$$
 
 Where:
 - $\pi_t$ is quarterly trimmed mean inflation
@@ -99,16 +99,16 @@ Where:
   - Post-1998: Fully anchored to 2.5% target
 - $\Delta_4 \rho^{m}_{t-1}$ is the **four-quarter change in log import prices** (lagged), capturing external price shocks transmitted through the exchange rate
 - $\Xi_{t-2}$ is the **Global Supply Chain Pressure Index** (NY Fed), with the squared term capturing asymmetric COVID-era supply disruptions (2020Q1-2023Q2)
-- $\omega_t$ is the quarterly change in AUD-denominated oil prices, capturing energy price shocks
 - $\gamma_{\pi}$ is the Phillips curve slope on the unemployment gap
 
 **Inflation expectations construction:**
 
-The expectations series combines historical headline CPI (Original series, back to 1949) with trimmed mean inflation (from 1987), applies Henderson smoothing, then phases in anchoring to reflect the RBA's inflation targeting credibility:
-- Uses headline CPI for early period (pre-trimmed-mean era)
-- Switches to trimmed mean when available (from 1987Q3)
-- Henderson MA (25-term) smooths both series to capture long-memory expectations formation
-- Phased anchoring reflects the gradual establishment of inflation targeting credibility after 1993
+The expectations series uses the RBA's PIE_RBAQ series (1970Q1-2023Q1) as the base, extended forward using a fitted relationship with trimmed mean inflation:
+
+- **1970Q1-2023Q1**: RBA PIE_RBAQ series (quarterly rates, annualised)
+- **2023Q2 onwards**: Extended using `π_e = 2.379 + 0.055 × TM(4Q avg)`
+
+The RBA series is heavily anchored around 2.5%, with very low sensitivity to actual inflation (R² ≈ 0.10 against trimmed mean). Even during the 2022-23 inflation surge when TM reached 6.8%, expectations only rose to ~2.3%. The extension model captures this strong anchoring behaviour.
 
 ### 4. Okun's Law (change form)
 
