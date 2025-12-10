@@ -85,18 +85,30 @@ This captures time-varying effects including:
 - Capital share (α): ~0.25
 - Trend decline: -0.04 percentage points per year
 
-### 3. Price Inflation Equation (Phillips Curve)
+### 3. Price Inflation Equation (Expectations-Augmented Phillips Curve)
 
-$$ (\pi_{t} - \bar{\pi}) = \rho_{\pi}\Delta_4 \rho^{m}_{t-1} +
+$$ \pi_{t} = \frac{\pi^e_t}{4} + \rho_{\pi}\Delta_4 \rho^{m}_{t-1} +
    \gamma_{\pi}\frac{(U_t - U^*_t)}{U_t} +
    \xi_{\pi}\Xi^2_{t-2} + \theta_{\pi}\omega_t + \epsilon_{\pi}$$
 
 Where:
-- $\pi_t$ is quarterly trimmed mean inflation; $\bar{\pi}$ is the quarterly equivalent of the 2.5% annual target
+- $\pi_t$ is quarterly trimmed mean inflation
+- $\pi^e_t$ is **anchored inflation expectations** (annual rate, divided by 4 for quarterly), constructed as:
+  - Pre-1993: Adaptive expectations from Henderson-smoothed annual inflation (25-term)
+  - 1993-1998: Linear phase-in of anchoring to 2.5% target
+  - Post-1998: Fully anchored to 2.5% target
 - $\Delta_4 \rho^{m}_{t-1}$ is the **four-quarter change in log import prices** (lagged), capturing external price shocks transmitted through the exchange rate
 - $\Xi_{t-2}$ is the **Global Supply Chain Pressure Index** (NY Fed), with the squared term capturing asymmetric COVID-era supply disruptions (2020Q1-2023Q2)
 - $\omega_t$ is the quarterly change in AUD-denominated oil prices, capturing energy price shocks
 - $\gamma_{\pi}$ is the Phillips curve slope on the unemployment gap
+
+**Inflation expectations construction:**
+
+The expectations series combines historical headline CPI (Original series, back to 1949) with trimmed mean inflation (from 1987), applies Henderson smoothing, then phases in anchoring to reflect the RBA's inflation targeting credibility:
+- Uses headline CPI for early period (pre-trimmed-mean era)
+- Switches to trimmed mean when available (from 1987Q3)
+- Henderson MA (25-term) smooths both series to capture long-memory expectations formation
+- Phased anchoring reflects the gradual establishment of inflation targeting credibility after 1993
 
 ### 4. Okun's Law (change form)
 

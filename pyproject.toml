@@ -22,6 +22,7 @@ dependencies = [
     "matplotlib",
     "numpy",
     "pandas",
+    "pyarrow",
     "openpyxl",
     "xlrd",
     "statsmodels",
