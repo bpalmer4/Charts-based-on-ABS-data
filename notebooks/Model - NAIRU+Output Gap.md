@@ -28,7 +28,7 @@ Output gap and Okun's Law:
 
 ## The PyMC Model
 
-This model jointly estimates the NAIRU and potential output (output gap) using five equations. All GDP variables ($Y$, $Y^*$) are expressed in **log form** (specifically, $\ln(GDP) \times 100$), ensuring dimensional consistency throughout.
+This model jointly estimates the NAIRU and potential output (output gap) using six equations. All GDP variables ($Y$, $Y^*$) are expressed in **log form** (specifically, $\ln(GDP) \times 100$), ensuring dimensional consistency throughout.
 
 ### 1. NAIRU State Space Model
 
@@ -125,6 +125,34 @@ $$ \Delta ulc_t = \alpha_{wg} + \gamma_{wg}\frac{(U_t - U^*_t)}{U_t} +
 
 Where $\Delta ulc_t$ is **quarterly growth in unit labour costs** (compensation per unit of output), used as a proxy for underlying wage inflation. The $\lambda_{wg}$ term captures "speed limit" effects where rapid changes in unemployment affect wage pressures beyond the level of the gap.
 
+### 6. IS Equation
+
+$$ Y_t = Y^*_t + \rho_{is}(Y_{t-1} - Y^*_{t-1}) - \beta_{is}(r_{t-2} - r^*) + \epsilon_{is} $$
+
+Where:
+- $Y_t$ is log GDP
+- $Y^*_t$ is log potential output (from the Cobb-Douglas equation)
+- $r_t = i_t - \pi^e_t$ is the ex-ante real interest rate (cash rate minus inflation expectations)
+- $r^*$ is the deterministic neutral real rate (see below)
+- $\rho_{is}$ is the output gap persistence parameter (expected 0 < ρ < 1)
+- $\beta_{is}$ is the interest rate sensitivity (expected > 0)
+- Lag structure: 2-quarter lag on the real rate gap
+
+**Deterministic r\* calculation:**
+
+Rather than estimating $r^*$ as a latent variable (as in Holston-Laubach-Williams), this model uses a theoretically grounded deterministic approach:
+
+$$ r^* = HMA_{13}\left(\alpha \cdot g^K + (1-\alpha) \cdot g^L + g^{MFP}\right) $$
+
+This is the smoothed Cobb-Douglas potential growth rate - the same growth decomposition used in the potential output equation, annualised and smoothed with a 13-term Henderson moving average. This approach:
+- Is grounded in growth theory (Ramsey model implies r* ≈ potential growth in steady state)
+- Avoids the curve-fitting concerns of purely statistical r* estimation
+- Allows the IS equation to provide information about the output gap without contaminating the r* estimate
+
+**Expected parameter values:**
+- $\rho_{is}$: ~0.75-0.85 (substantial persistence in output gaps)
+- $\beta_{is}$: ~0.05-0.15 (positive - tighter policy reduces output gap)
+
 ---
 
 ## Key Design Choices
@@ -141,6 +169,8 @@ Where $\Delta ulc_t$ is **quarterly growth in unit labour costs** (compensation 
 
 6. **Output gap calculation**: After estimation, output gap = $(Y - Y^*)/Y^*$ as a percentage deviation from potential.
 
+7. **Deterministic r\* in IS equation**: The neutral rate is calculated from smoothed Cobb-Douglas potential growth rather than estimated as a latent variable. This avoids the curve-fitting concerns of HLW-style approaches while grounding r* in growth theory (steady-state r* ≈ potential growth).
+
 **Note on sample period:**
 
 The model is estimated using data from 1984-Q3 onwards. When estimated using only post-1993 data (the inflation targeting era), the model exhibited divergences during sampling, suggesting the earlier data provides important information for identifying the latent states. The full sample is retained for model stability, though users should be aware that the pre-1993 period reflects a different monetary policy regime.
@@ -154,6 +184,8 @@ Test whether key model parameters match their theoretical values:
 - **β (beta_okun)**: Expected < 0 (negative Okun coefficient)
 - **γ_π (gamma_pi)**: Expected < 0 (negative Phillips curve slope)
 - **γ_wg (gamma_wg)**: Expected < 0 (negative wage Phillips curve slope)
+- **β_is (beta_is)**: Expected > 0 (positive interest rate sensitivity - tighter policy reduces output gap)
+- **ρ_is (rho_is)**: Expected 0 < ρ < 1 (stable output gap persistence)
 
 ---
 

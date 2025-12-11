@@ -84,13 +84,17 @@ def check_model_diagnostics(trace: az.InferenceData) -> None:
             )
         else:
             # Fallback: compare to observed max (less reliable)
+            ignore = 10
             tree_depth = trace.sample_stats.tree_depth.values
             max_depth = int(tree_depth.max())
-            at_max_rate = (tree_depth == max_depth).mean()
-            print(
-                f"{warn(at_max_rate >= max_tree_depth_rate)}Tree depth at max ({max_depth}): "
-                f"{at_max_rate:.2%} (note: comparing to observed max, not configured)"
-            )
+            if max_depth < ignore:
+                print("Tree depth check skipped (max depth too low).")
+            else:
+                at_max_rate = (tree_depth == max_depth).mean()
+                print(
+                    f"{warn(at_max_rate >= max_tree_depth_rate)}Tree depth at max ({max_depth}): "
+                    f"{at_max_rate:.2%} (note: comparing to observed max, not configured)"
+                )
     except AttributeError:
         pass  # Not all samplers report tree depth
 
