@@ -73,13 +73,24 @@ def check_model_diagnostics(trace: az.InferenceData) -> None:
     # check max tree depth saturation
     max_tree_depth_rate = 0.05  # warn if > 5% at max depth
     try:
-        tree_depth = trace.sample_stats.tree_depth.values
-        max_depth = int(tree_depth.max())
-        at_max_rate = (tree_depth == max_depth).mean()
-        print(
-            f"{warn(at_max_rate > max_tree_depth_rate)}Tree depth at max ({max_depth}): "
-            f"{at_max_rate:.2%}"
-        )
+        # Use reached_max_treedepth if available (preferred - compares to configured max)
+        if hasattr(trace.sample_stats, "reached_max_treedepth"):
+            at_max = trace.sample_stats.reached_max_treedepth.values
+            at_max_rate = float(at_max.mean())
+            max_observed = int(trace.sample_stats.tree_depth.values.max())
+            print(
+                f"{warn(at_max_rate >= max_tree_depth_rate)}Tree depth at configured max: "
+                f"{at_max_rate:.2%} (max observed: {max_observed})"
+            )
+        else:
+            # Fallback: compare to observed max (less reliable)
+            tree_depth = trace.sample_stats.tree_depth.values
+            max_depth = int(tree_depth.max())
+            at_max_rate = (tree_depth == max_depth).mean()
+            print(
+                f"{warn(at_max_rate >= max_tree_depth_rate)}Tree depth at max ({max_depth}): "
+                f"{at_max_rate:.2%} (note: comparing to observed max, not configured)"
+            )
     except AttributeError:
         pass  # Not all samplers report tree depth
 
