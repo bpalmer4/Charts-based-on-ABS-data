@@ -85,30 +85,33 @@ This captures time-varying effects including:
 - Capital share (α): ~0.25
 - Trend decline: -0.04 percentage points per year
 
-### 3. Price Inflation Equation (Expectations-Augmented Phillips Curve)
+### 3. Price Inflation Equation (Anchor-Augmented Phillips Curve)
 
-$$ \pi_{t} = \frac{\pi^e_t}{4} + \rho_{\pi}\Delta_4 \rho^{m}_{t-1} +
+$$ \pi_{t} = \frac{\pi^{anchor}_t}{4} + \rho_{\pi}\Delta_4 \rho^{m}_{t-1} +
    \gamma_{\pi}\frac{(U_t - U^*_t)}{U_t} +
    \xi_{\pi}\Xi^2_{t-2} + \epsilon_{\pi}$$
 
 Where:
 - $\pi_t$ is quarterly trimmed mean inflation
-- $\pi^e_t$ is **anchored inflation expectations** (annual rate, divided by 4 for quarterly), constructed as:
-  - Pre-1993: Adaptive expectations from Henderson-smoothed annual inflation (25-term)
-  - 1993-1998: Linear phase-in of anchoring to 2.5% target
-  - Post-1998: Fully anchored to 2.5% target
+- $\pi^{anchor}_t$ is the **inflation anchor** (annual rate, divided by 4 for quarterly), constructed as:
+  - Pre-1993: Inflation expectations (RBA PIE_RBAQ series)
+  - 1993-1998: Linear phase-in from expectations to target
+  - Post-1998: Inflation target (2.5%)
 - $\Delta_4 \rho^{m}_{t-1}$ is the **four-quarter change in log import prices** (lagged), capturing external price shocks transmitted through the exchange rate
 - $\Xi_{t-2}$ is the **Global Supply Chain Pressure Index** (NY Fed), with the squared term capturing asymmetric COVID-era supply disruptions (2020Q1-2023Q2)
 - $\gamma_{\pi}$ is the Phillips curve slope on the unemployment gap
 
-**Inflation expectations construction:**
+**Inflation anchor construction:**
 
-The expectations series uses the RBA's PIE_RBAQ series (1970Q1-2023Q1) as the base, extended forward using a fitted relationship with trimmed mean inflation:
+The anchor series transitions from inflation expectations to the inflation target:
 
-- **1970Q1-2023Q1**: RBA PIE_RBAQ series (quarterly rates, annualised)
-- **2023Q2 onwards**: Extended using `π_e = 2.379 + 0.055 × TM(4Q avg)`
+- **Pre-1993Q1**: Uses RBA inflation expectations (PIE_RBAQ series, extended using fitted relationship with trimmed mean)
+- **1993Q1-1998Q1**: Linear phase-in from expectations to target (20 quarters)
+- **Post-1998Q1**: Fixed at inflation target (2.5%)
 
-The RBA series is heavily anchored around 2.5%, with very low sensitivity to actual inflation (R² ≈ 0.10 against trimmed mean). Even during the 2022-23 inflation surge when TM reached 6.8%, expectations only rose to ~2.3%. The extension model captures this strong anchoring behaviour.
+**Rationale for using the target (post-1998):**
+
+Using the inflation target rather than expectations from 1998 onwards means NAIRU is interpreted as the unemployment rate needed to achieve the inflation target - which is the policy-relevant question. Under credible inflation targeting, expectations should equal the target anyway, so using expectations just adds measurement noise. The 1993-1998 phase-in reflects the period when inflation targeting was introduced (1993) and became fully credible (~1998).
 
 ### 4. Okun's Law (change form)
 
@@ -132,7 +135,7 @@ $$ Y_t = Y^*_t + \rho_{is}(Y_{t-1} - Y^*_{t-1}) - \beta_{is}(r_{t-2} - r^*) + \e
 Where:
 - $Y_t$ is log GDP
 - $Y^*_t$ is log potential output (from the Cobb-Douglas equation)
-- $r_t = i_t - \pi^e_t$ is the ex-ante real interest rate (cash rate minus inflation expectations)
+- $r_t = i_t - \pi^{anchor}_t$ is the ex-ante real interest rate (cash rate minus inflation anchor)
 - $r^*$ is the deterministic neutral real rate (see below)
 - $\rho_{is}$ is the output gap persistence parameter (expected 0 < ρ < 1)
 - $\beta_{is}$ is the interest rate sensitivity (expected > 0)
@@ -171,6 +174,8 @@ This is the smoothed Cobb-Douglas potential growth rate - the same growth decomp
 
 7. **Deterministic r\* in IS equation**: The neutral rate is calculated from smoothed Cobb-Douglas potential growth rather than estimated as a latent variable. This avoids the curve-fitting concerns of HLW-style approaches while grounding r* in growth theory (steady-state r* ≈ potential growth).
 
+8. **Inflation anchor (expectations → target transition)**: The Phillips curve uses inflation expectations pre-1993, phases to the inflation target during 1993-1998, and uses the target (2.5%) thereafter. This means NAIRU from 1998 onwards is interpreted as the unemployment rate needed to hit the target - the policy-relevant question under inflation targeting.
+
 **Note on sample period:**
 
 The model is estimated using data from 1984-Q3 onwards. When estimated using only post-1993 data (the inflation targeting era), the model exhibited divergences during sampling, suggesting the earlier data provides important information for identifying the latent states. The full sample is retained for model stability, though users should be aware that the pre-1993 period reflects a different monetary policy regime.
@@ -193,14 +198,14 @@ Test whether key model parameters match their theoretical values:
 
 The Taylor Rule provides a benchmark for monetary policy:
 
-$$ i_t = r^* + \pi_{coef} \cdot \pi_t - 0.5\pi^* + 0.5 \cdot y_{gap} $$
+$$ i_t = r^* + \pi_{coef} \cdot \pi_t - 0.5\pi^t + 0.5 \cdot y_{gap} $$
 
 Where:
 - $i_t$ = prescribed nominal policy rate
 - $r^*$ = neutral real rate (hybrid: 75% trend + 25% raw)
 - $\pi_{coef}$ = time-varying inflation coefficient (1.6→1.2 over sample)
 - $\pi_t$ = actual annual inflation
-- $\pi^*$ = target inflation (2.5%)
+- $\pi^t$ = inflation target (2.5%) — note: distinct from $\pi^{anchor}$ used in NAIRU estimation
 - $y_{gap}$ = output gap (%)
 
 **Choice of r\***: We use a hybrid approach:
