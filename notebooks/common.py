@@ -1,5 +1,5 @@
 """Common data capture functions.
-Data capture over the intrwebs with a cache facility."""
+Data capture over the interwebs with a cache facility."""
 
 # --- imports
 # system imports
