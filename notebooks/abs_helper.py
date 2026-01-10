@@ -108,14 +108,18 @@ def get_population(
 # === data retrieval and initialisation
 def get_abs_data(
     cat: str,
+    chart_dir_suffix: str = "",
     **kwargs: Any,
 ) -> tuple[dict[str, DataFrame], DataFrame, str, str]:
-    """Get ABS data for a specific catalogue number and create 
-    the associated plot directories. This is my standard set-up 
+    """Get ABS data for a specific catalogue number and create
+    the associated plot directories. This is my standard set-up
     for notebooks that use ABS data.
 
-    Argument: an ABS catalogue number (as a string, eg. "6401.0")
-    Keyword arguments: any additional arguments to pass to read_abs_cat
+    Arguments:
+        cat: an ABS catalogue number (as a string, eg. "6401.0")
+        chart_dir_suffix: optional suffix to append to chart directory name
+                          (useful for splitting notebooks, e.g. " - Productivity")
+        **kwargs: any additional arguments to pass to read_abs_cat
 
     Returns: the data in a dictionary, metadata, source and a recent date
     to plot from."""
@@ -126,7 +130,7 @@ def get_abs_data(
     recent_ = "2020-12-01"
 
     # create plot plot directories
-    chart_dir = f"./CHARTS/{cat} - {ra.abs_catalogue().loc[cat, "Topic"]}/"
+    chart_dir = f"./CHARTS/{cat} - {ra.abs_catalogue().loc[cat, "Topic"]}{chart_dir_suffix}/"
     set_chart_dir(chart_dir)
     clear_chart_dir()
 
