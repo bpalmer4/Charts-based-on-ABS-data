@@ -34,7 +34,7 @@ Dependencies:
 
 
 from typing import NamedTuple, cast
-from functools import cache
+
 import readabs as ra
 from readabs import metacol as mc
 from pandas import Series, DataFrame, PeriodIndex
@@ -64,36 +64,34 @@ type ReqsDict = dict[str, ReqsTuple]
 
 
 # --- private code ---
-@cache
-def get_zip_table(zip_file: str, table: str) -> tuple[DataFrame, DataFrame]:
+def get_zip_table(zip_file: str, table: str, **kwargs) -> tuple[DataFrame, DataFrame]:
     """Get a table from a ABS zip file of all tables.
 
     Args:
         zip_file (str): Path to the ABS zip file.
         table (str): Table identifier.
+        **kwargs: Additional keyword arguments passed to ra.read_abs_cat.
 
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: data and metadata DataFrames.
     """
-    dictionary, meta = ra.read_abs_cat(cat="", zip_file=zip_file, single_excel_only=table)
+    dictionary, meta = ra.read_abs_cat(cat="", zip_file=zip_file, single_excel_only=table, **kwargs)
     data = dictionary[table]
     meta = meta[meta[mc.table] == table]
     return (data, meta)
 
 
-@cache
-def get_table(cat: str, table: str) -> tuple[DataFrame, DataFrame]:
+def get_table(cat: str, table: str, **kwargs) -> tuple[DataFrame, DataFrame]:
     """Get ABS data table and metadata for a given ABS catalogue-id and table-id."""
 
-    dictionary, meta = ra.read_abs_cat(cat, single_excel_only=table, verbose=False)
+    dictionary, meta = ra.read_abs_cat(cat, single_excel_only=table, verbose=False, **kwargs)
     data = dictionary[table]
     meta = meta[meta[mc.table] == table]
     return (data, meta)
 
 
 # --- public code ---
-@cache
-def load_series(input_tuple: ReqsTuple, verbose=False) -> Series:
+def load_series(input_tuple: ReqsTuple, verbose=False, **kwargs) -> Series:
     """Load an ABS data-series and return as a pandas Series.
 
     Args: 
@@ -111,11 +109,10 @@ def load_series(input_tuple: ReqsTuple, verbose=False) -> Series:
     cat, table, did, stype, unit, seek_yr_growth, calc_growth, zip_file = input_tuple
     stype = stype if stype not in stype_codes else stype_codes[stype]
 
-    # Fudge to use old CPI data until new data is available
     if cat:
-        data, meta = get_table(cat, table)
+        data, meta = get_table(cat, table, **kwargs)
     elif zip_file:
-        data, meta = get_zip_table(zip_file, table)
+        data, meta = get_zip_table(zip_file, table, **kwargs)
     else:
         raise ValueError("Either cat or zip_file must be provided.")
 
@@ -132,6 +129,12 @@ def load_series(input_tuple: ReqsTuple, verbose=False) -> Series:
         selector["ear"] = mc.did
     _table, series_id, _units = ra.find_abs_id(meta, selector, verbose=verbose)
     series = data[series_id]
+
+    # Trim trailing NaN values (e.g. Appendix1a extends beyond published data)
+    last_valid = series.last_valid_index()
+    if last_valid is not None:
+        series = series.loc[:last_valid]
+
     if calc_growth:
         periodicity = cast(PeriodIndex, series.index).freqstr[0]
         p_map = {"Q": 4, "M": 12}
@@ -142,7 +145,7 @@ def load_series(input_tuple: ReqsTuple, verbose=False) -> Series:
     return series
 
 
-def get_abs_data(wanted: ReqsDict, verbose=False) -> dict[str, Series]:
+def get_abs_data(wanted: ReqsDict, verbose=False, **kwargs) -> dict[str, Series]:
     """Load all the ABS data series specified in the dictionary of requirements.
     
     Args:
@@ -155,7 +158,7 @@ def get_abs_data(wanted: ReqsDict, verbose=False) -> dict[str, Series]:
 
     box = {}
     for (w, t) in wanted.items():
-        series = load_series(t, verbose=verbose)
+        series = load_series(t, verbose=verbose, **kwargs)
         box[w] = series
 
     return box

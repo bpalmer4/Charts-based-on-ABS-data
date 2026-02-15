@@ -9,15 +9,12 @@ dependencies = [
     "ipykernel",
     "ipywidgets",
     "watermark",
-
     # - system
     "typing",
-
     # - bespoke
     "readabs",
     "mgplot",
     "sdmxabs",
-
     # - data science
     "matplotlib",
     "numpy",
@@ -30,7 +27,6 @@ dependencies = [
     "babel",
     "pycountry",
     #"pmdarima",  # --- problematic
-
     # - internet
     "requests",
     "bs4",
@@ -38,21 +34,18 @@ dependencies = [
     "html5lib",
     "webdriver_manager",
     "selenium",
-
     # - Bayesian
     "pymc",
     "arviz",
     "jax",
     "numpyro",
     "graphviz",
-
     # - code
     "nbqa",
     "black",
     "pylint",
     "ruff",
     "mypy",
-
     # - typing
     "pandas-stubs",
     "numpy-typing",
