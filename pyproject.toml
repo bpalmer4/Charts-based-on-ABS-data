@@ -52,6 +52,7 @@ dependencies = [
     "types-selenium",
     "types-seaborn",
     "types-tabulate",
+    "nbconvert>=7.17.0",
 ]
 
 [tool.ruff]
