@@ -18,6 +18,7 @@ CLAUDE.md
 # API keys - keep private
 fred.api
 notebooks/fred.api
+EIA-API-KEY.txt
 
 # MacOS stuff to be ignored
 .DS_Store
