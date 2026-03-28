@@ -68,6 +68,7 @@ lint.ignore = [
     "EM102",   # Exception must not use an f-string literal
     "T201",    # Remove `print` --> But I use print to alert the user
     "TRY003",  # Long exception messages.
+    "FBT003",  # Boolean positional value - inherent to ReqsTuple design
     "PD008",   # mypy doesnt like .loc[] / ruff doesn't like .at[]
 
     # --- specifically for Jupyter notebooks.

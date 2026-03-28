@@ -1,0 +1,974 @@
+{
+  "All groups CPI": {
+    "code": "10001",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "Food and non-alcoholic beverages": {
+    "code": "20001",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Meat and seafoods": {
+    "code": "30003",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Food and non-alcoholic beverages"
+  },
+  "Beef and veal": {
+    "code": "40009",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meat and seafoods"
+  },
+  "Pork": {
+    "code": "131178",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meat and seafoods"
+  },
+  "Poultry": {
+    "code": "40012",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meat and seafoods"
+  },
+  "Other meats": {
+    "code": "40014",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meat and seafoods"
+  },
+  "Fish and other seafood": {
+    "code": "40015",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meat and seafoods"
+  },
+  "Dairy and related products": {
+    "code": "30001",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Food and non-alcoholic beverages"
+  },
+  "Milk": {
+    "code": "40001",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Dairy and related products"
+  },
+  "Cheese": {
+    "code": "40002",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Dairy and related products"
+  },
+  "Ice cream and other dairy products": {
+    "code": "40004",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Dairy and related products"
+  },
+  "Fruit and vegetables": {
+    "code": "114120",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Food and non-alcoholic beverages"
+  },
+  "Vegetables": {
+    "code": "114122",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Fruit and vegetables"
+  },
+  "Fruit": {
+    "code": "114121",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Fruit and vegetables"
+  },
+  "Lamb and goat": {
+    "code": "40010",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meat and seafoods"
+  },
+  "Non-alcoholic beverages": {
+    "code": "131180",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Food and non-alcoholic beverages"
+  },
+  "Coffee, tea and cocoa": {
+    "code": "40030",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Non-alcoholic beverages"
+  },
+  "Waters, soft drinks and juices": {
+    "code": "115520",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Non-alcoholic beverages"
+  },
+  "Meals out and take away foods": {
+    "code": "30007",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Food and non-alcoholic beverages"
+  },
+  "Restaurant meals": {
+    "code": "40025",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meals out and take away foods"
+  },
+  "Take away and fast foods": {
+    "code": "40026",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Meals out and take away foods"
+  },
+  "Food products n.e.c.": {
+    "code": "131179",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Food and non-alcoholic beverages"
+  },
+  "Eggs": {
+    "code": "40027",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Food products n.e.c."
+  },
+  "Jams, honey and spreads": {
+    "code": "40029",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Food products n.e.c."
+  },
+  "Food additives and condiments": {
+    "code": "97549",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Food products n.e.c."
+  },
+  "Oils and fats": {
+    "code": "97550",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Food products n.e.c."
+  },
+  "Snacks and confectionery": {
+    "code": "115501",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Food products n.e.c."
+  },
+  "Other food products n.e.c.": {
+    "code": "40034",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Food products n.e.c."
+  },
+  "Bread and cereal products": {
+    "code": "30002",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Food and non-alcoholic beverages"
+  },
+  "Breakfast cereals": {
+    "code": "40007",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Bread and cereal products"
+  },
+  "Other cereal products": {
+    "code": "40008",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Bread and cereal products"
+  },
+  "Cakes and biscuits": {
+    "code": "40006",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Bread and cereal products"
+  },
+  "Bread": {
+    "code": "40005",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Bread and cereal products"
+  },
+  "Clothing and footwear": {
+    "code": "20002",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Furnishings, household equipment and services": {
+    "code": "20004",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Furniture and furnishings": {
+    "code": "131184",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Furnishings, household equipment and services"
+  },
+  "Garments": {
+    "code": "131181",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Clothing and footwear"
+  },
+  "Garments for men": {
+    "code": "97551",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Garments"
+  },
+  "Garments for women": {
+    "code": "97554",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Garments"
+  },
+  "Garments for infants and children": {
+    "code": "97555",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Garments"
+  },
+  "Housing": {
+    "code": "20003",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Electricity": {
+    "code": "40055",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Housing"
+  },
+  "Rents": {
+    "code": "30014",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Rents"
+  },
+  "New dwelling purchase by owner-occupiers": {
+    "code": "97559",
+    "level": 3,
+    "level_name": "class",
+    "parent": "New dwelling purchase by owner-occupiers"
+  },
+  "Other housing": {
+    "code": "131187",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Housing"
+  },
+  "Maintenance and repair of the dwelling": {
+    "code": "40053",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other housing"
+  },
+  "Property rates and charges": {
+    "code": "97560",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other housing"
+  },
+  "Utilities": {
+    "code": "30016",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Housing"
+  },
+  "Gas and other household fuels": {
+    "code": "115524",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Housing"
+  },
+  "Accessories and clothing services": {
+    "code": "97556",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Clothing and footwear"
+  },
+  "Accessories": {
+    "code": "97557",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Accessories and clothing services"
+  },
+  "Cleaning, repair and hire of clothing and footwear": {
+    "code": "40048",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Accessories and clothing services"
+  },
+  "Furniture": {
+    "code": "40058",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Furniture and furnishings"
+  },
+  "Carpets and other floor coverings": {
+    "code": "131185",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Furniture and furnishings"
+  },
+  "Household textiles": {
+    "code": "131183",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Household textiles"
+  },
+  "Household appliances, utensils and tools": {
+    "code": "97561",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Furnishings, household equipment and services"
+  },
+  "Major household appliances": {
+    "code": "40060",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Household appliances, utensils and tools"
+  },
+  "Small electric household appliances": {
+    "code": "115484",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Household appliances, utensils and tools"
+  },
+  "Glassware, tableware and household utensils": {
+    "code": "115485",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Household appliances, utensils and tools"
+  },
+  "Tools and equipment for house and garden": {
+    "code": "40066",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Household appliances, utensils and tools"
+  },
+  "Domestic and household services": {
+    "code": "97565",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Furnishings, household equipment and services"
+  },
+  "Other household services": {
+    "code": "115500",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Domestic and household services"
+  },
+  "Child care": {
+    "code": "115498",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Domestic and household services"
+  },
+  "Hairdressing and personal grooming services": {
+    "code": "40096",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Domestic and household services"
+  },
+  "Footwear": {
+    "code": "30012",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Clothing and footwear"
+  },
+  "Footwear for infants and children": {
+    "code": "40047",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Footwear"
+  },
+  "Footwear for women": {
+    "code": "40046",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Footwear"
+  },
+  "Footwear for men": {
+    "code": "40045",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Footwear"
+  },
+  "Non-durable household products": {
+    "code": "97563",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Furnishings, household equipment and services"
+  },
+  "Cleaning and maintenance products": {
+    "code": "40067",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Non-durable household products"
+  },
+  "Personal care products": {
+    "code": "40095",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Non-durable household products"
+  },
+  "Other non-durable household products": {
+    "code": "97564",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Non-durable household products"
+  },
+  "Alcohol and tobacco": {
+    "code": "20006",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Tobacco": {
+    "code": "40090",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Tobacco"
+  },
+  "Alcoholic beverages": {
+    "code": "30026",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Alcohol and tobacco"
+  },
+  "Spirits": {
+    "code": "40089",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Alcoholic beverages"
+  },
+  "Wine": {
+    "code": "40088",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Alcoholic beverages"
+  },
+  "Beer": {
+    "code": "40087",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Alcoholic beverages"
+  },
+  "Communication": {
+    "code": "30022",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Communication"
+  },
+  "Postal services": {
+    "code": "40077",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Communication"
+  },
+  "Telecommunication equipment and services": {
+    "code": "40078",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Communication"
+  },
+  "Insurance and financial services": {
+    "code": "126670",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Insurance": {
+    "code": "115529",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Insurance"
+  },
+  "Goods and services series": {
+    "code": "104100",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "Transport": {
+    "code": "20005",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Automotive fuel": {
+    "code": "40081",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Transport"
+  },
+  "Urban transport fares": {
+    "code": "40086",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Urban transport fares"
+  },
+  "Private motoring": {
+    "code": "30024",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Transport"
+  },
+  "Spare parts and accessories for motor vehicles": {
+    "code": "40084",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Private motoring"
+  },
+  "Maintenance and repair of motor vehicles": {
+    "code": "40085",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Private motoring"
+  },
+  "Other services in respect of motor vehicles": {
+    "code": "40083",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Private motoring"
+  },
+  "Motor vehicles": {
+    "code": "40080",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Private motoring"
+  },
+  "Education": {
+    "code": "40106",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Education"
+  },
+  "Preschool and primary education": {
+    "code": "115495",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Education"
+  },
+  "Secondary education": {
+    "code": "115496",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Education"
+  },
+  "Tertiary education": {
+    "code": "115497",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Education"
+  },
+  "Recreation and culture": {
+    "code": "115489",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Audio, visual and computing equipment and services": {
+    "code": "131193",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Recreation and culture"
+  },
+  "Audio, visual and computing media and services": {
+    "code": "131190",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Audio, visual and computing equipment and services"
+  },
+  "Audio, visual and computing equipment": {
+    "code": "40098",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Audio, visual and computing equipment and services"
+  },
+  "Newspapers, books and stationery": {
+    "code": "131191",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Recreation and culture"
+  },
+  "Books": {
+    "code": "97567",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Newspapers, books and stationery"
+  },
+  "All groups, goods component": {
+    "code": "104101",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Goods and services series"
+  },
+  "Newspapers, magazines and stationery": {
+    "code": "131192",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Newspapers, books and stationery"
+  },
+  "Other recreation, sport and culture": {
+    "code": "115492",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Recreation and culture"
+  },
+  "Other recreational, sporting and cultural services": {
+    "code": "97574",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other recreation, sport and culture"
+  },
+  "Equipment for sports, camping and open-air recreation": {
+    "code": "97571",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other recreation, sport and culture"
+  },
+  "Games, toys and hobbies": {
+    "code": "97572",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other recreation, sport and culture"
+  },
+  "Pets and related products": {
+    "code": "40073",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other recreation, sport and culture"
+  },
+  "Veterinary and other services for pets": {
+    "code": "40072",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other recreation, sport and culture"
+  },
+  "Sports participation": {
+    "code": "97573",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Other recreation, sport and culture"
+  },
+  "Holiday travel and accommodation": {
+    "code": "30033",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Recreation and culture"
+  },
+  "Domestic holiday travel and accommodation": {
+    "code": "40101",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Holiday travel and accommodation"
+  },
+  "International holiday travel and accommodation": {
+    "code": "40102",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Holiday travel and accommodation"
+  },
+  "Water and sewerage": {
+    "code": "97558",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Utilities"
+  },
+  "All groups, services component": {
+    "code": "104104",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Goods and services series"
+  },
+  "Health": {
+    "code": "115486",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI"
+  },
+  "Medical, dental and hospital services": {
+    "code": "131189",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Health"
+  },
+  "Medical and hospital services": {
+    "code": "40091",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Medical, dental and hospital services"
+  },
+  "Dental services": {
+    "code": "40093",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Medical, dental and hospital services"
+  },
+  "Medical products, appliances and equipment": {
+    "code": "131188",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Health"
+  },
+  "Pharmaceutical products": {
+    "code": "40094",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Medical products, appliances and equipment"
+  },
+  "Therapeutic appliances and equipment": {
+    "code": "40092",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Medical products, appliances and equipment"
+  },
+  "All groups CPI excluding": {
+    "code": "115901",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "All groups CPI excluding Clothing and footwear": {
+    "code": "115941",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Housing": {
+    "code": "115961",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Furnishings, household equipment and services": {
+    "code": "117101",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Transport": {
+    "code": "117107",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Communication": {
+    "code": "117121",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Recreation and culture": {
+    "code": "117124",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Education": {
+    "code": "117127",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Insurance and financial services": {
+    "code": "128058",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Housing and Insurance and financial services": {
+    "code": "128061",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Medical and hospital services": {
+    "code": "117144",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding 'volatile items'": {
+    "code": "104122",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Health": {
+    "code": "117104",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Alcohol and tobacco": {
+    "code": "115922",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding Food and non-alcoholic beverages": {
+    "code": "115902",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "All groups CPI excluding food and energy": {
+    "code": "131197",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI excluding"
+  },
+  "Underlying trend series": {
+    "code": "999900",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "All groups excluding volatile items and holiday travel": {
+    "code": "999904",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Underlying trend series"
+  },
+  "All groups CPI, seasonally adjusted": {
+    "code": "999901",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Underlying trend series"
+  },
+  "Trimmed Mean": {
+    "code": "999902",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Underlying trend series"
+  },
+  "Weighted Median": {
+    "code": "999903",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Underlying trend series"
+  },
+  "Non-discretionary and discretionary series": {
+    "code": "132300",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "Non-discretionary": {
+    "code": "132305",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Non-discretionary and discretionary series"
+  },
+  "Discretionary": {
+    "code": "132304",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Non-discretionary and discretionary series"
+  },
+  "International trade exposure series": {
+    "code": "102674",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "Tradables": {
+    "code": "102675",
+    "level": 1,
+    "level_name": "group",
+    "parent": "International trade exposure series"
+  },
+  "Non-tradables": {
+    "code": "102676",
+    "level": 1,
+    "level_name": "group",
+    "parent": "International trade exposure series"
+  },
+  "Discretionary excluding tobacco": {
+    "code": "132306",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Non-discretionary and discretionary series"
+  },
+  "All groups CPI including": {
+    "code": "131198",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "All groups CPI including deposit and loan facilities (indirect charges)": {
+    "code": "131199",
+    "level": 1,
+    "level_name": "group",
+    "parent": "All groups CPI including"
+  },
+  "Financial services": {
+    "code": "131195",
+    "level": 2,
+    "level_name": "sub-group",
+    "parent": "Insurance and financial services"
+  },
+  "Deposit and loan facilities (direct charges)": {
+    "code": "131194",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Financial services"
+  },
+  "Other financial services": {
+    "code": "1144",
+    "level": 3,
+    "level_name": "class",
+    "parent": "Financial services"
+  },
+  "Market goods and services excluding 'volatile items'": {
+    "code": "104099",
+    "level": 0,
+    "level_name": "aggregate",
+    "parent": null
+  },
+  "Market goods and services excluding 'volatile items' - Goods": {
+    "code": "104102",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Market goods and services excluding 'volatile items'"
+  },
+  "Market goods and services excluding 'volatile items' - Services": {
+    "code": "104105",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Market goods and services excluding 'volatile items'"
+  },
+  "Market goods and services excluding 'volatile items' - Total": {
+    "code": "104120",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Market goods and services excluding 'volatile items'"
+  },
+  "Annual trimmed mean": {
+    "code": "999905",
+    "level": 1,
+    "level_name": "group",
+    "parent": "Underlying trend series"
+  }
+}
