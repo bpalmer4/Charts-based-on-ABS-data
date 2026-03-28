@@ -26,6 +26,7 @@ dependencies = [
     "seaborn",
     "babel",
     "pycountry",
+    "yfinance",
     #"pmdarima",  # --- problematic
     # - internet
     "requests",
