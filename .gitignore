@@ -26,14 +26,8 @@ EIA-API-KEY.txt
 # unnecessary detail to be ignored
 .sdmxabs_cache/
 .readabs_cache/
-notebooks/ABS_CACHE/**
-notebooks/AFSA_CACHE/**
-notebooks/ANGG_CACHE/**
-notebooks/ASIC_CACHE/**
+notebooks/CACHE/**
 notebooks/ASX_DAILY_DATA/**
-notebooks/BIS_CACHE/**
-notebooks/RBA_CACHE/**
-notebooks/RBA_SOMP_CACHE/**
 notebooks/CHARTS/**
 notebooks/DATA/**
 notebooks/documents/**
@@ -43,8 +37,5 @@ notebooks/OLD/**
 notebooks/ABS-Data/**
 notebooks/govt-budget/**
 notebooks/MODEL_OUTPUTS/**
-notebooks/DCCEEW_CACHE/**
-notebooks/CACHE/**
-notebooks/CACHE_SOURCE/**
 LOGS/
 
