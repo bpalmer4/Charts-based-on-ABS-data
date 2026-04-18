@@ -8,24 +8,28 @@ Types:
     ReqsTuple: NamedTuple specifying series selection requirements
         (catalogue, table, description, series type, unit, growth options, zip file).
     ReqsDict: Type alias for dict[str, ReqsTuple].
+    AbsSeries: dataclass bundling the loaded series with its ABS metadata
+        (unit, did, series_id, table, cat, stype, freq).
 
 Constants:
     stype_codes: Mapping of series type abbreviations to full names
         (O=Original, S/SA=Seasonally Adjusted, T=Trend).
 
 Functions:
-    load_series(input_tuple: ReqsTuple) -> Series
+    load_series(input_tuple: ReqsTuple) -> AbsSeries
         Load a single ABS series based on selection requirements.
-    
-    get_abs_data(wanted: ReqsDict) -> dict[str, Series]
+
+    get_abs_data(wanted: ReqsDict) -> dict[str, AbsSeries]
         Load multiple ABS series into a dictionary.
 
+    to_scale_word(unit: str) -> str
+        Translate an ABS unit string to a readabs.recalibrate-compatible scale word.
+
 Example:
-    >>> reqs = ReqsTuple("", "640106", "All groups CPI", "O", "", False, False, "")
-    >>> series = load_series(reqs)
-    
-    >>> wanted = {"CPI": reqs}
-    >>> data = get_abs_data(wanted)
+    >>> reqs = ReqsTuple("6401.0", "640106", "All groups CPI", "S", "", True, False, "")
+    >>> record = load_series(reqs)
+    >>> record.series.tail()
+    >>> record.unit            # e.g. 'Percent'
 
 Dependencies:
     - readabs
@@ -33,6 +37,7 @@ Dependencies:
 """
 
 
+from dataclasses import dataclass
 from typing import NamedTuple, cast
 
 import readabs as ra
@@ -55,12 +60,47 @@ class ReqsTuple(NamedTuple):
     table: str              # ABS table id
     did: str                # Desired text in Data Item Description
     stype: str              # Series Type: O, S, SA, T
-    unit: str               # Unit of Measure
+    unit: str               # Unit of Measure filter (matches metadata Unit column)
     seek_yr_growth: bool    # Whether to seek yearly growth series
     calc_growth: bool       # Whether to calculate growth rates
     zip_file: str           # Zip file for data retrieval ("" for none)
 
 type ReqsDict = dict[str, ReqsTuple]
+
+
+@dataclass(frozen=True)
+class AbsSeries:
+    """An ABS-published time series bundled with its metadata.
+
+    `unit` is the raw ABS unit string (e.g. '000', 'Number', 'Percent',
+    'Index Numbers'). Use `to_scale_word(unit)` to get a recalibrate-compatible
+    starting unit for chart axes.
+    """
+    series: Series          # the time series itself
+    unit: str               # raw ABS Unit string
+    did: str                # full Data Item Description (as requested)
+    series_id: str          # ABS series ID (e.g. 'A2133255F')
+    table: str              # ABS table ID (e.g. '310101')
+    cat: str                # ABS catalogue (e.g. '3101.0')
+    stype: str              # series type (Original / Seasonally Adjusted / Trend)
+    freq: str               # frequency code, one char: 'Q', 'M', 'A', ...
+
+
+# Map ABS raw Unit strings to scale words understood by readabs.recalibrate.
+# Only scale-bearing units need translation; 'Percent', 'Index Numbers', etc.
+# pass through unchanged (recalibrate leaves them alone).
+_ABS_UNIT_MAP = {
+    "000": "Thousands",
+    "$Millions": "Millions",
+    "$ Millions": "Millions",
+    "$Billions": "Billions",
+    "$ Billions": "Billions",
+}
+
+
+def to_scale_word(unit: str) -> str:
+    """Translate an ABS unit string to a recalibrate-compatible scale word."""
+    return _ABS_UNIT_MAP.get(unit, unit)
 
 
 # --- private code ---
@@ -91,15 +131,15 @@ def get_table(cat: str, table: str, **kwargs) -> tuple[DataFrame, DataFrame]:
 
 
 # --- public code ---
-def load_series(input_tuple: ReqsTuple, verbose=False, **kwargs) -> Series:
-    """Load an ABS data-series and return as a pandas Series.
+def load_series(input_tuple: ReqsTuple, verbose=False, **kwargs) -> AbsSeries:
+    """Load an ABS data-series and return as an AbsSeries record.
 
-    Args: 
+    Args:
         input_tuple (ReqsTuple): Tuple of selection requirements.
         verbose (bool): Whether to print verbose output.
 
-    Returns: 
-        A pandas Series.
+    Returns:
+        AbsSeries: the series plus its ABS metadata.
 
     Raises:
         ValueError: If neither cat nor zip_file is provided (need one, not both)
@@ -127,7 +167,7 @@ def load_series(input_tuple: ReqsTuple, verbose=False, **kwargs) -> Series:
         selector["Percentage"] = mc.did
         selector["revious"] = mc.did
         selector["ear"] = mc.did
-    _table, series_id, _units = ra.find_abs_id(meta, selector, verbose=verbose)
+    _table, series_id, series_unit = ra.find_abs_id(meta, selector, verbose=verbose)
     series = data[series_id]
 
     # Trim trailing NaN values (e.g. Appendix1a extends beyond published data)
@@ -141,27 +181,37 @@ def load_series(input_tuple: ReqsTuple, verbose=False, **kwargs) -> Series:
         if periodicity not in p_map:
             raise ValueError(f"Cannot calculate growth for periodicity '{periodicity}'")
         series = series.pct_change(periods=p_map[periodicity]) * 100.0
+        series_unit = "Percent"   # values are now an annual % change
 
-    return series
+    freq = cast(PeriodIndex, series.index).freqstr[0]
+
+    return AbsSeries(
+        series=series,
+        unit=series_unit,
+        did=did,
+        series_id=series_id,
+        table=table,
+        cat=cat,
+        stype=stype,
+        freq=freq,
+    )
 
 
-def get_abs_data(wanted: ReqsDict, verbose=False, **kwargs) -> dict[str, Series]:
+def get_abs_data(wanted: ReqsDict, verbose=False, **kwargs) -> dict[str, AbsSeries]:
     """Load all the ABS data series specified in the dictionary of requirements.
-    
+
     Args:
         wanted (ReqsDict): Dictionary of desired series with names as keys.
         verbose (bool): Whether to print verbose output.
-        
+
     Returns:
-        dict[str, Series]: Dictionary of loaded series.
+        dict[str, AbsSeries]: Dictionary of loaded AbsSeries records.
     """
 
-    box = {}
-    for (w, t) in wanted.items():
-        series = load_series(t, verbose=verbose, **kwargs)
-        box[w] = series
-
-    return box
+    return {
+        name: load_series(req, verbose=verbose, **kwargs)
+        for name, req in wanted.items()
+    }
 
 
 # --- Example usage ---
@@ -169,8 +219,9 @@ if __name__ == "__main__":
 
     # --- extract for a single series ---
     cpi = ReqsTuple("6401.0", "640106", "All groups CPI, seasonally adjusted", "S", "", True, False, "")
-    cpi_series = load_series(cpi)
-    print(cpi_series.tail())
+    cpi_rec = load_series(cpi)
+    print(cpi_rec.series.tail())
+    print(f"unit={cpi_rec.unit!r}, freq={cpi_rec.freq!r}")
 
     # --- extract multiple series ---
     sought_after: ReqsDict = {
@@ -179,5 +230,5 @@ if __name__ == "__main__":
             ReqsTuple("6202.0", "6202001", "Unemployment rate ;  Persons ;", "S", "", False, False, ""),
     }
     dataset = get_abs_data(sought_after)
-    for (series_name, series_data) in dataset.items():
-        print(f"{series_name}:\n{series_data.tail()}\n")
+    for (series_name, record) in dataset.items():
+        print(f"{series_name} ({record.unit}):\n{record.series.tail()}\n")
