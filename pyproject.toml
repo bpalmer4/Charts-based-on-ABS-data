@@ -54,6 +54,7 @@ dependencies = [
     "types-seaborn",
     "types-tabulate",
     "nbconvert>=7.17.0",
+    "curl-cffi>=0.15.0",
 ]
 
 [tool.ruff]
