@@ -803,14 +803,14 @@ wheels = [
 
 [[package]]
 name = "jedi"
-version = "0.19.2"
+version = "0.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "parso" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/72/3a/79a912fbd4d8dd6fbb02bf69afd3bb72cf0c729bb3063c6f4498603db17a/jedi-0.19.2.tar.gz", hash = "sha256:4770dc3de41bde3966b02eb84fbcf557fb33cce26ad23da12c742fb50ecb11f0", size = 1231287, upload-time = "2024-11-11T01:41:42.873Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/b7/a3635f6a2d7cf5b5dd98064fc1d5fbbafcb25477bcea204a3a92145d158b/jedi-0.20.0.tar.gz", hash = "sha256:c3f4ccbd276696f4b19c54618d4fb18f9fc24b0aef02acf704b23f487daa1011", size = 3119416, upload-time = "2026-05-01T23:38:47.814Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/5a/9cac0c82afec3d09ccd97c8b6502d48f165f9124db81b4bcb90b4af974ee/jedi-0.19.2-py2.py3-none-any.whl", hash = "sha256:a8ef22bde8490f57fe5c7681a3c83cb58874daf72b4784de3cce5b6ef6edb5b9", size = 1572278, upload-time = "2024-11-11T01:41:40.175Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/93/242e2eab5fe682ffcb8b0084bde703a41d51e17ee0f3a31ff0d9d813620a/jedi-0.20.0-py2.py3-none-any.whl", hash = "sha256:7bdd9c2634f56713299976f4cbd59cb3fa92165cc5e05ea811fb253480728b67", size = 4884812, upload-time = "2026-05-01T23:38:43.919Z" },
 ]
 
 [[package]]
@@ -1516,11 +1516,11 @@ wheels = [
 
 [[package]]
 name = "parso"
-version = "0.8.6"
+version = "0.8.7"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/81/76/a1e769043c0c0c9fe391b702539d594731a4362334cdf4dc25d0c09761e7/parso-0.8.6.tar.gz", hash = "sha256:2b9a0332696df97d454fa67b81618fd69c35a7b90327cbe6ba5c92d2c68a7bfd", size = 401621, upload-time = "2026-02-09T15:45:24.425Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/4b/90c937815137d43ce71ba043cd3566221e9df6b9c805f24b5d138c9d40a7/parso-0.8.7.tar.gz", hash = "sha256:eaaac4c9fdd5e9e8852dc778d2d7405897ec510f2a298071453e5e3a07914bb1", size = 401824, upload-time = "2026-05-01T23:13:02.138Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b6/61/fae042894f4296ec49e3f193aff5d7c18440da9e48102c3315e1bc4519a7/parso-0.8.6-py2.py3-none-any.whl", hash = "sha256:2c549f800b70a5c4952197248825584cb00f033b29c692671d3bf08bf380baff", size = 106894, upload-time = "2026-02-09T15:45:21.391Z" },
+    { url = "https://files.pythonhosted.org/packages/99/5d/8268b644392ee874ee82a635cd0df1773de230bde356c38de28e298392cc/parso-0.8.7-py2.py3-none-any.whl", hash = "sha256:a8926eb2a1b915486941fdbd31e86a4baf88fe8c210f25f2f35ecec5b574ca1c", size = 107025, upload-time = "2026-05-01T23:12:58.867Z" },
 ]
 
 [[package]]
@@ -1534,11 +1534,11 @@ wheels = [
 
 [[package]]
 name = "pathspec"
-version = "1.1.0"
+version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2e/17/9c3094b822982b9f1ea666d8580ce59000f61f87c1663556fb72031ad9ec/pathspec-1.1.0.tar.gz", hash = "sha256:f5d7c555da02fd8dde3e4a2354b6aba817a89112fa8f333f7917a2a4834dd080", size = 133918, upload-time = "2026-04-23T01:46:22.298Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a", size = 135180, upload-time = "2026-04-27T01:46:08.907Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/c9/8eed0486f074e9f1ca7f8ce5ad663e65f12fdab344028d658fa1b03d35e0/pathspec-1.1.0-py3-none-any.whl", hash = "sha256:574b128f7456bd899045ccd142dd446af7e6cfd0072d63ad73fbc55fbb4aaa42", size = 56264, upload-time = "2026-04-23T01:46:20.606Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
 ]
 
 [[package]]
@@ -1761,7 +1761,7 @@ wheels = [
 
 [[package]]
 name = "pymc"
-version = "5.28.4"
+version = "5.28.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arviz" },
@@ -1775,9 +1775,9 @@ dependencies = [
     { name = "threadpoolctl" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/91/0607c335ebd32b5fc7791d1480c1fe47d9072c8cd3d90048b198d10296bd/pymc-5.28.4.tar.gz", hash = "sha256:1ec3e0019a143a59c405403de09943c6f2fd7fefff8344eb8c3fd46575a0d474", size = 508109, upload-time = "2026-04-07T13:56:32.098Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/35/07a37ba2b3a7d5b950537ba0f2178f9dd5ddd6d41cac15b9b5aaff5e51cb/pymc-5.28.5.tar.gz", hash = "sha256:cce66ef38563bbb5e96fafbc617eb49e3332e24a60b9d335dfc20e8e31243582", size = 508142, upload-time = "2026-05-01T14:36:35.034Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/ff/5f6b264062e755da47fae79fa7796b7e31d512ad8a83526a11617aaf0e71/pymc-5.28.4-py3-none-any.whl", hash = "sha256:fa7fed29fa2317f76cacb42d8fdf28b17aa01a2766c7a12e693805922aa914c7", size = 562845, upload-time = "2026-04-07T13:56:29.912Z" },
+    { url = "https://files.pythonhosted.org/packages/46/f9/919387e73bafb9c1130d7051c7db0eddc0d74b8d4a9d13907a43cc065d4e/pymc-5.28.5-py3-none-any.whl", hash = "sha256:29f44aa3edd727b29eb0a555eec0d9def4775a5d5c849eee31239384a5feaec2", size = 562936, upload-time = "2026-05-01T14:36:33.091Z" },
 ]
 
 [[package]]
@@ -1800,7 +1800,7 @@ wheels = [
 
 [[package]]
 name = "pytensor"
-version = "2.38.2"
+version = "2.38.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cons" },
@@ -1813,13 +1813,13 @@ dependencies = [
     { name = "scipy" },
     { name = "setuptools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/89/e7b91f7366e36dbf937d4e53fa949b7f93627812e833526e0e426becbacb/pytensor-2.38.2.tar.gz", hash = "sha256:c804e665e69e830e31344133fea5793d2fd75c662ee1359d01589875c0cce105", size = 4862054, upload-time = "2026-03-06T13:37:01.039Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/0b/c71c1009cef4fff68a85480ab3f12d72354cc98f26540545612db0d836c5/pytensor-2.38.3.tar.gz", hash = "sha256:6c959ca9eb46909a8a66e8648e2e90f9d80b4d288184401366d8fa44426e86d0", size = 4863335, upload-time = "2026-04-27T13:59:17.709Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/a7/eea67f7b112053755fbdc071e8aeb27184e1ac651d031ef9f75eabb43fe8/pytensor-2.38.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:071609e3a10b91d8aa11a4124f323836381fb8b92a4d424862b07f94a1d63b5c", size = 1699470, upload-time = "2026-03-06T13:36:49.433Z" },
-    { url = "https://files.pythonhosted.org/packages/7e/82/9667de1da8f38ad8556a62847330b07e2f2a06664c35ef3ca9b60b55896c/pytensor-2.38.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:994b051ec298789a9133cad29aa36092e0c2a3a564f64a2f05211c54d759b619", size = 2189740, upload-time = "2026-03-06T13:36:51.87Z" },
-    { url = "https://files.pythonhosted.org/packages/fb/4a/8bf706ac30c026e01971e4cc6ef712677a635c33ce581514781658b1d975/pytensor-2.38.2-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:ed8898ecae457ad621bc6610f13de37f83565a61782aa6c4c5e289d9c0310ab3", size = 2190574, upload-time = "2026-03-06T13:36:53.731Z" },
-    { url = "https://files.pythonhosted.org/packages/43/04/215b8860b2409737cacca387644617dd0bb333a60d5bb77c3d7e0aa3e89c/pytensor-2.38.2-cp314-cp314-win_amd64.whl", hash = "sha256:9c4b4af108e9f9c4b664be0d10da0e5dfeb213bd2b83b94c6378d39a9f23915f", size = 1694447, upload-time = "2026-03-06T13:36:56.413Z" },
-    { url = "https://files.pythonhosted.org/packages/4c/12/4b91d7ec085f35f6e0afbf57c9d4a13a45d48d9bef37ed6123d147255ecf/pytensor-2.38.2-py2.py3-none-any.whl", hash = "sha256:ae994b6e96d0d536e38c175a9b68df39fce4685a71dc8bb40acfbb779e755a34", size = 1399422, upload-time = "2026-03-06T13:36:58.363Z" },
+    { url = "https://files.pythonhosted.org/packages/12/5a/daa3adc446887084d0b414ad6afe181cc9b70e8561a78b4558066b482d87/pytensor-2.38.3-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:226bfb9768fe1dab2412160fbdb2b6782b1e1830ee8c170ab8ae5a8062fe033a", size = 1700678, upload-time = "2026-04-27T13:59:07.102Z" },
+    { url = "https://files.pythonhosted.org/packages/62/de/1e46be4b3890afd38ead326def8cd136be58dea080fbe9d7794ee48b19e8/pytensor-2.38.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:d5ced5af2b93403f46d9439086184a714061e8931e4757f7d19a1c5ddf979530", size = 2190951, upload-time = "2026-04-27T13:59:09.019Z" },
+    { url = "https://files.pythonhosted.org/packages/db/fb/f07aadfc36de5c9cd958ebd6c05fb8efae05149bf253065f7b760c4039ba/pytensor-2.38.3-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:fb483acb55773f346eef769709ab0f4d0dc2575cb8aebe78aef1f43b9e0be8aa", size = 2191787, upload-time = "2026-04-27T13:59:10.836Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/62/83032346254a8642512b7409c80ce3caecd0066cdf50f026d845122fb9e3/pytensor-2.38.3-cp314-cp314-win_amd64.whl", hash = "sha256:baaa94bacacfe803c05def5ce6cd6cb19da5dc99d2c375b88c8faa8af2044bcd", size = 1695694, upload-time = "2026-04-27T13:59:12.874Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/13/2b4b61be1f38520818187e86d34c670cb21dd9dbe5e07fec3f514e519e90/pytensor-2.38.3-py2.py3-none-any.whl", hash = "sha256:5e51e84e82a4c7e14c47077fade2bffa97024388a2eb95167f4a33a125b4c83b", size = 1400629, upload-time = "2026-04-27T13:59:15.26Z" },
 ]
 
 [[package]]
