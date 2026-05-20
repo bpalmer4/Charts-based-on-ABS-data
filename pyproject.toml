@@ -35,6 +35,7 @@ dependencies = [
     "html5lib",
     "webdriver_manager",
     "selenium",
+    "playwright",
     # - Bayesian
     "pymc",
     "arviz<1.0.0",
