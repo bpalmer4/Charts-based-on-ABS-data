@@ -11,6 +11,8 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 - **FRED** - US Federal Reserve economic data
 - **World Bank** - Commodity prices
 - **DB.nomics** - International GDP data
+- **Yahoo Finance** - Daily commodity futures, metals, energy and equity indices
+- **Other Australian agencies** - AIP (petrol prices), DCCEEW (petroleum), AFSA/ASIC (insolvency), Home Affairs (visas)
 
 ## Notebooks
 
@@ -18,17 +20,14 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 | Notebook | ABS Cat. | Description |
 |----------|----------|-------------|
 | ABS Monthly Labour Force 6202 | 6202.0 | Employment, unemployment, participation rate |
-| ABS Monthly Consumer Price Index Indicator 6484 | 6484.0 | Monthly CPI indicator |
 | ABS Monthly Building Approvals 8731 | 8731.0 | Dwelling and building approvals |
 | ABS Monthly International Trade in Goods 5368 | 5368.0 | Imports, exports, trade balance |
-| ABS Monthly Arrivals Departures 3401 | 3401.0 | International travel movements |
-| ABS Monthly Business Turnover Indicator | - | Business activity indicator |
 
 ### ABS Quarterly Series
 | Notebook | ABS Cat. | Description |
 |----------|----------|-------------|
 | ABS Quarterly National Accounts 5206 | 5206.0 | GDP, economic growth |
-| ABS Quarterly Consumer Price Index 6401 | 6401.0 | Official CPI, inflation |
+| ABS Quarterly National Accounts 5206 No 2 | 5206.0 | Productivity analysis from the national accounts |
 | ABS Quarterly Wage Price Index 6345 | 6345.0 | Wage growth |
 | ABS Quarterly Labour Account 6150 | 6150.0 | Hours worked, labour costs |
 | ABS Quarterly Job Vacancies 6354 | 6354.0 | Job vacancies by industry |
@@ -38,9 +37,9 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 | ABS Quarterly Building Activity 8752 | 8752.0 | Construction work done |
 | ABS Quarterly Financial Accounts 5232 | 5232.0 | Financial flows |
 | ABS Quarterly Dwelling Stock 6432 | 6432.0 | Housing stock |
-| ABS Quarterly Estimated Resident Population 3101 | 3101.0 | Population estimates |
 | ABS Quarterly International Trade 5302 | 5302.0 | Balance of payments |
 | ABS Quarterly Lending 5601 | 5601.0 | Lending indicators |
+| ABS Quarterly Capital Expenditure 5625 | 5625.0 | Private new capital expenditure by asset type and industry |
 
 ### ABS Combined Monthly/Quarterly Series
 | Notebook | ABS Cat. | Description |
@@ -49,22 +48,34 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 | ABS Monthly+Quarterly Detailed Labour Force 6291 | 6291.0 | Detailed labour statistics |
 | ABS Monthly+Quarterly Household Spending | - | Household spending indicator |
 
+### ABS SDMX API Series
+| Notebook | Description |
+|----------|-------------|
+| ABS-SDMX-Inflation-multi_measure | Inflation measures via the ABS SDMX API |
+| ABS-SDMX-Monthly-Labour-Force-6202 | Labour force via the ABS SDMX API |
+| ABS-SDMX-Monthly-Household-Spending-Indicator-5682 | Household spending indicator via the ABS SDMX API |
+
 ### ABS Annual/Other Series
 | Notebook | Description |
 |----------|-------------|
 | ABS Bi-annual Average Weekly Earnings 6302 | Earnings data |
 | ABS Yearly National Accounts | Annual GDP and components |
 | ABS Yearly State Accounts | State-level economic data |
+| ABS Yearly Government Finance Statistics 5512 | Government revenue and expenditure |
+| ABS Yearly Taxation Revenue 5506 | Taxation revenue |
 | ABS Yearly Marriages and Divorces 3310 | Social statistics |
-| ABS Population Growth Measures | Population growth analysis |
+| ABS Business Entries and Exits 8165 | Business entry and exit rates |
+| ABS Earnings by Education 6337 | Earnings by educational attainment |
+| ABS Personal Income by Remoteness 6524 | Personal income by remoteness area |
+| ABS LFS - Household dynamics | Household dynamics from the detailed Labour Force Survey (6291.0) |
+| ABS Population | Population: overseas arrivals/departures (3401.0) and resident population (3101.0) |
 | ABS Census - Ad Hoc | Census data analysis |
 
-### Inflation Analysis
+### Inflation and Economy Analysis
 | Notebook | Description |
 |----------|-------------|
 | ABS Inflation multi-measure | Multiple inflation measures compared |
-| ABS Inflation model | Inflation modelling |
-| ABS !Economy | Economic overview charts |
+| ABS Recession | Recession indicators and analysis |
 
 ### RBA Data
 | Notebook | Description |
@@ -75,12 +86,23 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 ### International Comparisons
 | Notebook | Description |
 |----------|-------------|
-| OECD - UR GDP CPI | Unemployment, GDP, CPI comparisons |
+| OECD - UR CPI | Unemployment and CPI comparisons |
+| OECD Global Savings Glut | Savings glut analysis: bond yields, investment and land values (OECD) |
 | BIS - CB policy rates | Central bank policy rate comparisons |
 | FRED GDP International | International GDP from FRED |
-| FRED Commodity Prices | Commodity price indices |
-| World Bank Commodity Prices | World Bank commodity data |
+| FRED Stagflation | Stagflation-era international comparison, 1970-1995 (FRED) |
 | DB.nomics GDP International | International GDP via DB.nomics |
+| Productivity AU vs US | Labour productivity, unit labour costs and rates: Australia vs US |
+| World Bank Global Savings Glut | Global savings glut: current account balances (World Bank) |
+
+### Commodities and Energy
+| Notebook | Description |
+|----------|-------------|
+| YAHOO_daily_commodities | Daily commodity futures, energy, metals and ASX indices (Yahoo Finance) |
+| FRED Commodity Prices | Commodity price indices (FRED) |
+| World Bank Commodity Prices | World Bank commodity data |
+| AIP_petrol_prices | Australian petrol terminal gate prices (AIP) |
+| DCCEEW Petroleum Statistics | Australian petroleum consumption and import cover |
 
 ### Other Australian Data
 | Notebook | Description |
@@ -88,6 +110,14 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 | AFSA Personal Insolvency | Personal insolvency statistics |
 | ASIC Corporate Insolvency | Corporate insolvency data |
 | ANGG-Quarterly-Greenhouse-Gas | Greenhouse gas emissions |
+| Domestic and Family Violence | Domestic and family violence statistics |
+| Home Affairs Temporary Visa Workforce | Temporary visa holders in the workforce |
+
+### Development/Test
+| Notebook | Description |
+|----------|-------------|
+| Test mgplot | mgplot library test/scratch notebook |
+| Test readabs | readabs library test/scratch notebook |
 
 ## Project Structure
 
