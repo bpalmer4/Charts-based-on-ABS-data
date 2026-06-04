@@ -586,11 +586,11 @@ wheels = [
 
 [[package]]
 name = "filelock"
-version = "3.29.0"
+version = "3.29.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b5/fe/997687a931ab51049acce6fa1f23e8f01216374ea81374ddee763c493db5/filelock-3.29.0.tar.gz", hash = "sha256:69974355e960702e789734cb4871f884ea6fe50bd8404051a3530bc07809cf90", size = 57571, upload-time = "2026-04-19T15:39:10.068Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/f9/f38573ed5844586db374d085911740a501ccfa373b455fc9413f09f85237/filelock-3.29.1.tar.gz", hash = "sha256:d97e6b1b9757569626c58caa07dc4beb1613f4a2938b1e8cc81afca398906c9e", size = 59335, upload-time = "2026-06-03T15:19:04.053Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/81/47/dd9a212ef6e343a6857485ffe25bba537304f1913bdbed446a23f7f592e1/filelock-3.29.0-py3-none-any.whl", hash = "sha256:96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258", size = 39812, upload-time = "2026-04-19T15:39:08.752Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/a0/614c5fe402fd88951df45f4dda2fa3b4e17a99ecd92340771929169b3b95/filelock-3.29.1-py3-none-any.whl", hash = "sha256:85199dfd706869641b72b2e8955d5416a4b2b7dc4b0e8e6d97b4cc1299a6983b", size = 40750, upload-time = "2026-06-03T15:19:02.959Z" },
 ]
 
 [[package]]
@@ -2005,7 +2005,7 @@ wheels = [
 
 [[package]]
 name = "readabs"
-version = "0.1.9"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bs4" },
@@ -2021,9 +2021,9 @@ dependencies = [
     { name = "typing" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/11/0f0cfc64a8700c18477ce5963b475839529ffc23ba795c8df08adaa96b64/readabs-0.1.9.tar.gz", hash = "sha256:dc082852ff5b9576d5673544726de4e2c16cb4371e8c76d5dfa2bd9b74792a53", size = 6510278, upload-time = "2026-05-21T09:39:30.932Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/88/e9b61d78084d6197bfdc45483a34251e3ed6d2372c74e0fcd41aed2af798/readabs-0.2.2.tar.gz", hash = "sha256:09f9916b05bc5edb19aa3f2a02154ff0ef7b2ca656752a1ef5bbb08b90cfc515", size = 6579975, upload-time = "2026-06-04T05:32:55.564Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/f3/7c41f0917192a87a9f280005c6e0ca366b0ebb6a3669f0073bc2758a9b6e/readabs-0.1.9-py3-none-any.whl", hash = "sha256:536ff054d5235a2fe2fd44d88439a50ecce53bbe09ffab05b567933dc34a990a", size = 6143287, upload-time = "2026-05-21T09:39:26.941Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/50/a3f543e33ddd892442a5d74d403907ee3e4497dfc6202e92caa2c5a55bd0/readabs-0.2.2-py3-none-any.whl", hash = "sha256:624dbc8f2a161519bd0e3ffc606ef2fae55e381a7549c37c84a8e00fc1a582c3", size = 6154320, upload-time = "2026-06-04T05:32:59.275Z" },
 ]
 
 [[package]]
@@ -2404,11 +2404,11 @@ wheels = [
 
 [[package]]
 name = "traitlets"
-version = "5.15.0"
+version = "5.15.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1b/22/40f55b26baeab80c2d7b3f1db0682f8954e4617fee7d90ce634022ef05c6/traitlets-5.15.0.tar.gz", hash = "sha256:4fead733f81cf1c4c938e06f8ca4633896833c9d89eff878159457f4d4392971", size = 163197, upload-time = "2026-05-06T08:05:58.016Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/a9/a2584b8313b89f94869ddb3c4074617a691de1812a614d2d50e32ca5a7a6/traitlets-5.15.1.tar.gz", hash = "sha256:7b1c07854fe25acb39e009bae49f11b79ff6cbb2f27999104e9110e7a6b53722", size = 163344, upload-time = "2026-06-03T12:26:06.181Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/98/a9937a969d018a23badfea0b381f66783649d48e0ea6c41923265c3cbeb3/traitlets-5.15.0-py3-none-any.whl", hash = "sha256:fb36a18867a6803deab09f3c5e0fa81bb7b26a5c9e82501c9933f759166eff40", size = 85877, upload-time = "2026-05-06T08:05:55.853Z" },
+    { url = "https://files.pythonhosted.org/packages/96/8d/1080ee4c231f361b6ce4470d556c8c435b67c7e0753aaa641497ee92f88b/traitlets-5.15.1-py3-none-any.whl", hash = "sha256:770a53705f84b81ac107e83a1b3328ff2dae16094d8fc3cfc004e4b22dfd8e92", size = 85858, upload-time = "2026-06-03T12:26:04.395Z" },
 ]
 
 [[package]]
