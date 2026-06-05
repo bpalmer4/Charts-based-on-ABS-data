@@ -5,39 +5,12 @@ just a litte bit easier.
 """
 
 # === imports
-from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 from pandas import DataFrame, Series
 import readabs as ra
 from readabs import metacol as mc
 
-from mgplot import set_chart_dir, clear_chart_dir, get_setting
-
-
-# === chart directory management
-
-
-@contextmanager
-def chart_subdir(name: str, clear: bool = False) -> Iterator[str]:
-    """Temporarily redirect mgplot chart output to a subdirectory.
-
-    Arguments:
-    - name: str - subdirectory name (no trailing slash needed).
-    - clear: bool - if True, clear the subdirectory on entry. Only set
-      this on the first use of a subdirectory in a notebook; later
-      cells writing to the same subdirectory should leave it False.
-    Yields the subdirectory path. The previous chart directory is
-    restored on exit, even if an exception is raised."""
-
-    main_dir = get_setting("chart_dir")
-    sub_dir = f"{main_dir}{name}/"
-    set_chart_dir(sub_dir)
-    if clear:
-        clear_chart_dir()
-    try:
-        yield sub_dir
-    finally:
-        set_chart_dir(main_dir)
+from mgplot import set_chart_dir, clear_chart_dir
 
 
 # === frequently used data sources
