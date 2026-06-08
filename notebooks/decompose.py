@@ -1,16 +1,13 @@
 """Produce a naive time series decomposition."""
 
-import sys
+import warnings
 from operator import sub, truediv
 from typing import cast, Final, Sequence
 
 import numpy as np
 import pandas as pd
-
-try:
-    from pmdarima.arima import auto_arima  # type: ignore
-except ImportError:
-    print("Could not import auto_arima from pmdarima")
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.stattools import acf, kpss
 
 from henderson import hma
 
@@ -123,7 +120,13 @@ def decompose(  # pylint: disable=too-many-arguments,disable=too-many-positional
         ignore_years,
     )
     result[FINAL_SEASADJ] = oper(result[ORIGINAL], result[FINAL_SEASONAL])
-    result[FINAL_TREND] = _get_trend(result[FINAL_SEASADJ], h, discontinuity_list)
+    # Compute the final trend on the EXTENDED seasonally-adjusted series so its
+    # endpoints get symmetric (not Musgrave-lagged) Henderson weights when
+    # arima_extend is on. With arima_extend off, EXTENDED == ORIGINAL, so this is
+    # identical to trending FINAL_SEASADJ.
+    result[FINAL_TREND] = _get_trend(
+        oper(result[EXTENDED], result[FINAL_SEASONAL]), h, discontinuity_list
+    )
     result[FINAL_IRREGULAR] = oper(result[FINAL_SEASADJ], result[FINAL_TREND])
     return result
 
@@ -174,7 +177,7 @@ def _extend_series_by_arima(
     """Use auto_arima() to extend the series in each direction.
     Returns the results dataframe that will be subsequently populated."""
 
-    if arima_extend and "pmdarima" in sys.modules:
+    if arima_extend:
         p_length = int(h / 2)
         forward = _make_projection(s, freq=freq, p_length=p_length, direction=1)
         back = _make_projection(s, freq=freq, p_length=p_length, direction=-1)
@@ -235,48 +238,122 @@ def _check_input_validity(
     return n_periods
 
 
+_MAX_ARIMA_ORDER = 2
+
+
+def _ndiffs(y: np.ndarray, alpha: float = 0.05, max_d: int = _MAX_ARIMA_ORDER) -> int:
+    """Non-seasonal differencing order via successive KPSS level-stationarity
+    tests (the Hyndman-Khandakar approach)."""
+
+    d, x = 0, np.asarray(y, dtype=float)
+    while d < max_d and len(x) > 12:
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _stat, pval, *_ = kpss(x, regression="c", nlags="auto")
+        except (ValueError, OverflowError):
+            break
+        if pval >= alpha:  # fail to reject stationarity -> stop differencing
+            break
+        x = np.diff(x)
+        d += 1
+    return d
+
+
+def _nsdiffs(
+    y: np.ndarray, m: int, d: int, max_big_d: int = 1, thresh: float = 0.64
+) -> int:
+    """Seasonal differencing order: detrend by d differences, then test the
+    autocorrelation at the seasonal lag m."""
+
+    if m < 2 or len(y) < 2 * m + d:
+        return 0
+    x = np.asarray(y, dtype=float)
+    for _ in range(d):
+        x = np.diff(x)
+    big_d = 0
+    while big_d < max_big_d and len(x) > 2 * m:
+        a = acf(x, nlags=m, fft=False)
+        if len(a) <= m or a[m] < thresh:
+            break
+        x = x[m:] - x[:-m]
+        big_d += 1
+    return big_d
+
+
+def _auto_arima(y: np.ndarray, m: int, max_order: int = _MAX_ARIMA_ORDER) -> object:
+    """Compact auto-ARIMA on statsmodels SARIMAX -- a maintained stand-in for the
+    abandoned pmdarima.auto_arima. Differencing orders d, D are fixed by tests
+    (so AIC is comparable); p, q, P, Q are chosen by AIC over [0, max_order].
+    The seasonal grid is skipped entirely when no seasonal differencing is
+    indicated. Returns a fitted SARIMAXResults."""
+
+    y = np.asarray(y, dtype=float)
+    d = _ndiffs(y, max_d=max_order)
+    big_d = _nsdiffs(y, m, d, max_big_d=1)
+    seasonal_grid = range(max_order + 1) if big_d > 0 else [0]
+    trend = "c" if (d + big_d) < 2 else "n"
+
+    best, best_aic = None, np.inf
+    for p in range(max_order + 1):
+        for q in range(max_order + 1):
+            for big_p in seasonal_grid:
+                for big_q in seasonal_grid:
+                    seasonal_order = (
+                        (big_p, big_d, big_q, m)
+                        if (big_d or big_p or big_q)
+                        else (0, 0, 0, 0)
+                    )
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            res = SARIMAX(
+                                y,
+                                order=(p, d, q),
+                                seasonal_order=seasonal_order,
+                                trend=trend,
+                                enforce_stationarity=False,
+                                enforce_invertibility=False,
+                            ).fit(disp=False)
+                    except (ValueError, np.linalg.LinAlgError):
+                        continue
+                    if np.isfinite(res.aic) and res.aic < best_aic:
+                        best, best_aic = res, res.aic
+
+    if best is None:  # fallback: random walk with drift
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            best = SARIMAX(y, order=(0, 1, 0), trend="c").fit(disp=False)
+    return best
+
+
 def _make_projection(
     s: pd.Series, freq: int, p_length: int, direction: int
 ) -> pd.Series:
-    """Use auto_arima to project a series into the future/past.
+    """Use a statsmodels auto-ARIMA to project a series p_length periods into the
+    future (direction=1) or past (direction=-1), and return the series with the
+    projection concatenated on.
     Arguments
-    s - Series to be projected.
-    freq - positive int - period frequency - 4 or 12
+    s - Series to be projected (PeriodIndex).
+    freq - positive int - period frequency - 4 or 12.
     direction - 1 or -1 - direction we are projecting towards.
-    Returns - projected series."""
+    Returns - the input series with the projection concatenated on."""
 
-    t = s
+    values = s.to_numpy(dtype=float)
     if direction < 0:
-        t = s[::-1]
-        t = t.reset_index(drop=True)
+        values = values[::-1]
 
-    model = auto_arima(
-        t,
-        m=freq,
-        seasonal=True,
-        d=None,
-        test="adf",
-        start_p=0,
-        start_q=0,
-        max_p=3,
-        max_q=3,
-        D=None,
-        trace=False,
-        error_action="ignore",
-        suppress_warnings=True,
-        stepwise=True,
-    )
-    # print(model.summary())
+    res = _auto_arima(values, m=freq)
+    forecast = np.asarray(res.forecast(p_length))
 
-    projection = model.predict(n_periods=p_length, return_conf_int=False)
-
+    freqstr = cast(pd.PeriodIndex, s.index).freqstr
     if direction < 0:
-        projection.index = s.index[0] - pd.Series(range(1, p_length + 1))
-        projection = projection.sort_index()
-        extended_series = pd.concat([projection, s])
-    else:
-        extended_series = pd.concat([s, projection])
-    return extended_series
+        idx = pd.period_range(end=s.index[0] - 1, periods=p_length, freq=freqstr)
+        projection = pd.Series(forecast[::-1], index=idx)
+        return pd.concat([projection, s])
+    idx = pd.period_range(s.index[-1] + 1, periods=p_length, freq=freqstr)
+    projection = pd.Series(forecast, index=idx)
+    return pd.concat([s, projection])
 
 
 def _smooth_seasonal(
