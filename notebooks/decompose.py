@@ -128,7 +128,12 @@ def decompose(  # pylint: disable=too-many-arguments,disable=too-many-positional
         oper(result[EXTENDED], result[FINAL_SEASONAL]), h, discontinuity_list
     )
     result[FINAL_IRREGULAR] = oper(result[FINAL_SEASADJ], result[FINAL_TREND])
-    return result
+
+    # Clip back to the original dates. The ARIMA extension padded both ends only so
+    # the endpoint Henderson trend uses symmetric (not Musgrave) weights; those
+    # real-period values are now computed, so drop the projected padding rows rather
+    # than letting Trend/Extended spill past the original series.
+    return result.loc[s.index]
 
 
 #  === private methods below ===
@@ -282,49 +287,92 @@ def _nsdiffs(
 
 
 def _auto_arima(y: np.ndarray, m: int, max_order: int = _MAX_ARIMA_ORDER) -> object:
-    """Compact auto-ARIMA on statsmodels SARIMAX -- a maintained stand-in for the
-    abandoned pmdarima.auto_arima. Differencing orders d, D are fixed by tests
-    (so AIC is comparable); p, q, P, Q are chosen by AIC over [0, max_order].
-    The seasonal grid is skipped entirely when no seasonal differencing is
-    indicated. Returns a fitted SARIMAXResults."""
+    """Stepwise auto-ARIMA on statsmodels SARIMAX -- a maintained stand-in for the
+    abandoned pmdarima.auto_arima. Differencing orders d, D are fixed by tests (so
+    AIC is comparable); the AR/MA orders p, q, P, Q are then chosen by a
+    Hyndman-Khandakar stepwise search: fit a few seed models, then hill-climb to
+    whichever single-order (+/-1) neighbour lowers the AIC, repeating until no
+    neighbour improves. This fits ~10-15 models instead of the full (max_order+1)**4
+    grid -- decisive for seasonal monthly series, where each seasonal fit is costly.
+    Seasonal orders are explored only when seasonal differencing is indicated.
+    Returns a fitted SARIMAXResults."""
 
     y = np.asarray(y, dtype=float)
     d = _ndiffs(y, max_d=max_order)
     big_d = _nsdiffs(y, m, d, max_big_d=1)
-    seasonal_grid = range(max_order + 1) if big_d > 0 else [0]
+    seasonal = big_d > 0
     trend = "c" if (d + big_d) < 2 else "n"
 
-    best, best_aic = None, np.inf
-    for p in range(max_order + 1):
-        for q in range(max_order + 1):
-            for big_p in seasonal_grid:
-                for big_q in seasonal_grid:
-                    seasonal_order = (
-                        (big_p, big_d, big_q, m)
-                        if (big_d or big_p or big_q)
-                        else (0, 0, 0, 0)
-                    )
-                    try:
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore")
-                            res = SARIMAX(
-                                y,
-                                order=(p, d, q),
-                                seasonal_order=seasonal_order,
-                                trend=trend,
-                                enforce_stationarity=False,
-                                enforce_invertibility=False,
-                            ).fit(disp=False)
-                    except (ValueError, np.linalg.LinAlgError):
-                        continue
-                    if np.isfinite(res.aic) and res.aic < best_aic:
-                        best, best_aic = res, res.aic
+    cache: dict[tuple[int, int, int, int], tuple[object, float]] = {}
 
-    if best is None:  # fallback: random walk with drift
+    def fit(p: int, q: int, big_p: int, big_q: int) -> tuple[object, float]:
+        """Fit one SARIMAX model; memoised; returns (results | None, aic)."""
+        order = (p, q, big_p, big_q)
+        if any(not 0 <= v <= max_order for v in order):
+            return None, np.inf
+        if order in cache:
+            return cache[order]
+        seasonal_order = (
+            (big_p, big_d, big_q, m) if (big_d or big_p or big_q) else (0, 0, 0, 0)
+        )
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                res = SARIMAX(
+                    y,
+                    order=(p, d, q),
+                    seasonal_order=seasonal_order,
+                    trend=trend,
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                ).fit(disp=False)
+            aic = float(res.aic) if np.isfinite(res.aic) else np.inf
+        except (ValueError, np.linalg.LinAlgError):
+            res, aic = None, np.inf
+        cache[order] = (res, aic)
+        return res, aic
+
+    # Hyndman-Khandakar seed models (seasonal terms only when D > 0).
+    seeds = (
+        [(2, 2, 1, 1), (0, 0, 0, 0), (1, 0, 1, 0), (0, 1, 0, 1)]
+        if seasonal
+        else [(2, 2, 0, 0), (0, 0, 0, 0), (1, 0, 0, 0), (0, 1, 0, 0)]
+    )
+    seeds = [tuple(min(v, max_order) for v in s) for s in seeds]
+
+    best_key, best_res, best_aic = None, None, np.inf
+    for seed in seeds:
+        res, aic = fit(*seed)
+        if aic < best_aic:
+            best_key, best_res, best_aic = seed, res, aic
+
+    # Hill-climb: move to the best improving single-order neighbour until none does.
+    # AIC strictly decreases each step over a finite order box, so this terminates.
+    while best_key is not None:
+        p, q, big_p, big_q = best_key
+        neighbours = [
+            (p + 1, q, big_p, big_q), (p - 1, q, big_p, big_q),
+            (p, q + 1, big_p, big_q), (p, q - 1, big_p, big_q),
+        ]
+        if seasonal:
+            neighbours += [
+                (p, q, big_p + 1, big_q), (p, q, big_p - 1, big_q),
+                (p, q, big_p, big_q + 1), (p, q, big_p, big_q - 1),
+            ]
+        improved = False
+        for nb in neighbours:
+            res, aic = fit(*nb)
+            if aic < best_aic:
+                best_key, best_res, best_aic = nb, res, aic
+                improved = True
+        if not improved:
+            break
+
+    if best_res is None:  # fallback: random walk with drift
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            best = SARIMAX(y, order=(0, 1, 0), trend="c").fit(disp=False)
-    return best
+            best_res = SARIMAX(y, order=(0, 1, 0), trend="c").fit(disp=False)
+    return best_res
 
 
 def _make_projection(

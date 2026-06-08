@@ -119,10 +119,24 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 | Test mgplot | mgplot library test/scratch notebook |
 | Test readabs | readabs library test/scratch notebook |
 
+## Helper Modules
+
+Shared Python modules in `notebooks/`, imported by the notebooks rather than run directly:
+
+| Module | Purpose | Key functions |
+|--------|---------|---------------|
+| `abs_helper.py` | Standard notebook setup and common ABS data accessors. `get_abs_data()` also creates and clears the chart directory, so call it only once per notebook. | `get_abs_data`, `get_gdp`, `get_population`, `get_pop_growth_6202`, `smoothed_monthly_pop_growth`, `collate_summary_data` |
+| `abs_structured_capture.py` | Fetch multiple ABS series across catalogues via `ReqsTuple`/`ReqsDict`; does not touch the chart directory, so safe for additional fetches within a notebook. | `get_abs_data`, `load_series`, `get_table` |
+| `abs_plotting.py` | Reusable plotting of ABS seasonally-adjusted/trend series selected by metadata. | `plot_rows_seas_trend`, `plot_rows_individually`, `plot_rows_collectively` |
+| `decompose.py` | Naive time-series decomposition (trend/seasonal/irregular), additive or multiplicative, with optional ARIMA endpoint extension (stepwise auto-ARIMA) and Henderson trend smoothing. | `decompose` |
+| `henderson.py` | Henderson moving average for trend estimation. | `hma` |
+| `common.py` | Generic cached HTTP fetch utilities used by the non-ABS data sources. | `request_get`, `get_file` |
+| `pymc_helper.py` | PyMC Bayesian-model diagnostics and posterior plotting. | `check_model_diagnostics`, `plot_posteriors_kde`, `plot_timeseries` |
+
 ## Project Structure
 
 ```
-├── notebooks/          # Jupyter notebooks
+├── notebooks/          # Jupyter notebooks + shared helper modules (*.py)
 │   └── CHARTS/         # Generated chart output
 └── .venv/              # Python virtual environment
 ```

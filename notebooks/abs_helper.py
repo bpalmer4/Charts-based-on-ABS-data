@@ -12,6 +12,9 @@ from readabs import metacol as mc
 
 from mgplot import set_chart_dir, clear_chart_dir
 
+from decompose import decompose
+from henderson import hma
+
 
 # === frequently used data sources
 
@@ -103,6 +106,82 @@ def get_population(
             pop[base_period + i] = pop[base_period + i - 1] * rate
 
     return pop, units
+
+
+def smoothed_monthly_pop_growth(
+    level: Series,
+    *,
+    ignore_years: tuple[int, int] = (2020, 2021),
+    henderson_terms: int = 13,
+) -> Series:
+    """Smooth a benchmark-stepped monthly population *level* into a smooth
+    monthly *increment* (change per month).
+
+    The ABS interpolates quarterly ERP benchmarks onto months, so the raw
+    month-on-month change of a population level (e.g. the 6202 civilian
+    population aged 15+) is a step function that jumps at each new benchmark.
+    Differencing that and then smoothing leaves the steps in place; instead we
+    work on the quarterly trend:
+
+      1. downsample the level to quarterly means;
+      2. take the Trend of a multiplicative seasonal decomposition, ARIMA
+         extended so the endpoint uses symmetric (not Musgrave-lagged)
+         Henderson weights, with COVID years excluded from the seasonal
+         estimate;
+      3. spread each quarterly trend increment evenly over its three months
+         (/3, forward-filled) and round the residual steps with an
+         ``henderson_terms``-term Henderson moving average;
+      4. mask back to the months actually present in ``level`` (dropping the
+         fabricated trailing months of any partial quarter).
+
+    Arguments:
+    - level: a monthly population Series on a PeriodIndex.
+    - ignore_years: years excluded from the seasonal estimate (COVID).
+    - henderson_terms: length of the final Henderson moving average.
+
+    Returns a monthly Series of the smoothed population increment (same units
+    as ``level``), indexed on the months present in ``level``.
+    """
+    q_trend = decompose(
+        level.resample("Q").mean(),
+        model="multiplicative",
+        constant_seasonal=True,
+        ignore_years=ignore_years,
+        arima_extend=True,
+    )["Trend"]
+    return (
+        hma((q_trend.diff() / 3).resample("M").ffill().dropna(), henderson_terms)
+        .reindex(level.index)
+        .dropna()
+    )
+
+
+def get_pop_growth_6202(**kwargs) -> tuple[Series, str]:
+    """Fetch the 6202 civilian population aged 15+ and return its smoothed
+    monthly growth (increment per month).
+
+    Self-contained: reads the Original monthly civilian-population-15+ level
+    from ABS 6202.0 (table 62020001) and passes it through
+    ``smoothed_monthly_pop_growth`` to strip the benchmark-step artifact. The
+    raw level is benchmark-interpolated, so its month-on-month change is a step
+    function; the returned increment is the smooth underlying run-rate.
+
+    Note: 12-month annual growth is the 12-month rolling sum of this increment,
+    and the annual growth *rate* is that sum divided by the level. ``kwargs``
+    are passed through to ``find_abs_id``.
+
+    Returns a tuple of the smoothed monthly increment Series and its units.
+    """
+    cat, table = "6202.0", "62020001"
+    data, m = ra.read_abs_cat(cat, single_excel_only=table, verbose=False)
+    selector = {
+        table: mc.table,
+        "Civilian population aged 15 years and over ;  Persons ;": mc.did,
+        "Original": mc.stype,
+    }
+    _table, series_id, units = ra.find_abs_id(m, selector, **kwargs)
+    level = data[table][series_id]
+    return smoothed_monthly_pop_growth(level), units
 
 
 # === data retrieval and initialisation
