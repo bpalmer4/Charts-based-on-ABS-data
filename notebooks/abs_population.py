@@ -6,8 +6,9 @@ dispatcher, mirroring abs_gdp.get_gdp. Four measures are supported:
 
   ERP       Estimated Resident Population (3101.0, table 310104), by state.
   civ15     Civilian population aged 15+ (6202.0, table 62020010), by state.
-  adult21   Population aged 21+ (derived: state civ15 x national 21/15 share),
-            quarterly.
+  adult21   Population aged 21+, approximating the total resident 21+ (derived:
+            state civ15 x national [ERP 21/15 age-share x civilian->total
+            upweight]), quarterly.
   implicit  Population implied by the National Accounts (5206.0 GDP / GDP per
             capita); national only.
 
@@ -47,6 +48,7 @@ _HENDERSON_TERMS = 13
 _PROJECT_PERIODS = 2
 _AGE_15 = 15  # civilian working-age threshold (15+)
 _AGE_21 = 21  # adult threshold (21+)
+_JUNE = 6  # ERP single-year-of-age reference month
 _PER_MILLION = 1_000_000  # GDP ($M) / GDP-per-capita ($) -> millions of persons; rescale to persons
 
 # Map common state aliases/abbreviations to the full name the ABS uses in its
@@ -136,15 +138,19 @@ def _pop_civ15(state: str) -> tuple[pd.Series, str]:
 
 @cache
 def _pop_adult21(state: str) -> tuple[pd.Series, str]:
-    """Quarterly population aged 21+ for a state, on the civilian-15+ basis.
+    """Quarterly population aged 21+ for a state, approximating the TOTAL resident 21+.
 
     The ABS has no quarterly single-year-of-age population, so the 21+ count is
-    built as the (quarterly mean) civilian population 15+ scaled by the national
-    annual 21/15 age-share, interpolated to quarterly. The share drifts slowly,
-    so this keeps the 21+ line on the same smooth basis as the 15+ series and
-    differing only by the 15-20 cohort. For a state this applies the *national*
-    21/15 share to that state's civ15 - a documented approximation, as no state
-    single-year-of-age series exists.
+    built from the (quarterly-mean) civilian population 15+ scaled by two annual,
+    June-anchored factors interpolated to quarterly:
+      - the 21/15 ERP age-share (ERP_21/ERP_15), and
+      - a civilian->total upweight (ERP_15/civ_15) that adds back the population
+        excluded from the labour-force civilian count (mainly the permanent
+        defence force).
+    Their product (= ERP_21/civ_15) anchors the series to the total resident 21+
+    population at each June benchmark while keeping the smooth LFS quarterly shape.
+    For a state both factors use national data - a documented approximation, as no
+    state single-year-of-age series exists.
 
     Args:
         state: the state/territory name, or "Australia" for the national total.
@@ -155,7 +161,8 @@ def _pop_adult21(state: str) -> tuple[pd.Series, str]:
     """
     civ15, units = _pop_civ15(state)
     civ15_q = ra.monthly_to_qtly(civ15, f="mean")
-    return (interp_21_share(civ15_q.index) * civ15_q).dropna(), units
+    factor = interp_21_share(civ15_q.index) * interp_civ15_to_total(civ15_q.index)
+    return (factor * civ15_q).dropna(), units
 
 
 @cache
@@ -190,50 +197,79 @@ def _pop_implicit() -> tuple[pd.Series, str]:
 
 # === age-structure helpers (dimensionless ratios; not (series, units))
 @cache
-def get_adult_21_share_of_15() -> pd.Series:
-    """Annual 21+/15+ population ratio (ERP single year of age, 3101.0, June).
+def _erp_age_sum(min_age: int) -> pd.Series:
+    """Annual June ERP summed over single years of age >= min_age (3101.0, persons).
 
-    The 21+ population as a share of the 15+ population: a slowly drifting adult
-    age-structure ratio used to scale a civilian-15+ level down to a 21+ estimate
-    on the same basis (the two then differ only by the 15-20 cohort).
+    Args:
+        min_age: lowest single year of age to include.
 
     Returns:
-        The annual (June) ratio as a dimensionless Series.
+        The annual (June, Y-JUN) ERP count (persons) as a Series.
 
     """
     age_table = "3101059"
     age_data, age_meta = ra.read_abs_cat("3101.0", single_excel_only=age_table, verbose=False)
     persons = age_meta[age_meta[mc.did].str.contains("Persons")]
-    ids_21, ids_15 = [], []
+    ids = []
     for _, row in persons.iterrows():
         age_str = row[mc.did].split(";")[2].strip()
         age = 100 if age_str == "100 and over" else int(age_str)
-        if age >= _AGE_15:
-            ids_15.append(row[mc.id])
-        if age >= _AGE_21:
-            ids_21.append(row[mc.id])
-    pop_21 = age_data[age_table][ids_21].sum(axis=1)  # persons, Y-JUN
-    pop_15 = age_data[age_table][ids_15].sum(axis=1)  # persons, Y-JUN
-    return (pop_21 / pop_15).dropna()
+        if age >= min_age:
+            ids.append(row[mc.id])
+    return age_data[age_table][ids].sum(axis=1).dropna()  # persons, Y-JUN
 
 
-def interp_21_share(index: pd.PeriodIndex) -> pd.Series:
-    """Interpolate the annual 21+/15+ ratio onto a quarterly or monthly index.
+@cache
+def get_adult_21_share_of_15() -> pd.Series:
+    """Annual 21+/15+ population ratio (ERP single year of age, 3101.0, June).
 
-    Each June value is anchored at the June quarter (Q2) / June month, linearly
-    interpolated between, and held flat past the latest June benchmark.
+    The 21+ population as a share of the 15+ population: a slowly drifting adult
+    age-structure ratio (the ERP 21/15 discount).
+
+    Returns:
+        The annual (June) ratio as a dimensionless Series.
+
+    """
+    return (_erp_age_sum(_AGE_21) / _erp_age_sum(_AGE_15)).dropna()
+
+
+@cache
+def get_civ15_to_total_upweight() -> pd.Series:
+    """Annual June upweight: total ERP 15+ / national civilian 15+ (persons).
+
+    Scales the labour-force civilian population aged 15+ up to the total resident
+    population aged 15+ - i.e. adds back the population excluded from the civilian
+    count (mainly the permanent defence force); about 1.003. Used to put the 21+
+    estimate on a total-population (rather than civilian) basis.
+
+    Returns:
+        The annual (June) ratio as a dimensionless Series.
+
+    """
+    erp15 = _erp_age_sum(_AGE_15)  # persons, Y-JUN
+    civ15 = _pop_civ15("Australia")[0] * 1000.0  # '000 -> persons, monthly
+    june = civ15[civ15.index.month == _JUNE].copy()
+    june.index = june.index.asfreq("Y-JUN")
+    return (erp15 / june).dropna()
+
+
+def _interp_june(annual: pd.Series, index: pd.PeriodIndex) -> pd.Series:
+    """Interpolate an annual June-referenced ratio onto a quarterly/monthly index.
+
+    Each annual value is anchored at the June quarter (Q2) / June month, linearly
+    interpolated between anchors, and held flat past the latest June benchmark.
 
     Args:
+        annual: an annual (June, Y-JUN) ratio Series.
         index: a quarterly (Q-DEC) or monthly (M) PeriodIndex to interpolate onto.
 
     Returns:
-        The interpolated dimensionless ratio, indexed on `index`.
+        The interpolated ratio, indexed on `index`.
 
     """
-    ratio_annual = get_adult_21_share_of_15()
     out = pd.Series(np.nan, index=index, dtype=float)
     freq = index.freqstr
-    for period, value in ratio_annual.items():
+    for period, value in annual.items():
         anchor = (
             pd.Period(year=period.year, quarter=2, freq=freq)
             if freq.startswith("Q")
@@ -242,6 +278,32 @@ def interp_21_share(index: pd.PeriodIndex) -> pd.Series:
         if anchor in out.index:
             out[anchor] = value
     return out.interpolate(limit_area="inside").ffill()
+
+
+def interp_21_share(index: pd.PeriodIndex) -> pd.Series:
+    """Interpolate the annual 21+/15+ ERP age-share onto a quarterly/monthly index.
+
+    Args:
+        index: a quarterly (Q-DEC) or monthly (M) PeriodIndex to interpolate onto.
+
+    Returns:
+        The interpolated dimensionless ratio, indexed on `index`.
+
+    """
+    return _interp_june(get_adult_21_share_of_15(), index)
+
+
+def interp_civ15_to_total(index: pd.PeriodIndex) -> pd.Series:
+    """Interpolate the civilian->total 15+ upweight onto a quarterly/monthly index.
+
+    Args:
+        index: a quarterly (Q-DEC) or monthly (M) PeriodIndex to interpolate onto.
+
+    Returns:
+        The interpolated dimensionless ratio, indexed on `index`.
+
+    """
+    return _interp_june(get_civ15_to_total_upweight(), index)
 
 
 # === smoothing transform (bare Series in, bare Series out)
