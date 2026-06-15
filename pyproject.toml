@@ -72,6 +72,7 @@ lint.ignore = [
     "TRY003",  # Long exception messages.
     "FBT003",  # Boolean positional value - inherent to ReqsTuple design
     "PD008",   # mypy doesnt like .loc[] / ruff doesn't like .at[]
+    "ANN401",  # Any in **kwargs - correct when forwarding kwargs to readabs
 
     # --- specifically for Jupyter notebooks.
     "B018",    # Found useless attribute access (often at cell end for output) 

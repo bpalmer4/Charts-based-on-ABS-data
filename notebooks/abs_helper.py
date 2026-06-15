@@ -1,187 +1,17 @@
-"""
-abs_helper.py
-A collection of functions to make working with ABS data 
-just a litte bit easier.
+"""Helpers for fetching ABS data and standard notebook set-up.
+
+Provides get_abs_data (the standard fetch plus chart-directory set-up),
+collate_summary_data (build a summary table for mgplot.summary_plot), and the
+CPI target constants used across the inflation notebooks.
 """
 
 # === imports
 from typing import Any
-from pandas import DataFrame, Series
+
 import readabs as ra
+from mgplot import clear_chart_dir, set_chart_dir
+from pandas import DataFrame
 from readabs import metacol as mc
-
-from mgplot import set_chart_dir, clear_chart_dir
-
-from decompose import decompose
-from henderson import hma
-
-
-# === frequently used data sources
-
-
-def get_gdp(gdp_type="CP", seasonal="SA") -> tuple[Series, str]:
-    """Return the ABS GDP Series (from the key aggregates table).
-    Arguments:
-    - gdp_type: str - The type of the series to return.
-      gdp_types is one of: 'CP' or 'CVM, which stand for
-      'Current price' and 'Chain volume measures'.
-    - seasonal: str - The seasonal adjustment type.
-      seasonal is one of 'SA', 'T', 'O', which stand for
-      'Seasonally Adjusted', 'Trend' and 'Original'.
-    Returns:
-    a tuple comprising the selected GDP series and the units
-    of that series."""
-
-    # validate the arguments
-    did_cvm = "Gross domestic product: Chain volume measures ;"
-    did_cp = "Gross domestic product: Current prices ;"
-    gdp_types = {
-        # gdp-type: data-item-description in the ABS data
-        "CP": did_cp,
-        "Current price": did_cp,
-        "Current prices": did_cp,
-        "CVM": did_cvm,
-        "Volumetric": did_cvm,
-    }
-    seasonals = {
-        "SA": "Seasonally Adjusted",
-        "S": "Seasonally Adjusted",
-        "T": "Trend",
-        "O": "Original",
-    }
-    assert gdp_type in gdp_types, f"Invalid GDP type: {gdp_type}"
-    assert seasonal in seasonals, f"Invalid seasonal adjustment type: {seasonal}"
-
-    # get the series
-    cat = "5206.0"
-    seo = "5206001_Key_Aggregates"
-    (
-        gdp_data,
-        gdp_meta,
-    ) = ra.read_abs_cat(cat, single_excel_only=seo, verbose=False)
-    selector = {
-        gdp_types[gdp_type]: ra.metacol.did,
-        seasonals[seasonal]: ra.metacol.stype,
-    }
-    table, series_id, units = ra.find_abs_id(gdp_meta, selector, verbose=False)
-    gdp = gdp_data[table][series_id]
-
-    return gdp, units
-
-
-def get_population(
-        state="Australia",
-        project=True,
-        **kwargs,
-    ) -> tuple[Series, str]:
-    """Return the ABS population Series for a given state.
-
-    Arguments:
-    - state: str - The state to return the population for.
-      Defaults to 'Australia' for the national population.
-    - project: bool - Whether to project the population to the present.
-
-    Returns a tuple comprising:
-    - the selected population series and 
-    - the units of that series.
-    """
-
-    # get the series
-    cat = "3101.0"
-    table = "310104"
-    pop_data, pop_meta = ra.read_abs_cat(cat, single_excel_only=table, verbose=False)
-    selector = {
-        f";  {state} ;": mc.did,  # too many states have "Australia" in their name
-        "Estimated Resident Population ;  Persons ;  ": mc.did
-    }
-    _table, series_id, units = ra.find_abs_id(pop_meta, selector, **kwargs)
-    pop = pop_data[table][series_id]
-
-    if project:
-        # a bit rough - but should do for such a simple series
-        # over such a short period (6 months)
-        rate = pop.iloc[-1] / pop.iloc[-2]
-        base_period = pop.index[-1]
-        for i in range(1, 3):
-            pop[base_period + i] = pop[base_period + i - 1] * rate
-
-    return pop, units
-
-
-def smoothed_monthly_pop_growth(
-    level: Series,
-    *,
-    ignore_years: tuple[int, int] = (2020, 2021),
-    henderson_terms: int = 13,
-) -> Series:
-    """Smooth a benchmark-stepped monthly population *level* into a smooth
-    monthly *increment* (change per month).
-
-    The ABS interpolates quarterly ERP benchmarks onto months, so the raw
-    month-on-month change of a population level (e.g. the 6202 civilian
-    population aged 15+) is a step function that jumps at each new benchmark.
-    Differencing that and then smoothing leaves the steps in place; instead we
-    work on the quarterly trend:
-
-      1. downsample the level to quarterly means;
-      2. take the Trend of a multiplicative seasonal decomposition, ARIMA
-         extended so the endpoint uses symmetric (not Musgrave-lagged)
-         Henderson weights, with COVID years excluded from the seasonal
-         estimate;
-      3. spread each quarterly trend increment evenly over its three months
-         (/3, forward-filled) and round the residual steps with an
-         ``henderson_terms``-term Henderson moving average;
-      4. mask back to the months actually present in ``level`` (dropping the
-         fabricated trailing months of any partial quarter).
-
-    Arguments:
-    - level: a monthly population Series on a PeriodIndex.
-    - ignore_years: years excluded from the seasonal estimate (COVID).
-    - henderson_terms: length of the final Henderson moving average.
-
-    Returns a monthly Series of the smoothed population increment (same units
-    as ``level``), indexed on the months present in ``level``.
-    """
-    q_trend = decompose(
-        level.resample("Q").mean(),
-        model="multiplicative",
-        constant_seasonal=True,
-        ignore_years=ignore_years,
-        arima_extend=True,
-    )["Trend"]
-    return (
-        hma((q_trend.diff() / 3).resample("M").ffill().dropna(), henderson_terms)
-        .reindex(level.index)
-        .dropna()
-    )
-
-
-def get_pop_growth_6202(**kwargs) -> tuple[Series, str]:
-    """Fetch the 6202 civilian population aged 15+ and return its smoothed
-    monthly growth (increment per month).
-
-    Self-contained: reads the Original monthly civilian-population-15+ level
-    from ABS 6202.0 (table 62020001) and passes it through
-    ``smoothed_monthly_pop_growth`` to strip the benchmark-step artifact. The
-    raw level is benchmark-interpolated, so its month-on-month change is a step
-    function; the returned increment is the smooth underlying run-rate.
-
-    Note: 12-month annual growth is the 12-month rolling sum of this increment,
-    and the annual growth *rate* is that sum divided by the level. ``kwargs``
-    are passed through to ``find_abs_id``.
-
-    Returns a tuple of the smoothed monthly increment Series and its units.
-    """
-    cat, table = "6202.0", "62020001"
-    data, m = ra.read_abs_cat(cat, single_excel_only=table, verbose=False)
-    selector = {
-        table: mc.table,
-        "Civilian population aged 15 years and over ;  Persons ;": mc.did,
-        "Original": mc.stype,
-    }
-    _table, series_id, units = ra.find_abs_id(m, selector, **kwargs)
-    level = data[table][series_id]
-    return smoothed_monthly_pop_growth(level), units
 
 
 # === data retrieval and initialisation
@@ -190,19 +20,23 @@ def get_abs_data(
     chart_dir_suffix: str = "",
     **kwargs: Any,
 ) -> tuple[dict[str, DataFrame], DataFrame, str, str]:
-    """Get ABS data for a specific catalogue number and create
-    the associated plot directories. This is my standard set-up
-    for notebooks that use ABS data.
+    """Fetch ABS data for a catalogue number and set up its chart directory.
 
-    Arguments:
-        cat: an ABS catalogue number (as a string, eg. "6401.0")
-        chart_dir_suffix: optional suffix to append to chart directory name
-                          (useful for splitting notebooks, e.g. " - Productivity")
-        **kwargs: any additional arguments to pass to read_abs_cat
+    The standard set-up for notebooks that use ABS data: fetch the catalogue,
+    derive the source label and a recent start date, and point the chart
+    directory at CHARTS/<topic>/ (clearing it first).
 
-    Returns: the data in a dictionary, metadata, source and a recent date
-    to plot from."""
+    Args:
+        cat: an ABS catalogue number (as a string, e.g. "6401.0").
+        chart_dir_suffix: optional suffix appended to the chart directory name
+            (useful for splitting notebooks, e.g. " - Productivity").
+        **kwargs: any additional arguments passed to read_abs_cat.
 
+    Returns:
+        A tuple of the data dictionary, metadata, source string and a recent
+        date to plot from.
+
+    """
     # get data -
     abs_dict_, meta_ = ra.read_abs_cat(cat, **kwargs)
     source_ = f"ABS: {cat}"
@@ -221,21 +55,25 @@ def collate_summary_data(
     to_get: dict[str, tuple[str, int]],
     abs_data: dict[str, DataFrame],
     md: DataFrame,
+    *,
     verbose: bool = False,
 ) -> DataFrame:
-    """
-    Construct a summary DataFrame of key ABS data.
-    Get required data items. If period is specified,
-    calculate the percentage change over that period.
-    Return a DataFrame with the data. This DataFrame 
-    is then passed to the mgplot.summary_plot() function.
+    """Build a summary DataFrame of key ABS series for mgplot.summary_plot.
 
-    Args
-    - to_get: in the form {label: (series_id: str, n_periods_growth: int), ...}
-    - abs_data: duct of ABS data from readabs
-    - md: ABS meta data table from readabs
-    """
+    Fetch each requested data item; where a growth period is given, replace the
+    level with its percentage change over that period.
 
+    Args:
+        to_get: mapping of label -> (series_id, n_periods_growth); a zero period
+            keeps the level, a non-zero period takes the percentage change.
+        abs_data: the ABS data dictionary from readabs.
+        md: the ABS metadata table from readabs.
+        verbose: if True, print each selected series' table and description.
+
+    Returns:
+        A DataFrame with one column per label.
+
+    """
     data = DataFrame()
     for label, [code, period] in to_get.items():
         selected = md[md[mc.id] == code].iloc[0]

@@ -12,7 +12,6 @@ __pycache__/
 .vscode/
 
 # CLAUDE
-CLAUDE.md
 .claude
 
 # API keys - keep private
