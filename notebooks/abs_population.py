@@ -37,9 +37,10 @@ from functools import cache
 import numpy as np
 import pandas as pd
 import readabs as ra
+from readabs import metacol as mc
+
 from decompose import decompose
 from henderson import hma
-from readabs import metacol as mc
 
 # === constants
 _MEASURES = ("ERP", "civ15", "adult21", "implicit")

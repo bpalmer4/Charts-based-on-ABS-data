@@ -120,6 +120,37 @@ def index_by_government(series: Series, govts: DataFrame, base: float = 100.0) -
         indexed[str(name)] = segments[name] / observed.iloc[0] * base
     return DataFrame(indexed)
 
+def continuous_index_by_government(
+    series: Series, govts: DataFrame, base: float = 100.0
+) -> DataFrame:
+    """Rebase a level series once, at the first epoch, and split it by epoch.
+
+    The counterpart to index_by_government(): the rebase happens once rather
+    than at every election, so the columns read as a single unbroken path and
+    show where the level stands, not only how far it moved inside a term. The
+    series is trimmed to the first epoch's start, so the base is the first
+    observation a government in `govts` is responsible for.
+
+    Args:
+        series: a level series on a PeriodIndex.
+        govts: government epochs, as returned by get_governments().
+        base: the index value at the first observation plotted.
+
+    Returns:
+        One column per epoch, all on the one index.
+
+    """
+    index = series.index
+    if not isinstance(index, pd.PeriodIndex):
+        raise TypeError(f"series must have a PeriodIndex, got {type(index).__name__}")
+
+    start = pd.Period(govts["start"].iloc[0], freq=index.freqstr)
+    trimmed = series[index >= start].dropna()
+    if trimmed.empty:
+        raise ValueError(f"No data from {start} onwards to index")
+    return segment_by_government(trimmed / trimmed.iloc[0] * base, govts)
+
+
 def cagr_by_government(
     series: Series,
     govts: DataFrame,

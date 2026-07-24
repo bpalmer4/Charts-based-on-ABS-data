@@ -76,6 +76,11 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 | ABS Inflation multi-measure | Multiple inflation measures compared |
 | ABS Recession | Recession indicators and analysis |
 
+### Political Analysis
+| Notebook | Description |
+|----------|-------------|
+| ABS Political | Economic and social outcomes by government epoch since the 1949 election: unemployment, inflation, GDP and income per capita, labour productivity, wage share, house prices, taxation, the budget balance and population. Several series are spliced back beyond the current ABS release (RBA OP8, BIS/REIA, the Modellers' Database) to cover the earlier terms. |
+
 ### RBA Data
 | Notebook | Description |
 |----------|-------------|
@@ -129,6 +134,7 @@ Shared Python modules in `notebooks/`, imported by the notebooks rather than run
 | `abs_population.py` | Single `get_population()` dispatcher for every population concept — `ERP`, `civ15`, `adult21`, `implicit`; by state (accepts aliases like "NSW"); with `freq` (M→Q) and `smoothed` (de-stepped monthly increment) options — plus the smoothing and 21+/15+ age-share helpers. `get_population` always returns a `(series, units)` tuple; the three helpers return a bare `Series`. Owns the statsmodels (`decompose`/`henderson`) dependency so `abs_helper` stays light. | `get_population`, `smoothed_monthly_pop_growth`, `get_adult_21_share_of_15`, `interp_21_share` |
 | `abs_prices.py` | Price / numeraire getters, all DID-based and each returning `(series, units, stype)`: `get_price_deflator` (DFD/GNE/HFCE/GDP implicit price deflators, 5206.0), `get_cpi` (headline reconstructed to 1948 / headline_sa / trimmed / weighted, 6401.0), `get_wage_index` (WPI index 6345.0 / AWOTE $/week 6302.0), `get_house_price_index` (long-run spliced $ level back to 1986). | `get_price_deflator`, `get_cpi`, `get_wage_index`, `get_house_price_index`, `get_house_price_splice_report` |
 | `abs_structured_capture.py` | Fetch multiple ABS series across catalogues via `ReqsTuple`/`ReqsDict`; does not touch the chart directory, so safe for additional fetches within a notebook. | `get_abs_data`, `load_series`, `get_table` |
+| `political.py` | Epoch helpers for the ABS Political notebook: split a series by government, rebase it (at every election, or once at the first), and summarise each term by mean, change or compound annual growth. Knows nothing about any particular ABS series — the fetchers and plot functions stay in the notebook. | `segment_by_government`, `index_by_government`, `continuous_index_by_government`, `mean_by_government`, `change_by_government`, `cagr_by_government`, `cagr_path_by_government`, `epoch_vlines`, `year_ended_growth` |
 | `abs_plotting.py` | Reusable plotting of ABS seasonally-adjusted/trend series selected by metadata. | `plot_rows_seas_trend`, `plot_rows_individually`, `plot_rows_collectively` |
 | `decompose.py` | Naive time-series decomposition (trend/seasonal/irregular), additive or multiplicative, with optional ARIMA endpoint extension (stepwise auto-ARIMA) and Henderson trend smoothing. | `decompose` |
 | `henderson.py` | Henderson moving average for trend estimation. | `hma` |

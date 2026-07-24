@@ -60,6 +60,11 @@ dependencies = [
 
 [tool.ruff]
 line-length=115
+# the helper modules (abs_*, decompose, henderson, political, common) live in
+# notebooks/, so ruff must look there to classify them as first-party; without
+# this isort lumps them in with pandas and readabs and wants the local imports
+# interleaved with the third-party ones.
+src = ["notebooks", "."]
 lint.select = [ "ALL" ]  # Aggresively select all rules
 lint.ignore = [
     # --- general rules to ignore
