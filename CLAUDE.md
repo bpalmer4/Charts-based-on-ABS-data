@@ -406,12 +406,34 @@ dfd, units, stype = get_price_deflator("DFD")  # DFD | GNE | HFCE | GDP - publis
 cpi, units, stype = get_cpi("headline")        # headline (reconstructed to 1948) | headline_sa | trimmed | weighted (6401.0)
 wpi, units, stype = get_wage_index("WPI")      # WPI (SA index, 6345.0) | AWOTE ($/week, biannual, 6302.0)
 hpi, units, stype = get_house_price_index()    # long-run $ level to 1986 (6432 mean value + discontinued 6416 splice)
-report = get_house_price_splice_report()       # the ra.splice() audit for the house-price index
+hpi, units, stype = get_house_price_index(extend_bis=True, real=True, seasonally_adjusted=True)
+report = get_house_price_splice_report(extend_bis=True)   # the ra.splice() audit for the house-price index
 ```
 
 - `get_price_deflator`: published Seasonally Adjusted IPDs (the ABS publishes them SA only); DFD (domestic final demand) is the default - the GDP deflator is compromised as a domestic gauge by the terms of trade.
 - `get_cpi("headline")`: reconstructed from the published quarterly % change (artefact-free back to 1948); each measure sits on its native ABS reference base (YoY is base-invariant).
 - The CPI target constants for plotting remain in `abs_helper`.
+- `get_house_price_index()` takes three keyword-only flags: `extend_bis` splices the BIS/REIA index underneath the ABS segments to reach 1970Q1 (trimmed to a year of overlap, since one rebase factor over four decades invents a 2.7% fall at the junction); `real` deflates by the headline CPI into latest-CPI-quarter dollars; `seasonally_adjusted` returns the SA component (the spliced level is Original, so pass this before indexing to any single quarter). `units` and `stype` follow the flags.
+- This module owns the `decompose` (statsmodels) dependency, for that seasonal adjustment.
+
+### abs_spliced_series.py
+Long-run series that reach back before the modern ABS collections, each joining a published ABS series to older and less comparable evidence. Cached per kernel session; every splice exposes its `ra.splice()` audit report.
+
+```python
+from abs_spliced_series import (
+    get_unemployment_rate, get_unemployment_splice_report, get_unemployment_backcast_stats,
+    get_productivity_index, get_productivity_splice_report,
+)
+
+ur, units, stype = get_unemployment_rate()      # monthly, back to 1950-06
+prod, units, stype = get_productivity_index()   # GDP per hour worked, quarterly, back to 1966Q3
+```
+
+- `get_unemployment_rate()`: three segments, `rebase=False` (rates, not levels) - the published LFS monthly rate (6202.0, from Feb 1978), the Modellers' Database rate (1364.0.15.003, quarterly counts turned into a rate then interpolated to monthly, from 1959Q3), and a CES-based backcast beneath that (RBA OP8 table 4.15, a line fitted to the survey over 1960-1970). Only the LFS segment is a genuinely monthly survey. **There is a real two-month gap at 1959-07/08** between the modelled and Modellers' segments; `ra.splice` leaves it rather than interpolating, so `line_plot` warns about 2 missing index values.
+- `get_unemployment_backcast_stats()`: the fit diagnostics. The pair that matters is `fitted_ces_*` against `projected_ces_*` - the early CES values sit below the range the line was fitted over, so the 1950s are extrapolation.
+- `get_productivity_index()`: two segments, `rebase=True` (ratio-scale index) - the published 5206.0 Key Aggregates "GDP per hour worked: Index" (SA, unchanged from 1978Q3) over a series derived by dividing SA CVM GDP by RBA OP8 table 4.12 aggregate weekly hours (an annual August snapshot, cubic-interpolated to quarters). The derived segment contributes growth, not level.
+
+Used by `ABS Political.ipynb`, `ABS Monthly Labour Force 6202.ipynb` (unemployment) and `ABS Quarterly National Accounts 5206 No 2.ipynb` (productivity).
 
 ### abs_structured_capture.py
 For fetching multiple series from different catalogues. **Does NOT reset chart directory** - safe to use for additional data fetching.

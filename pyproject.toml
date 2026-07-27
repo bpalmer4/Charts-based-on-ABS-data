@@ -69,6 +69,8 @@ lint.select = [ "ALL" ]  # Aggresively select all rules
 lint.ignore = [
     # --- general rules to ignore
     "COM812",  # missing or trailing comma - recommended by ruff format
+    "CPY001",  # missing copyright notice - no file here carries one; ruff 0.16
+               # stabilised this rule out of preview, so "ALL" began selecting it
     "D203",    # Incorrect blank line before class - recommended by ruff check
     "D213",    # Multi-line docstring summary should start at the first line - recommended by ruff
     "EM101",   # Exception must not use a string literal
