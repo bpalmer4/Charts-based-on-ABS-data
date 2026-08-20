@@ -34,7 +34,6 @@ from __future__ import annotations
 
 from functools import cache
 
-import numpy as np
 import pandas as pd
 import readabs as ra
 from readabs import metacol as mc
@@ -47,6 +46,7 @@ _MEASURES = ("ERP", "civ15", "adult21", "implicit")
 _COVID_YEARS = (2020, 2021)
 _HENDERSON_TERMS = 13
 _PROJECT_PERIODS = 2
+_MONTHS_PER_QUARTER = 3
 _AGE_15 = 15  # civilian working-age threshold (15+)
 _AGE_21 = 21  # adult threshold (21+)
 _JUNE = 6  # ERP single-year-of-age reference month
@@ -162,7 +162,10 @@ def _pop_adult21(state: str) -> tuple[pd.Series, str]:
     """
     civ15, units = _pop_civ15(state)
     civ15_q = ra.monthly_to_qtly(civ15, f="mean")
-    factor = interp_21_share(civ15_q.index) * interp_civ15_to_total(civ15_q.index)
+    quarters = civ15_q.index
+    if not isinstance(quarters, pd.PeriodIndex):
+        raise TypeError("Expected a PeriodIndex on the quarterly civilian population.")
+    factor = interp_21_share(quarters) * interp_civ15_to_total(quarters)
     return (factor * civ15_q).dropna(), units
 
 
@@ -249,8 +252,11 @@ def get_civ15_to_total_upweight() -> pd.Series:
     """
     erp15 = _erp_age_sum(_AGE_15)  # persons, Y-JUN
     civ15 = _pop_civ15("Australia")[0] * 1000.0  # '000 -> persons, monthly
-    june = civ15[civ15.index.month == _JUNE].copy()
-    june.index = june.index.asfreq("Y-JUN")
+    months = civ15.index
+    if not isinstance(months, pd.PeriodIndex):
+        raise TypeError("Expected a PeriodIndex on the monthly civilian population.")
+    june = civ15[months.month == _JUNE].copy()
+    june.index = months[months.month == _JUNE].asfreq("Y-JUN")
     return (erp15 / june).dropna()
 
 
@@ -268,16 +274,18 @@ def _interp_june(annual: pd.Series, index: pd.PeriodIndex) -> pd.Series:
         The interpolated ratio, indexed on `index`.
 
     """
-    out = pd.Series(np.nan, index=index, dtype=float)
     freq = index.freqstr
+    anchors: dict[pd.Period, float] = {}
     for period, value in annual.items():
+        if not isinstance(period, pd.Period):
+            raise TypeError("Expected a PeriodIndex on the annual June-referenced ratio.")
         anchor = (
             pd.Period(year=period.year, quarter=2, freq=freq)
             if freq.startswith("Q")
             else pd.Period(year=period.year, month=6, freq=freq)
         )
-        if anchor in out.index:
-            out[anchor] = value
+        anchors[anchor] = float(value)
+    out = pd.Series(anchors, dtype=float).reindex(index)
     return out.interpolate(limit_area="inside").ffill()
 
 
@@ -308,6 +316,42 @@ def interp_civ15_to_total(index: pd.PeriodIndex) -> pd.Series:
 
 
 # === smoothing transform (bare Series in, bare Series out)
+def _complete_trailing_quarter(level: pd.Series) -> pd.Series:
+    """Extend a monthly level so its final quarter is complete.
+
+    A quarterly mean of a *level* estimates the level at the middle of the
+    quarter. A part-filled final quarter averages to its first (or second)
+    month instead, so the quarter-on-quarter increment spans fewer than three
+    months while still being divided by three - understating the final growth
+    rate by a third (one month short) or a sixth (two months short), and the
+    Henderson pass then drags the preceding months down with it.
+
+    The missing months are filled at the level's latest month-on-month rate.
+    That is not an invention: within a benchmark segment the ABS monthly
+    interpolation is linear, so continuing the prevailing rate is what the ABS
+    itself publishes for the following month. The fabricated months exist only
+    to centre the quarterly mean - `smoothed_monthly_pop_growth` masks them off
+    before returning.
+
+    Args:
+        level: a monthly population Series on a PeriodIndex.
+
+    Returns:
+        The level, extended by 0-2 months so it ends on a quarter boundary.
+        Operates on a copy (the input may be cached).
+
+    """
+    last = level.index[-1]
+    missing = (_MONTHS_PER_QUARTER - last.month % _MONTHS_PER_QUARTER) % _MONTHS_PER_QUARTER
+    if not missing:
+        return level
+    level = level.copy()
+    rate = level.iloc[-1] / level.iloc[-2]
+    for i in range(1, missing + 1):
+        level[last + i] = level[last + i - 1] * rate
+    return level
+
+
 def smoothed_monthly_pop_growth(
     level: pd.Series,
     *,
@@ -322,7 +366,9 @@ def smoothed_monthly_pop_growth(
     Differencing and then smoothing leaves the steps in place; instead this works
     on the quarterly trend:
 
-      1. downsample the level to quarterly means;
+      1. complete any part-filled trailing quarter (see
+         `_complete_trailing_quarter`) and downsample the level to quarterly
+         means;
       2. take the Trend of a multiplicative seasonal decomposition, ARIMA
          extended so the endpoint uses symmetric (not Musgrave-lagged) Henderson
          weights, with COVID years excluded from the seasonal estimate;
@@ -342,15 +388,21 @@ def smoothed_monthly_pop_growth(
         ``level``), indexed on the months present in ``level``.
 
     """
-    q_trend = decompose(
-        level.resample("Q").mean(),
+    decomposition = decompose(
+        _complete_trailing_quarter(level).resample("Q").mean(),
         model="multiplicative",
         constant_seasonal=True,
         ignore_years=ignore_years,
         arima_extend=True,
-    )["Trend"]
+    )
+    if not isinstance(decomposition, pd.DataFrame):
+        raise TypeError("decompose() returned no decomposition of the population level.")
+    q_trend = decomposition["Trend"]
     return (
-        hma((q_trend.diff() / 3).resample("M").ffill().dropna(), henderson_terms)
+        hma(
+            (q_trend.diff() / _MONTHS_PER_QUARTER).resample("M").ffill().dropna(),
+            henderson_terms,
+        )
         .reindex(level.index)
         .dropna()
     )
