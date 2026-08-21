@@ -184,6 +184,33 @@ def cagr_by_government(
         ) * 100
     return Series(growth)
 
+def cumulative_growth_by_government(series: Series, govts: DataFrame) -> Series:
+    """Total growth of a level series across each government epoch.
+
+    The counterpart to cagr_by_government(): the whole-of-term move rather than
+    the annualised rate, so long terms accumulate more than short ones. On its
+    own that mostly reports longevity - it is useful as a difference between
+    two series measured over the same term, where the length cancels out of the
+    comparison. Measured between observations that exist, not between election
+    dates, so an epoch whose data starts late is measured over what it has.
+
+    Args:
+        series: a level series (e.g. a price index) on a PeriodIndex.
+        govts: government epochs, as returned by get_governments().
+
+    Returns:
+        The growth, in per cent over the term, indexed by epoch name.
+
+    """
+    segments = segment_by_government(series, govts)
+    growth: dict[str, float] = {}
+    for name in segments.columns:
+        observed = segments[name].dropna()
+        if len(observed) < MIN_GROWTH_OBSERVATIONS:
+            raise ValueError(f"Fewer than two observations within the {name} epoch")
+        growth[str(name)] = (observed.iloc[-1] / observed.iloc[0] - 1) * 100
+    return Series(growth)
+
 def cagr_path_by_government(
     series: Series,
     govts: DataFrame,
