@@ -33,6 +33,17 @@ jupyter notebook notebooks/<notebook-name>.ipynb
 - Simplicity First: Minimum code that solves the problem. Nothing speculative.
 - Surgical Changes: Touch only what you must. Clean up only your own mess.
 - Goal-Driven Execution: Define success criteria. Loop until verified.
+- One concern per change: Do what was asked and nothing else. Lint, formatting and
+  unrelated tidy-ups are separate pieces of work - raise them, never bundle them in.
+  For lines the task did not require you to touch, this overrides the global instruction
+  to fix pre-existing lint errors in files you are working on.
+- Do not over-correct: If told a change was out of scope, stop there - do not then revert
+  it unasked. The revert is itself another unrequested change, and it throws away the
+  verification the work had already passed. Ask which way to go.
+- Check rewritten lines against all of CLAUDE.md: after a refactor every line you rewrote
+  is yours, so check it against the whole file - Data Handling and Charting included -
+  not just the rules that prompted the refactor. Narrow framing is how conventions
+  outside the current task get missed.
 
 
 ## Notebook Hygiene
@@ -49,7 +60,8 @@ jupyter notebook notebooks/<notebook-name>.ipynb
   cells that call them.
 - **Markdown cells as section headers**: Use markdown to delineate sections
   (Setup, Data Fetch, Plotting, etc.).
-- **One responsibility per cell**: Each cell does one thing: fetch data, transform, or plot.
+- **One responsibility per cell**: Each cell does one thing: fetch data, transform, or
+  plot. If describing the cell needs the word "and", split it.
 - **Watermark cell at the end**: Use `%watermark` to record Python version, package versions,
   and timestamp.
 
@@ -60,13 +72,28 @@ jupyter notebook notebooks/<notebook-name>.ipynb
 - Use descriptive names for notebooks indicating the data source and series
 
 ### Code Quality
-- **Logic in functions, not module level**: Wrap all computation and plotting in functions.
-  Call them from clean cells. Module-level code should be limited to imports, constants,
-  data fetching, and function calls.
+- **Write the function first**: A new code cell starts as `def thing() -> None:` with the
+  call at the bottom of the same cell. Never write computation at the top level intending
+  to wrap it up later - that intention is how every bit of loose code in this repo got
+  here. Explore inside the function body from the first line.
+- **Logic in functions, not module level**: Module-level code is limited to imports,
+  constants, data fetching, function definitions, and function calls. Constants are
+  UPPER_CASE, with one standing exception: the chart time-range names (`plot_times`,
+  `line_starts`, `bar_starts`) stay lowercase, per the naming convention below.
+  Do not "fix" those to upper case.
+  Everything else - arithmetic, reshaping, index mutation, `df["col"] = ...`, loops,
+  `if`/`assert` blocks - goes inside a function.
+- **No cross-cell variables**: A cell must not read a name that another cell created,
+  apart from the shared fetch results (`abs_dict`, `meta`, `source`, `RECENT`) and
+  module-level constants. If a function needs a series it fetches it, derives it, or
+  takes it as an argument. Cells that inherit their neighbours' leftovers keep working
+  by luck and break silently when anything is run out of order.
+- **A rendered chart is not the stopping point**: Encapsulation is part of finishing the
+  cell, not a cleanup pass afterwards. There is no afterwards.
 - **No magic numbers**: Use named constants or function parameters, not bare literals.
-- **Minimal global state**: Pass data through function arguments and returns rather than
-  relying on notebook-scoped variables where practical.
 - **No duplicate code across cells**: If you repeat logic, extract it to a function.
+  Two cells that differ only in their series IDs and chart title are one function with
+  arguments.
 - **Consistent variable names across notebooks**: `abs_dict` for the data dictionary,
   `meta` for metadata, `source` for footer attribution, `RECENT` for the latest date,
   `plot_times` for chart time ranges, `table` for table identifiers, `series_id`/`sid`
@@ -75,10 +102,21 @@ jupyter notebook notebooks/<notebook-name>.ipynb
 ### Data Handling
 - **Metadata-driven series selection**: Use `find_abs_id()` with `metacol` selectors
   rather than hardcoding series IDs, which change over time.
+- **Constants hold descriptions, never series IDs**: A named constant may hold a data
+  item description (`LA_LABOUR_FORCE_DID = "Persons; Labour Account labour force ;..."`),
+  a table name or a catalogue number. It must never hold a series ID. If you are about
+  to type `SOMETHING_ID = "A84423047L"`, stop and resolve it by description instead.
+- **Never launder an existing hardcoded ID**: If you touch a line containing a hardcoded
+  series ID, you have exactly two options - resolve it by description, or leave the line
+  byte-for-byte as you found it. Do not promote it to a constant, rename it, relocate it
+  or add a comment to it. Tidying an ID makes it look considered and stops anyone
+  revisiting it.
 - **Recalibrate units before plotting**: Call `ra.recalibrate()` to get human-readable units.
 - **`abs_helper.get_abs_data()` called once only**: It resets the chart directory. Use
   `abs_structured_capture` or `ra.read_abs_cat()` for additional data within a notebook.
-- **Validate fetched data**: Check for empty DataFrames or unexpected nulls before plotting.
+- **Validate fetched data**: Check for empty DataFrames or unexpected nulls before
+  plotting. The check belongs inside the fetch function, next to the fetch it guards -
+  never as a bare `assert` at cell level.
 - **COVID year exclusion in decomposition**: Use `ignore_years=(2020, 2021)` when doing
   seasonal decomposition to avoid distortion.
 
@@ -86,17 +124,27 @@ jupyter notebook notebooks/<notebook-name>.ipynb
 - **`SHOW = False` constant**: Define at module level, pass to all plot functions. Enables
   batch execution without chart display.
 - **`plot_times` convention**: Define `plot_times = 0, -N` (or `0, RECENT`) for use with
-  `multi_start()` to generate full-history and recent-period chart variants.
+  `multi_start()` to generate full-history and recent-period chart variants. Never pass a
+  literal to `starts=` - not `starts=[0, -61]`, not `starts=(0, -20)`. If a chart needs a
+  different window from the notebook default, give that window its own named constant.
 - **`multi_start()` for paired charts**: Standard pattern to produce both a full-history
   and a recent-period chart for each concept.
 - **Every chart needs source attribution**: `rfooter=source` for the data source,
   `lfooter` for geography and series type (e.g., `"Australia. Seasonally Adjusted."`).
+  No `*_finalise` or `multi_start` call ships without both. `lfooter` starts with the
+  geography and appends new content on the right.
 - **Consistent title style**: Use colons, not em dashes, in chart titles.
 
 ### Reproducibility
 - **Restart and Run All before finishing**: Notebooks must execute cleanly top-to-bottom
-  with no out-of-order cell dependencies.
-- **No leftover debug output**: Remove print statements and temporary cells before committing.
+  with no out-of-order cell dependencies. Verify this, never assume it:
+  `jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=1800
+  "notebooks/<name>.ipynb"`. Without `--allow-errors` it writes the file back only on
+  success, so a failed run leaves the notebook untouched. An edit is not finished until
+  this has passed, and editing after a passing run means running it again.
+- **No leftover debug or commented-out code**: Remove temporary cells, dead assignments
+  and commented-out code. `print()` calls that report data state to the reader are
+  deliberate and stay - `T201` is ignored in `pyproject.toml` for exactly that reason.
 
 ## Notes
 - Modified notebooks are currently uncommitted (check git status)
