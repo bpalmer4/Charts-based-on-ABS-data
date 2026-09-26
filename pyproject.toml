@@ -89,4 +89,14 @@ lint.ignore = [
     "INP001",  # implicit-namespace-package - not relevant for Jupyter notebooks
     "PLR0913", # Too many arguments - not relevant for Jupyter notebooks
 ]
+# deliberate economics notation: α (capital share) and × (multiplication)
+lint.allowed-confusables = ["α", "×"]
+
+# asserts are wrong in production code (stripped under python -O), but notebooks
+# are not production code; the helper modules keep the rule.
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = [
+    "S101",    # assert used
+    "PT018",   # composite assertion - pytest reporting advice, not relevant here
+]
 

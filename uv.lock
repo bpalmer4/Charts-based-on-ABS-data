@@ -1293,7 +1293,7 @@ wheels = [
 
 [[package]]
 name = "mgplot"
-version = "0.2.35"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
@@ -1303,9 +1303,9 @@ dependencies = [
     { name = "tabulate" },
     { name = "typing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1a/08/0b5c6eea018a539688b84d5a5f3ee3e1925dd37ed0bcb7632b6c50f31250/mgplot-0.2.35.tar.gz", hash = "sha256:3630edb2938c763e05eb2ae3b46ce184af52c736fcc492f4d7228dfc9d4a90d8", size = 2706037, upload-time = "2026-09-25T13:51:46.419Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/1c/d3e034fff8421016d6260a7cec9ebfe4cff9e1c6f466e1e59e249ab8e08f/mgplot-0.3.0.tar.gz", hash = "sha256:e1762ee6b300e9cdfc6703b0c846d5ad70f5ffe4fa1ba4f21963dd2b4986710c", size = 2738986, upload-time = "2026-09-25T23:59:16.707Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/15/25650a67ff21219ac01f79c646579c7777ea3b46f187df86bb34c20a6c03/mgplot-0.2.35-py3-none-any.whl", hash = "sha256:713de0317d006a132722639ef0fc1f65b49632398b13980a3cebb397c3cc48bd", size = 63747, upload-time = "2026-09-25T13:51:43.655Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/4c/74d5c4cd5c889ee435ed11f87d7a0ab0e63838f75351270455dbee1e2550/mgplot-0.3.0-py3-none-any.whl", hash = "sha256:6ee1c1fc821efa6e5b51902a0f2d47fd8afcc851a6a20dbd5ed11a54f2ecab7b", size = 66977, upload-time = "2026-09-25T23:59:14.159Z" },
 ]
 
 [[package]]
@@ -1758,11 +1758,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.11.13"
+version = "4.11.15"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/53/0e/7be2983c52622d6c0899300f760e31ba143355cedf1afcb3e65689d5ca85/platformdirs-4.11.13.tar.gz", hash = "sha256:6985eefdc2298693e4ce1fe124645524cb967428eb6384e0ce5b49767e7ea8ba", size = 40415, upload-time = "2026-09-25T04:44:25.484Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/e0/7c20b5d0e0f147c40a934e8f9e9f717bd6e3e372c4d58ca5c2fcce2b1652/platformdirs-4.11.15.tar.gz", hash = "sha256:d7419e973b2b740d428200130f80c0e79304d1c71081001db911e15b26a3a6d4", size = 46059, upload-time = "2026-09-26T02:04:58.142Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/a6/76a492f6a937e196641b3abd1588c504c71438e243daf1bebde4d3bb8ee9/platformdirs-4.11.13-py3-none-any.whl", hash = "sha256:228b2283af5c1f32673cdf55271216a52bbd8258cb31374e302ad7bd26cd7513", size = 25054, upload-time = "2026-09-25T04:44:23.975Z" },
+    { url = "https://files.pythonhosted.org/packages/84/83/246d3052d043683cc5f400ab5748bd07a99fbdf311dc771cfad7e3f9e7e0/platformdirs-4.11.15-py3-none-any.whl", hash = "sha256:84508421c77d3c6462e71dd8c0d2776c2ace0e94eb006dc4fd383bc1dcf5a176", size = 26689, upload-time = "2026-09-26T02:04:56.71Z" },
 ]
 
 [[package]]
@@ -2096,7 +2096,7 @@ wheels = [
 
 [[package]]
 name = "readabs"
-version = "0.2.6"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bs4" },
@@ -2112,9 +2112,9 @@ dependencies = [
     { name = "typing" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/8c/d40153bde36f35144d57a2901792b766b28be777b09ef9ff7dd3c8fa6ac9/readabs-0.2.6.tar.gz", hash = "sha256:6f3ca66e6da1f2ee1755cbf22e38acc955753f3562b8c662de6acd46dade6678", size = 6612656, upload-time = "2026-08-22T04:25:37.248Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/18/a78d81b687cf52174d781ad240a2b4dd6ff8683f54669853129cae13ef72/readabs-0.3.0.tar.gz", hash = "sha256:e4a451e8a16f08526f84333aa78f1d4a6e346a0d750bcc3d4120a21c5879df22", size = 6628724, upload-time = "2026-09-26T02:44:53.913Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/e3/6232b5d465204f16473b0f498385aeac0eaa6293ec45ed168d7f60191a11/readabs-0.2.6-py3-none-any.whl", hash = "sha256:1abe41475f67637a745ff9a6672cae803b744ee56ec7f53017f30ffd5e7c271e", size = 6156469, upload-time = "2026-08-22T04:25:33.646Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/83/d52f1f3930b0828a3d9c22e1343f3e46d71bc97abe60cd43b7a78aa917a1/readabs-0.3.0-py3-none-any.whl", hash = "sha256:d0296586ae4c0155477f2b6a0cbdaa052d141d6610b33f2a9922a308116b6de9", size = 6157189, upload-time = "2026-09-26T02:44:57.124Z" },
 ]
 
 [[package]]
