@@ -1,5 +1,5 @@
 [project]
-name = "abs"
+name = "au-econ"
 version = "0.0.0"
 description = "Capture and plot data from the ABS and the RBA"
 readme = "README.md"

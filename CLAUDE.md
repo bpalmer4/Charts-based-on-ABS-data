@@ -464,6 +464,23 @@ report = get_house_price_splice_report(extend_bis=True)   # the ra.splice() audi
 - `get_house_price_index()` takes three keyword-only flags: `extend_bis` splices the BIS/REIA index underneath the ABS segments to reach 1970Q1 (trimmed to a year of overlap, since one rebase factor over four decades invents a 2.7% fall at the junction); `real` deflates by the headline CPI into latest-CPI-quarter dollars; `seasonally_adjusted` returns the SA component (the spliced level is Original, so pass this before indexing to any single quarter). `units` and `stype` follow the flags.
 - This module owns the `decompose` (statsmodels) dependency, for that seasonal adjustment.
 
+### abs_inflation_backplane.py
+Chart background that shades the periods where annualised quarterly trimmed mean inflation sat outside the RBA's 2-3% band: red above, blue below, in three steps of intensity (0-1, 1-2, 2+ points outside), each with a legend entry. Fetches its own inflation via `abs_prices.get_cpi("trimmed")`. Ported from MacroModels `ustar/analyse.py` `_inflation_regime_spans`, with legend-able steps in place of its continuous alpha ramp.
+
+```python
+from abs_inflation_backplane import BACKPLANE_LHEADER, inflation_backplane
+
+ax = line_plot(frame, ...)                   # plot the data first
+ax = inflation_backplane(frame.index, ax)    # index required; ax optional (new axes if None)
+finalise_plot(ax, lheader=BACKPLANE_LHEADER, legend={"loc": "upper left", "fontsize": "x-small", "ncol": 4}, ...)
+```
+
+- `index` must be a quarterly or monthly `PeriodIndex` (anything else raises); a month takes its quarter's inflation, so monthly shading comes in three-month blocks. On a monthly chart, months after the last published quarter take the monthly trimmed mean (6401.0 table 640106, from 2024-04): the rolling three-month-average index against the three months before, annualised. It tracks the published quarterly figure to about 0.3 points (the ABS trims monthly and quarterly price changes separately) and is not marked differently; each quarterly release replaces it. On a quarterly chart the unpublished current quarter is simply left unshaded.
+- Spans are drawn at period ordinals, matching mgplot's period axis, so either call order works - but plot the data first if you want the lines listed before the swatches in the legend (legend order is drawing order).
+- Six zero-width labelled key spans lead the shading (reds, then blues, each nearest the band first), so any legend shows every step. The caller sets the layout with `ncol`.
+- `finalise_plot` owns the header, so pass `BACKPLANE_LHEADER` yourself. On a monthly chart, append `BACKPLANE_MONTHLY_LFOOTER` to the lfooter after the geography (it notes the 3-month annualised fill after the latest quarter). The band is a headline-CPI target, so the shading marks where the core measure sat outside it, not where the target was missed.
+- `quarterly_inflation()` and `monthly_inflation_tail()` are also exported: the annualised quarterly trimmed mean being shaded (from 1982Q2), and the monthly fill for the months after it (empty when there are none).
+
 ### abs_spliced_series.py
 Long-run series that reach back before the modern ABS collections, each joining a published ABS series to older and less comparable evidence. Cached per kernel session; every splice exposes its `ra.splice()` audit report.
 

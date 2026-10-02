@@ -1,6 +1,10 @@
-# Australian Economic Data Charts
+# au-econ: Australian Economic Data Charts
 
 A collection of Jupyter notebooks that fetch the latest economic data and generate charts covering key Australian social and economic statistics.
+
+## In transition
+
+This project is moving from Jupyter notebooks to a plain Python package, `src/au_econ/`, run from the command line with `run.py` (for example `uv run run.py 6202`). The move is gradual: each notebook keeps working until its module replaces it, and notebooks remain for exploration. The design is in [docs/restructure-spec.md](docs/restructure-spec.md).
 
 ## Data Sources
 
@@ -50,9 +54,7 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 ### ABS SDMX API Series
 | Notebook | Description |
 |----------|-------------|
-| ABS-SDMX-Inflation-multi_measure | Inflation measures via the ABS SDMX API |
 | ABS-SDMX-Monthly-Labour-Force-6202 | Labour force via the ABS SDMX API |
-| ABS-SDMX-Monthly-Household-Spending-Indicator-5682 | Household spending indicator via the ABS SDMX API |
 
 ### ABS Annual/Other Series
 | Notebook | Description |
@@ -144,8 +146,11 @@ Shared Python modules in `notebooks/`, imported by the notebooks rather than run
 ## Project Structure
 
 ```
+├── docs/               # Design notes, including the restructure spec
 ├── notebooks/          # Jupyter notebooks + shared helper modules (*.py)
 │   └── CHARTS/         # Generated chart output
+├── src/au_econ/        # Python package (planned; being built)
+├── run.py              # Command-line entry point (planned)
 └── .venv/              # Python virtual environment
 ```
 
@@ -162,4 +167,3 @@ jupyter notebook notebooks/<notebook-name>.ipynb
 
 - Each notebook is self-contained and fetches the latest data when run
 - Charts are output to `notebooks/CHARTS/`
-- Directory structure designed to work on iPad using the Carnets app
