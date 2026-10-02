@@ -8,6 +8,20 @@ This project contains Python Jupyter notebooks that analyze and visualize econom
 
 The notebooks fetch the latest data and generate charts for key social and economic statistics.
 
+## The au_econ package (rebuild in progress)
+- The project is being rebuilt as `src/au_econ/`, run with `uv run run.py <run set>`.
+  Spec, decisions and status: `docs/restructure-spec.md`. Chart conventions for the
+  package (footers, series-type wording, standard windows, colours, widths) are in its
+  section 11; shared pieces live in `src/au_econ/charting/`.
+- The notebooks are the frozen old world: never move, trim, edit or repoint anything in
+  `notebooks/` as part of the rebuild. Recreate in `src/`; the old world is deleted in
+  one go at the end.
+- Each conversion: settle release names, topics and chart functions with the user; stage
+  one is an exact pixel match against the notebook's charts; stage two applies the
+  conventions one pass at a time, each with a predicted pixel footprint.
+- The notebook rules below still govern notebooks; they are rewritten for the package
+  at the end of the rebuild.
+
 ## Project Structure
 - `/notebooks/` - Contains all Jupyter notebooks for data analysis
 - `/notebooks/CHARTS/<topic>/` - Output directories for generated charts (set per-notebook via `mg.set_chart_dir()`; nothing writes to a top-level `/charts/`)

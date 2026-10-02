@@ -3,7 +3,7 @@
 
 # set-up parameters
 home=/Users/bryanpalmer
-project=ABS
+project=au-econ
 
 # move to the project directory
 cd $home/$project

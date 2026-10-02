@@ -4,7 +4,40 @@ A collection of Jupyter notebooks that fetch the latest economic data and genera
 
 ## In transition
 
-This project is moving from Jupyter notebooks to a plain Python package, `src/au_econ/`, run from the command line with `run.py` (for example `uv run run.py 6202`). The move is gradual: each notebook keeps working until its module replaces it, and notebooks remain for exploration. The design is in [docs/restructure-spec.md](docs/restructure-spec.md).
+This project is being rebuilt as a plain Python package, `src/au_econ/`, run from the command line with `run.py`. The notebooks (the "old world") are frozen: nothing in `notebooks/` is moved, trimmed or repointed. Each release is recreated in the package beside its notebook, checked pixel-for-pixel against the notebook's charts, and only then improved. When everything has been rebuilt, the old world is deleted in one go. The design and the decisions behind it are in [docs/restructure-spec.md](docs/restructure-spec.md).
+
+## Running the package
+
+```bash
+uv run run.py 6401              # one release (by catalogue number or short name, e.g. cpi)
+uv run run.py prices            # a topic: every module that joined it
+uv run run.py --all             # every converted module
+uv run run.py wpi --charts real_wages   # selected charts only (no folder clearing)
+uv run run.py --list            # modules, with their release names and topics
+uv run run.py cpi --list        # the charts in the selected modules
+uv run run.py --topics          # the shared topic words
+```
+
+One run set per command, and it names the chart folder: a release run writes to
+`CHARTS/<release> - <title>/`, a topic run to `CHARTS/<topic>/<release> - <title>/`.
+A full run clears the images in the folder it fills first; a `--charts` run clears nothing.
+
+Converted so far (2026-10-02):
+
+| Module | Release names | Topics | Charts |
+|--------|---------------|--------|--------|
+| 6302 - Average Weekly Earnings | `6302`, `awe` | wages | 2 |
+| 6345 - Wage Price Index | `6345`, `wpi` | wages, prices | 21 |
+| 6401 - Consumer Price Index | `6401`, `cpi` | prices | 242 (measures; expenditure-class summaries and per-class growth in subfolders) |
+| 6427 - Producer Price Indexes | `6427`, `ppi` | prices | 12 |
+| 6467 - Living Cost Indexes | `6467`, `lci` | prices | 14 |
+
+Package layout: `sources/` (one file per data provider), `series/` (concepts wanted by
+several modules, e.g. CPI measures), `analysis/` (e.g. Henderson smoothing), `charting/`
+(shared footer wording, target bands, standard windows), `releases/` (one module per
+publication) and `topics/` (cross-source analysis). The package keeps its own API keys in
+`KEYS/` and caches in `CACHE/`, `.readabs_cache/` and `.sdmxabs_cache/` at the project
+root (all gitignored), so deleting `notebooks/` cannot break it.
 
 ## Data Sources
 
@@ -127,7 +160,7 @@ This project is moving from Jupyter notebooks to a plain Python package, `src/au
 
 ## Helper Modules
 
-Shared Python modules in `notebooks/`, imported by the notebooks rather than run directly:
+Shared Python modules in `notebooks/`, imported by the notebooks rather than run directly. They are part of the frozen old world; the package recreates their logic rather than importing them:
 
 | Module | Purpose | Key functions |
 |--------|---------|---------------|
@@ -141,29 +174,35 @@ Shared Python modules in `notebooks/`, imported by the notebooks rather than run
 | `decompose.py` | Naive time-series decomposition (trend/seasonal/irregular), additive or multiplicative, with optional ARIMA endpoint extension (stepwise auto-ARIMA) and Henderson trend smoothing. | `decompose` |
 | `henderson.py` | Henderson moving average for trend estimation. | `hma` |
 | `common.py` | Generic cached HTTP fetch utilities used by the non-ABS data sources. | `request_get`, `get_file` |
-| `pymc_helper.py` | PyMC Bayesian-model diagnostics and posterior plotting. | `check_model_diagnostics`, `plot_posteriors_kde`, `plot_timeseries` |
+
+`pymc_helper.py` and the PyMC stack were removed on 2026-10-02: Bayesian modelling lives in MacroModels. The two `notebooks/OLD/` model notebooks that used them no longer run.
 
 ## Project Structure
 
 ```
 ├── docs/               # Design notes, including the restructure spec
-├── notebooks/          # Jupyter notebooks + shared helper modules (*.py)
-│   └── CHARTS/         # Generated chart output
-├── src/au_econ/        # Python package (planned; being built)
-├── run.py              # Command-line entry point (planned)
+├── src/au_econ/        # Python package (the new world, being built)
+├── run.py              # Command-line entry point for the package
+├── CHARTS/             # Package chart output (gitignored)
+├── KEYS/               # API keys for the package (gitignored)
+├── CACHE/              # Package download cache (gitignored)
+├── notebooks/          # Jupyter notebooks + shared helper modules (the frozen old world)
+│   └── CHARTS/         # Notebook chart output
 └── .venv/              # Python virtual environment
 ```
 
 ## Setup
 
-Python environment is managed with `uv`. To run:
+The Python environment is managed with `uv`; `uv sync` installs the package editable.
 
 ```bash
+uv run run.py --list                                   # the package
 source .venv/bin/activate
-jupyter notebook notebooks/<notebook-name>.ipynb
+jupyter notebook notebooks/<notebook-name>.ipynb        # a notebook
 ```
 
 ## Notes
 
-- Each notebook is self-contained and fetches the latest data when run
-- Charts are output to `notebooks/CHARTS/`
+- Each notebook is self-contained and fetches the latest data when run; its charts go to `notebooks/CHARTS/`
+- Package modules fetch when run (never on import); their charts go to `CHARTS/`
+- Chart conventions for the package (footers, series-type notes, standard windows, colours) are in section 11 of the spec

@@ -36,12 +36,6 @@ dependencies = [
     "webdriver_manager",
     "selenium",
     "playwright",
-    # - Bayesian
-    "pymc",
-    "arviz<1.0.0",
-    "jax",
-    "numpyro",
-    "graphviz",
     # - code
     "nbqa",
     "black",
@@ -58,13 +52,17 @@ dependencies = [
     "curl-cffi>=0.15.0",
 ]
 
+[build-system]
+requires = ["uv_build>=0.12.20,<0.13"]
+build-backend = "uv_build"
+
 [tool.ruff]
 line-length=115
 # the helper modules (abs_*, decompose, henderson, political, common) live in
 # notebooks/, so ruff must look there to classify them as first-party; without
 # this isort lumps them in with pandas and readabs and wants the local imports
-# interleaved with the third-party ones.
-src = ["notebooks", "."]
+# interleaved with the third-party ones. src/ holds the au_econ package.
+src = ["src", "notebooks", "."]
 lint.select = [ "ALL" ]  # Aggresively select all rules
 lint.ignore = [
     # --- general rules to ignore

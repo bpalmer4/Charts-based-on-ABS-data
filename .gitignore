@@ -18,6 +18,7 @@ __pycache__/
 fred.api
 notebooks/fred.api
 EIA-API-KEY.txt
+KEYS/
 
 # MacOS stuff to be ignored
 .DS_Store
@@ -26,8 +27,10 @@ EIA-API-KEY.txt
 .sdmxabs_cache/
 .readabs_cache/
 notebooks/CACHE/**
+CACHE/
 notebooks/ASX_DAILY_DATA/**
 notebooks/CHARTS/**
+CHARTS/**
 notebooks/DATA/**
 notebooks/documents/**
 notebooks/LOGS/**
