@@ -1,20 +1,31 @@
 """ABS data: catalogues through readabs, and the CPI expenditure hierarchy through sdmxabs.
 
-sdmxabs is used for the CPI hierarchy only, and only here.
+sdmxabs is used for the CPI hierarchy only, and only here. Data cubes (workbooks that are
+not time-series tables, so readabs does not read them) are found on their release pages
+and downloaded through http_cache.
 """
 
+import re
 from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING, Unpack
+from urllib.parse import urljoin
 
 import readabs as ra
+import requests
 import sdmxabs as sa
+
+from au_econ.sources.http_cache import get_file
 
 if TYPE_CHECKING:
     from pandas import DataFrame
     from readabs import ReadArgs
 
 RECENT = "2020-12-01"  # default start for recent-period charts
+
+ABS_SITE = "https://www.abs.gov.au"
+HEADERS = {"User-Agent": "Mozilla/5.0"}
+TIMEOUT = 30  # seconds
 
 # CPI expenditure hierarchy: the SDMX INDEX codelist of the CPI data structure
 CPI_STRUCTURE, CPI_DIMENSION = "CPI", "INDEX"
@@ -42,6 +53,21 @@ def fetch_release(cat: str, **kwargs: Unpack[ReadArgs]) -> AbsRelease:
     if not data or meta.empty:
         raise ValueError(f"ABS {cat}: no data returned")
     return AbsRelease(data=data, meta=meta, source=f"ABS: {cat}", recent=RECENT)
+
+
+def latest_data_cube_url(release_page: str, cube: str) -> str:
+    """Return the URL of a data cube workbook (e.g. "34070DO004") linked from an ABS latest-release page."""
+    response = requests.get(release_page, headers=HEADERS, timeout=TIMEOUT)
+    response.raise_for_status()
+    links = sorted(set(re.findall(rf'href="([^"]*/{cube}_[^"/]*\.xlsx)"', response.text)))
+    if len(links) != 1:
+        raise ValueError(f"ABS {cube}: expected one workbook link at {release_page}, found {links}")
+    return urljoin(ABS_SITE, links[0])
+
+
+def get_data_cube(url: str) -> bytes:
+    """Return an ABS data cube workbook (not a time-series table, so not readabs), cached on disk."""
+    return get_file(url, prefix="abs")
 
 
 @dataclass(frozen=True)

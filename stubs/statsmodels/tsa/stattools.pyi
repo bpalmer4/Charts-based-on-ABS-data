@@ -1,0 +1,6 @@
+import numpy as np
+
+def acf(x: np.ndarray, *, nlags: int | None = None, fft: bool = ...) -> np.ndarray: ...
+def kpss(
+    x: np.ndarray, regression: str = "c", nlags: str | int = "auto"
+) -> tuple[float, float, int, dict[str, float]]: ...

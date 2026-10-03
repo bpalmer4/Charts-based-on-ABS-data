@@ -11,7 +11,8 @@ cd $home/$project
 # activate the uv environment
 source $home/$project/.venv/bin/activate
 
-# run the Yahoo commodities notebook
-jupyter-nbconvert --to notebook --execute --inplace \
-    ./notebooks/YAHOO_daily_commodities.ipynb \
-    >>./LOGS/yahoo-commodities-log.log 2>>./LOGS/yahoo-commodities-err.log
+# run the commodity and market chart modules
+for run_set in energy yahoo asx; do
+    python run.py "$run_set" \
+        >>./LOGS/yahoo-commodities-log.log 2>>./LOGS/yahoo-commodities-err.log
+done

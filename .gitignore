@@ -40,4 +40,5 @@ notebooks/ABS-Data/**
 notebooks/govt-budget/**
 notebooks/MODEL_OUTPUTS/**
 LOGS/
+scratch/
 

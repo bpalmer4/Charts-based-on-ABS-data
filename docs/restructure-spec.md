@@ -2,9 +2,15 @@
 
 Status: agreed; in progress. Done 2026-10-02: steps 1, 3, 3a, the step 5 pilot (6302)
 and conversions of 6345, 6427, 6467 and 6401 (CPI measures and expenditure classes),
-with the step 4 pieces they need. Next: 6202 Labour Force, then 5206; the inflation
-topic module (CPI against other measures, the 6484 splices, Phillips curves, nominal
-GDP, misery index) waits for their unemployment, GDP and population getters.
+with the step 4 pieces they need. Done 2026-10-03: the FRED notebooks (Commodity
+Prices, Stagflation, GDP International), with `sources/http_cache.py`, `fred.py`,
+`dbnomics.py` and `oecd.py`; and an OECD-sourced GDP module (`oecd-gdp`) alongside the
+FRED one, adding GDP per capita. In progress, on hold: OECD - UR CPI as four modules
+(`oecd-ur`, `oecd-cpi`, `oecd-pop`, `oecd-berd`), built, with the stage one pixel match
+waiting on the OECD API's rate limit. Next: finish that match, then 6202 Labour Force,
+then 5206; the inflation topic module (CPI against other measures, the 6484 splices,
+Phillips curves, nominal GDP, misery index) waits for their unemployment, GDP and
+population getters.
 Package: `au_econ` (project and GitHub repository `au-econ`).
 
 ## 0. Decisions
@@ -126,7 +132,8 @@ releases, topics
 - `releases`, `topics` may import anything below them; never each other.
 - A calculation that combines providers (ABS series divided by an RBA series) lives
   in `series/`, in a function named for what the result means.
-- Series are selected by description (`find_abs_id` / `select`), never by series ID.
+- ABS series are selected by description (`find_abs_id` / `select`), never by series
+  ID; other providers name series by label (section 4, Coding practice).
   Existing CLAUDE.md data-handling rules carry over unchanged.
 
 ### Sources, shared series and caching
@@ -278,6 +285,19 @@ chart functions, `CHARTS` last.
 - **Data from other releases comes from `series/`.** A chart that needs the CPI or
   population calls the cached getter (`get_cpi()`) itself rather than having
   `fetch()` gather it.
+- **Series are named by readable labels, never by IDs in code** (stated 2026-10-03).
+  Two reasons: the ABS has changed series IDs often enough to be a repeated trap;
+  and, for every provider, good practice is code the reader understands. A label
+  ("Coal - Australia", "New Zealand") says what a series is; an ID
+  (`NAEXKP01NZQ657S`) does not.
+  - ABS: never store a series ID, not even in a table; select by description
+    (`find_abs_id` / `select`).
+  - Providers whose API selects only by ID (FRED, DBnomics): the IDs sit in one
+    table per module, keyed by label (`{label: ID}`), and code reaches an ID only by
+    looking up its label. No ID appears inline in logic, and no logic keys on an ID:
+    a set of special-case IDs becomes a set of labels.
+  - A series wanted by two or more modules moves to a named getter in `series/`
+    (section 3), which becomes the lookup.
 - **Small private helpers** (leading underscore) sit above the chart functions that
   use them. Logic shared by two modules moves to `charting/` or `series/`.
 - **Large releases become a subpackage, one file per chart subfolder.** For example
@@ -567,6 +587,9 @@ A converted module passes only if it reproduces its notebook's charts:
   names. Catalogues from one source are comma-separated after one prefix, different
   sources are separated by a semicolon, and there is no closing punctuation (no
   full stop): `ABS: 6345.0, 6401.0; RBA: F1`.
+- ID rule, stated 2026-10-03: CLAUDE.md's "Constants hold descriptions, never series
+  IDs" is rewritten as the label rule in section 4 (Coding practice): ABS by
+  description; other providers through a label-to-ID table.
 - Recent window, stated 2026-10-02: for quarterly data, five years
   (`charting.windows.quarterly_plot_times`, `0, -21`: twenty quarters of growth
   plus the quarter it grows from). Modules import it rather than define their own.

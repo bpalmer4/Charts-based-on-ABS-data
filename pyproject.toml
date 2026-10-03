@@ -50,6 +50,8 @@ dependencies = [
     "types-tabulate",
     "nbconvert>=7.17.0",
     "curl-cffi>=0.15.0",
+    "defusedxml>=0.7.1",
+    "types-defusedxml>=0.7.0.20260504",
 ]
 
 [build-system]
@@ -97,4 +99,8 @@ lint.allowed-confusables = ["α", "×"]
     "S101",    # assert used
     "PT018",   # composite assertion - pytest reporting advice, not relevant here
 ]
+
+# typed stubs for third-party packages that ship none (yfinance)
+[tool.mypy]
+mypy_path = "stubs"
 
