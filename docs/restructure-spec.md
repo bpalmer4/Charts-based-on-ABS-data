@@ -2,15 +2,16 @@
 
 Status: agreed; in progress. Done 2026-10-02: steps 1, 3, 3a, the step 5 pilot (6302)
 and conversions of 6345, 6427, 6467 and 6401 (CPI measures and expenditure classes),
-with the step 4 pieces they need. Done 2026-10-03: the FRED notebooks (Commodity
-Prices, Stagflation, GDP International), with `sources/http_cache.py`, `fred.py`,
-`dbnomics.py` and `oecd.py`; and an OECD-sourced GDP module (`oecd-gdp`) alongside the
-FRED one, adding GDP per capita. In progress, on hold: OECD - UR CPI as four modules
-(`oecd-ur`, `oecd-cpi`, `oecd-pop`, `oecd-berd`), built, with the stage one pixel match
-waiting on the OECD API's rate limit. Next: finish that match, then 6202 Labour Force,
-then 5206; the inflation topic module (CPI against other measures, the 6484 splices,
-Phillips curves, nominal GDP, misery index) waits for their unemployment, GDP and
-population getters.
+with the step 4 pieces they need. Done 2026-10-03, both stages unless noted: every
+non-ABS notebook - FRED (Commodity Prices, Stagflation, GDP International), OECD (GDP as `oecd-gdp`, UR CPI as `oecd-ur`, `oecd-cpi`, `oecd-pop`,
+`oecd-berd`), World Bank (Commodity Prices, Global Savings Glut), BIS policy rates, AIP
+petrol prices, DCCEEW (Petroleum Statistics, greenhouse gas `nggi`), ASIC, AFSA, Home
+Affairs visa workforce, Bonds (`bonds`, `rstar`), Yahoo (`energy`, `yahoo`, `asx`;
+stage one only) and RBA Selected Tables (`rba-rates` and `rba-bonds` stage one only;
+`rba-fx`, `rba-money`) with SOMP (`somp`). `uv run run.py --list` shows the 32 modules.
+Next: 6202 Labour Force, then 5206; the inflation topic module (CPI against other
+measures, the 6484 splices, Phillips curves, nominal GDP, misery index) waits for their
+unemployment, GDP and population getters.
 Package: `au_econ` (project and GitHub repository `au-econ`).
 
 ## 0. Decisions
@@ -151,23 +152,19 @@ Three rules decide where fetching code goes:
    notebooks, seven ABS notebooks call `read_rba_table` / `read_rba_ocr`, so it
    becomes `series/rates.py: get_cash_rate()`.
 
-Providers, as fetched today and as planned:
+Providers, as built (2026-10-03):
 
-| Provider | Today | `sources/` file |
-|---|---|---|
-| ABS | `readabs` (`read_abs_cat`), cached by readabs; `sdmxabs` for the CPI hierarchy only | `abs.py` |
-| RBA | `readabs` (`read_rba_table`, `read_rba_ocr`), cached by readabs | `rba.py`: thin wrapper over readabs |
-| BIS | `pd.read_csv` straight from a URL | `bis.py`, through `http_cache` |
-| FRED | `requests.get` with an API key | `fred.py`: key from `paths.KEYS_DIR`, through `http_cache` |
-| OECD | `requests.get` + `pd.read_csv` (SDMX CSV) | `oecd.py`, through `http_cache` |
-| Yahoo | `yfinance` | `yahoo.py` |
-| World Bank, AIP | `pd.read_excel` of a downloaded file | `worldbank.py`, `aip.py` |
-| Mixed (Bonds) | `common.py` `get_file` (14 calls) | already the target pattern; calls move to the relevant provider files |
+| Provider | `sources/` file |
+|---|---|
+| ABS | `abs.py`: `readabs` (`read_abs_cat`), cached by readabs; `sdmxabs` for the CPI hierarchy only; data cubes (not time-series tables) through `http_cache` |
+| RBA | `rba.py`: `readabs` for the current tables; the historical workbooks readabs lacks, and the SOMP forecast pages (cached forever), through `http_cache` |
+| BIS, FRED, OECD, DB.nomics | `bis.py`, `fred.py` (key from `paths.KEYS_DIR`), `oecd.py`, `dbnomics.py`, through `http_cache` |
+| World Bank, AIP, DCCEEW, ASIC, AFSA, Home Affairs | `worldbank.py`, `aip.py`, `dcceew.py`, `asic.py`, `afsa.py`, `homeaffairs.py`, through `http_cache` |
+| Yahoo | `yahoo.py`: `yfinance` |
+| Energy markets | `eia.py`, `opec.py`, `cme.py`, `oilprice.py` |
+| Bond yields and term premia | `mof.py`, `bundesbank.py`, `boe.py`, `chinabond.py`, `aofm.py`, `nyfed.py` (the old `common.py` `get_file` calls, moved to their providers) |
 
-Whether the BIS, FRED and OECD notebooks cache anything today is not checked; they
-call the web directly rather than through the shared cache. Other one-off providers
-(ASIC, AFSA, DCCEEW, Home Affairs, DB.nomics, ANGG) get a `sources/` file each when
-their notebook is converted.
+Each new provider gets its own `sources/` file when its first notebook is converted.
 
 `fetch()` returns whatever shape suits the module. `AbsRelease` (data dictionary,
 metadata, source label, recent date) is the shape for ABS releases, because they
@@ -593,9 +590,10 @@ A converted module passes only if it reproduces its notebook's charts:
 - Recent window, stated 2026-10-02: for quarterly data, five years
   (`charting.windows.quarterly_plot_times`, `0, -21`: twenty quarters of growth
   plus the quarter it grows from). Modules import it rather than define their own.
-  For monthly data, a year and a half (`monthly_plot_times`, `0, -19`), so readers
-  can easily look back a year; 25 labelled bars (two years) was tried on 2026-10-02
-  and proved too cramped.
+  For monthly annotated bar-and-line charts only, a year and a half
+  (`monthly_plot_times`, `0, -19`), so readers can easily look back a year; 25
+  labelled bars (two years) was tried on 2026-10-02 and proved too cramped. Monthly
+  line charts keep their own windows (clarified 2026-10-03).
 - Line widths are left to mgplot (2.0 up to 151 points, 1.0 beyond). `width=` is
   used only to give the lines of a multi-line chart different widths, to highlight
   one.

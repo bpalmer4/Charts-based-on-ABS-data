@@ -1,208 +1,43 @@
 # au-econ: Australian Economic Data Charts
 
-A collection of Jupyter notebooks that fetch the latest economic data and generate charts covering key Australian social and economic statistics.
+Charts of key Australian economic and social statistics, drawn from the latest data
+published by the ABS, the RBA and other sources.
 
-## In transition
+## Running it
 
-This project is being rebuilt as a plain Python package, `src/au_econ/`, run from the command line with `run.py`. The notebooks (the "old world") are frozen: nothing in `notebooks/` is moved, trimmed or repointed. Each release is recreated in the package beside its notebook, checked pixel-for-pixel against the notebook's charts, and only then improved. When everything has been rebuilt, the old world is deleted in one go. The design and the decisions behind it are in [docs/restructure-spec.md](docs/restructure-spec.md).
-
-## Running the package
+The charts come from a Python package, `src/au_econ/`, run from the command line.
+Start with `--list` to see what is available, for example:
 
 ```bash
-uv run run.py 6401              # one release (by catalogue number or short name, e.g. cpi)
-uv run run.py prices            # a topic: every module that joined it
-uv run run.py --all             # every converted module
-uv run run.py wpi --charts real_wages   # selected charts only (no folder clearing)
-uv run run.py --list            # modules, with their release names and topics
-uv run run.py cpi --list        # the charts in the selected modules
-uv run run.py --topics          # the shared topic words
+uv run run.py --list            # every module, with its release names and topics
+uv run run.py cpi               # one release, by short name or catalogue number (6401)
+uv run run.py rba               # a topic: every module in it
+uv run run.py somp --list       # the charts in a module
+uv run run.py rba-fx --charts long_run_exchange_rates   # selected charts only
+uv run run.py --topics          # the topic words and what they mean
+uv run run.py --all             # everything
 ```
 
-One run set per command, and it names the chart folder: a release run writes to
-`CHARTS/<release> - <title>/`, a topic run to `CHARTS/<topic>/<release> - <title>/`.
-A full run clears the images in the folder it fills first; a `--charts` run clears nothing.
+Each run names its own chart folder: `CHARTS/<release> - <title>/`, or
+`CHARTS/<topic>/<release> - <title>/` for a topic. A full run first clears the images in
+the folder it fills; a `--charts` run clears nothing.
 
-Converted so far (2026-10-02):
+Data come from the ABS, the RBA, the OECD, the BIS, FRED, the World Bank, DB.nomics,
+Yahoo Finance, the EIA, OPEC and CME, other central banks and debt offices, and Australian
+agencies (AIP, DCCEEW, ASIC, AFSA, Home Affairs). API keys live in `KEYS/` and downloads
+are cached in `CACHE/` (both gitignored).
 
-| Module | Release names | Topics | Charts |
-|--------|---------------|--------|--------|
-| 6302 - Average Weekly Earnings | `6302`, `awe` | wages | 2 |
-| 6345 - Wage Price Index | `6345`, `wpi` | wages, prices | 21 |
-| 6401 - Consumer Price Index | `6401`, `cpi` | prices | 242 (measures; expenditure-class summaries and per-class growth in subfolders) |
-| 6427 - Producer Price Indexes | `6427`, `ppi` | prices | 12 |
-| 6467 - Living Cost Indexes | `6467`, `lci` | prices | 14 |
+## The old world
 
-Package layout: `sources/` (one file per data provider), `series/` (concepts wanted by
-several modules, e.g. CPI measures), `analysis/` (e.g. Henderson smoothing), `charting/`
-(shared footer wording, target bands, standard windows), `releases/` (one module per
-publication) and `topics/` (cross-source analysis). The package keeps its own API keys in
-`KEYS/` and caches in `CACHE/`, `.readabs_cache/` and `.sdmxabs_cache/` at the project
-root (all gitignored), so deleting `notebooks/` cannot break it.
-
-## Data Sources
-
-- **Australian Bureau of Statistics (ABS)** - Primary source for Australian economic data
-- **Reserve Bank of Australia (RBA)** - Monetary policy and financial data
-- **OECD** - International comparisons
-- **Bank for International Settlements (BIS)** - Central bank policy rates
-- **FRED** - US Federal Reserve economic data
-- **World Bank** - Commodity prices
-- **DB.nomics** - International GDP data
-- **Yahoo Finance** - Daily commodity futures, metals, energy and equity indices
-- **Other Australian agencies** - AIP (petrol prices), DCCEEW (petroleum), AFSA/ASIC (insolvency), Home Affairs (visas)
-
-## Notebooks
-
-### ABS Monthly Series
-| Notebook | ABS Cat. | Description |
-|----------|----------|-------------|
-| ABS Monthly Labour Force 6202 | 6202.0 | Employment, unemployment, participation rate |
-| ABS Monthly Building Approvals 8731 | 8731.0 | Dwelling and building approvals |
-| ABS Monthly International Trade in Goods 5368 | 5368.0 | Imports, exports, trade balance |
-
-### ABS Quarterly Series
-| Notebook | ABS Cat. | Description |
-|----------|----------|-------------|
-| ABS Quarterly National Accounts 5206 | 5206.0 | GDP, economic growth |
-| ABS Quarterly National Accounts 5206 No 2 | 5206.0 | Productivity analysis from the national accounts |
-| ABS Quarterly Wage Price Index 6345 | 6345.0 | Wage growth |
-| ABS Quarterly Labour Account 6150 | 6150.0 | Hours worked, labour costs |
-| ABS Quarterly Job Vacancies 6354 | 6354.0 | Job vacancies by industry |
-| ABS Quarterly Business Indicators 5676 | 5676.0 | Company profits, wages |
-| ABS Quarterly Producer Price Index 6427 | 6427.0 | Producer prices |
-| ABS Quarterly Living Cost Index 6467 | 6467.0 | Cost of living by household type |
-| ABS Quarterly Building Activity 8752 | 8752.0 | Construction work done |
-| ABS Quarterly Financial Accounts 5232 | 5232.0 | Financial flows |
-| ABS Quarterly Dwelling Stock 6432 | 6432.0 | Housing stock |
-| ABS Quarterly International Trade 5302 | 5302.0 | Balance of payments |
-| ABS Quarterly Lending 5601 | 5601.0 | Lending indicators |
-| ABS Quarterly Capital Expenditure 5625 | 5625.0 | Private new capital expenditure by asset type and industry |
-
-### ABS Combined Monthly/Quarterly Series
-| Notebook | ABS Cat. | Description |
-|----------|----------|-------------|
-| ABS Monthly+Quarterly Detailed Labour Force 6291 | 6291.0 | Detailed labour statistics |
-| ABS Monthly+Quarterly Household Spending | - | Household spending indicator |
-
-### ABS SDMX API Series
-| Notebook | Description |
-|----------|-------------|
-| ABS-SDMX-Monthly-Labour-Force-6202 | Labour force via the ABS SDMX API |
-
-### ABS Annual/Other Series
-| Notebook | Description |
-|----------|-------------|
-| ABS Bi-annual Average Weekly Earnings 6302 | Earnings data |
-| ABS Yearly National Accounts | Annual GDP and components |
-| ABS Yearly State Accounts | State-level economic data |
-| ABS Yearly Government Finance Statistics 5512 | Government revenue and expenditure |
-| ABS Yearly Taxation Revenue 5506 | Taxation revenue |
-| ABS Yearly Marriages and Divorces 3310 | Social statistics |
-| ABS Business Entries and Exits 8165 | Business entry and exit rates |
-| ABS Earnings by Education 6337 | Earnings by educational attainment |
-| ABS Personal Income by Remoteness 6524 | Personal income by remoteness area |
-| ABS LFS - Household dynamics | Household dynamics from the detailed Labour Force Survey (6291.0) |
-| ABS Population | Population: overseas arrivals/departures (3401.0) and resident population (3101.0) |
-| ABS Census - Ad Hoc | Census data analysis |
-
-### Inflation and Economy Analysis
-| Notebook | Description |
-|----------|-------------|
-| ABS Inflation multi-measure | Multiple inflation measures compared |
-| ABS Recession | Recession indicators and analysis |
-
-### Political Analysis
-| Notebook | Description |
-|----------|-------------|
-| ABS Political | Economic and social outcomes by government epoch since the 1949 election: unemployment, inflation, GDP and income per capita, labour productivity, wage share, house prices, taxation, the budget balance and population. Several series are spliced back beyond the current ABS release (RBA OP8, BIS/REIA, the Modellers' Database) to cover the earlier terms. |
-
-### RBA Data
-| Notebook | Description |
-|----------|-------------|
-| RBA Selected Tables | Key RBA statistical tables |
-| RBA SOMP Forecasts | Statement on Monetary Policy forecasts |
-
-### International Comparisons
-| Notebook | Description |
-|----------|-------------|
-| OECD - UR CPI | Unemployment and CPI comparisons |
-| OECD Global Savings Glut | Savings glut analysis: bond yields, investment and land values (OECD) |
-| BIS - CB policy rates | Central bank policy rate comparisons |
-| FRED GDP International | International GDP from FRED |
-| FRED Stagflation | Stagflation-era international comparison, 1970-1995 (FRED) |
-| DB.nomics GDP International | International GDP via DB.nomics |
-| Productivity AU vs US | Labour productivity, unit labour costs and rates: Australia vs US |
-| World Bank Global Savings Glut | Global savings glut: current account balances (World Bank) |
-
-### Commodities and Energy
-| Notebook | Description |
-|----------|-------------|
-| YAHOO_daily_commodities | Daily commodity futures, energy, metals and ASX indices (Yahoo Finance) |
-| FRED Commodity Prices | Commodity price indices (FRED) |
-| World Bank Commodity Prices | World Bank commodity data |
-| AIP_petrol_prices | Australian petrol terminal gate prices (AIP) |
-| DCCEEW Petroleum Statistics | Australian petroleum consumption and import cover |
-
-### Other Australian Data
-| Notebook | Description |
-|----------|-------------|
-| AFSA Personal Insolvency | Personal insolvency statistics |
-| ASIC Corporate Insolvency | Corporate insolvency data |
-| ANGG-Quarterly-Greenhouse-Gas | Greenhouse gas emissions |
-| Domestic and Family Violence | Domestic and family violence statistics |
-| Home Affairs Temporary Visa Workforce | Temporary visa holders in the workforce |
-
-### Development/Test
-| Notebook | Description |
-|----------|-------------|
-| Test mgplot | mgplot library test/scratch notebook |
-| Test readabs | readabs library test/scratch notebook |
-
-## Helper Modules
-
-Shared Python modules in `notebooks/`, imported by the notebooks rather than run directly. They are part of the frozen old world; the package recreates their logic rather than importing them:
-
-| Module | Purpose | Key functions |
-|--------|---------|---------------|
-| `abs_helper.py` | Standard notebook setup. `get_abs_data()` fetches a catalogue and creates/clears the chart directory, so call it only once per notebook. Also holds the CPI target constants. | `get_abs_data`, `collate_summary_data` |
-| `abs_gdp.py` | GDP from the National Accounts (5206.0 key aggregates), cached per kernel session. | `get_gdp` (`gdp_type`=CP/CVM, `seasonal`=SA/T/O) |
-| `abs_population.py` | Single `get_population()` dispatcher for every population concept — `ERP`, `civ15`, `adult21`, `implicit`; by state (accepts aliases like "NSW"); with `freq` (M→Q) and `smoothed` (de-stepped monthly increment) options — plus the smoothing and 21+/15+ age-share helpers. `get_population` always returns a `(series, units)` tuple; the three helpers return a bare `Series`. Owns the statsmodels (`decompose`/`henderson`) dependency so `abs_helper` stays light. | `get_population`, `smoothed_monthly_pop_growth`, `get_adult_21_share_of_15`, `interp_21_share` |
-| `abs_prices.py` | Price / numeraire getters, all DID-based and each returning `(series, units, stype)`: `get_price_deflator` (DFD/GNE/HFCE/GDP implicit price deflators, 5206.0), `get_cpi` (headline reconstructed to 1948 / headline_sa / trimmed / weighted, 6401.0), `get_wage_index` (WPI index 6345.0 / AWOTE $/week 6302.0), `get_house_price_index` (long-run spliced $ level back to 1986). | `get_price_deflator`, `get_cpi`, `get_wage_index`, `get_house_price_index`, `get_house_price_splice_report` |
-| `abs_structured_capture.py` | Fetch multiple ABS series across catalogues via `ReqsTuple`/`ReqsDict`; does not touch the chart directory, so safe for additional fetches within a notebook. | `get_abs_data`, `load_series`, `get_table` |
-| `political.py` | Epoch helpers for the ABS Political notebook: split a series by government, rebase it (at every election, or once at the first), and summarise each term by mean, change or compound annual growth. Knows nothing about any particular ABS series — the fetchers and plot functions stay in the notebook. | `segment_by_government`, `index_by_government`, `continuous_index_by_government`, `mean_by_government`, `change_by_government`, `cagr_by_government`, `cagr_path_by_government`, `epoch_vlines`, `year_ended_growth` |
-| `abs_plotting.py` | Reusable plotting of ABS seasonally-adjusted/trend series selected by metadata. | `plot_rows_seas_trend`, `plot_rows_individually`, `plot_rows_collectively` |
-| `decompose.py` | Naive time-series decomposition (trend/seasonal/irregular), additive or multiplicative, with optional ARIMA endpoint extension (stepwise auto-ARIMA) and Henderson trend smoothing. | `decompose` |
-| `henderson.py` | Henderson moving average for trend estimation. | `hma` |
-| `common.py` | Generic cached HTTP fetch utilities used by the non-ABS data sources. | `request_get`, `get_file` |
-
-`pymc_helper.py` and the PyMC stack were removed on 2026-10-02: Bayesian modelling lives in MacroModels. The two `notebooks/OLD/` model notebooks that used them no longer run.
-
-## Project Structure
-
-```
-├── docs/               # Design notes, including the restructure spec
-├── src/au_econ/        # Python package (the new world, being built)
-├── run.py              # Command-line entry point for the package
-├── CHARTS/             # Package chart output (gitignored)
-├── KEYS/               # API keys for the package (gitignored)
-├── CACHE/              # Package download cache (gitignored)
-├── notebooks/          # Jupyter notebooks + shared helper modules (the frozen old world)
-│   └── CHARTS/         # Notebook chart output
-└── .venv/              # Python virtual environment
-```
+The charts used to come from Jupyter notebooks in `notebooks/` (with helper modules beside
+them, writing to `notebooks/CHARTS/`). They are frozen while the package is rebuilt
+alongside them: each notebook is recreated in `src/au_econ/`, checked pixel-for-pixel
+against the notebook's charts, then improved. When everything has been rebuilt, the
+notebooks are deleted in one go. The design and the decisions behind it are in
+[docs/restructure-spec.md](docs/restructure-spec.md); chart conventions are in its
+section 11.
 
 ## Setup
 
-The Python environment is managed with `uv`; `uv sync` installs the package editable.
-
-```bash
-uv run run.py --list                                   # the package
-source .venv/bin/activate
-jupyter notebook notebooks/<notebook-name>.ipynb        # a notebook
-```
-
-## Notes
-
-- Each notebook is self-contained and fetches the latest data when run; its charts go to `notebooks/CHARTS/`
-- Package modules fetch when run (never on import); their charts go to `CHARTS/`
-- Chart conventions for the package (footers, series-type notes, standard windows, colours) are in section 11 of the spec
+The environment is managed with `uv`: `uv sync` installs the package (editable) and the
+notebook tooling.
